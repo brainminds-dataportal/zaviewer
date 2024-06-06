@@ -1,5 +1,5 @@
 # temporary image used as build environment
-FROM node:16.13.2-alpine as build
+FROM node:16-alpine3.18 as build
 
 
 WORKDIR /app
@@ -17,7 +17,7 @@ RUN if [ ${PACKAGEREAD_TOKEN} ]; then (cat .npmrc_template ; echo '${PACKAGEREAD
 
 
 # download and install node modules
-RUN npm install --omit=optional
+RUN npm install --omit=optional --legacy-peer-deps
 #RUN npm clean-install --omit=optional
 
 #
@@ -34,8 +34,8 @@ RUN npm run build
 FROM nginx:stable-alpine
 
 LABEL jp.riken.cau.product="ZAViewer User Interface" \
-    jp.riken.cau.version="2.4.0" \
-    jp.riken.cau.release-date="2023-01-26"
+    jp.riken.cau.version="2.5.0" \
+    jp.riken.cau.release-date="2024-06-06"
 
 # copy generated bundles and assets from building stage image
 COPY --from=build /app/index.html /usr/share/nginx/html

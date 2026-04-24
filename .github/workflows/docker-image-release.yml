@@ -1,0 +1,150 @@
+name: Publish Docker images
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  validate-release:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      created: ${{ steps.release.outputs.created }}
+      source_url: ${{ steps.release.outputs.source_url }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - id: release
+        name: Verify package version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          if [ "${TAG_VERSION}" != "${PACKAGE_VERSION}" ]; then
+            echo "Git tag version (${TAG_VERSION}) does not match package.json version (${PACKAGE_VERSION})." >&2
+            exit 1
+          fi
+
+          echo "version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_OUTPUT}"
+          echo "source_url=https://github.com/${GITHUB_REPOSITORY}" >> "${GITHUB_OUTPUT}"
+
+  build-ui:
+    name: Publish UI image
+    runs-on: ubuntu-latest
+    needs: validate-release
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push UI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker_scripts/Dockerfile.ui
+          push: true
+          build-args: |
+            PACKAGEREAD_TOKEN=${{ secrets.PACKAGEREAD_TOKEN }}
+            OCI_TITLE=${{ env.IMAGE_NAME }}
+            OCI_DESCRIPTION=ZAViewer User Interface
+            OCI_SOURCE=${{ needs.validate-release.outputs.source_url }}
+            OCI_VERSION=${{ needs.validate-release.outputs.version }}-ui
+            OCI_CREATED=${{ needs.validate-release.outputs.created }}
+            OCI_REVISION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}-ui
+            ${{ env.IMAGE_NAME }}:latest-ui
+
+  build-prepimg:
+    name: Publish prep utility image
+    runs-on: ubuntu-latest
+    needs: validate-release
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push prep utility image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./scripts/
+          file: ./docker_scripts/Dockerfile.prepDZIImages
+          push: true
+          build-args: |
+            OCI_TITLE=${{ env.IMAGE_NAME }}
+            OCI_DESCRIPTION=ZAViewer Deep Zoom Images preparation utility
+            OCI_SOURCE=${{ needs.validate-release.outputs.source_url }}
+            OCI_VERSION=${{ needs.validate-release.outputs.version }}-prepimg
+            OCI_CREATED=${{ needs.validate-release.outputs.created }}
+            OCI_REVISION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}-prepimg
+            ${{ env.IMAGE_NAME }}:latest-prepimg
+
+  build-ed:
+    name: Publish region editor image
+    runs-on: ubuntu-latest
+    needs:
+      - validate-release
+      - build-ui
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push region editor image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker_scripts/Dockerfile.ed
+          push: true
+          build-args: |
+            UI_IMAGE=${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}-ui
+            OCI_TITLE=${{ env.IMAGE_NAME }}
+            OCI_DESCRIPTION=ZAViewer User Interface + minimal backend for region editor
+            OCI_SOURCE=${{ needs.validate-release.outputs.source_url }}
+            OCI_VERSION=${{ needs.validate-release.outputs.version }}-ed
+            OCI_CREATED=${{ needs.validate-release.outputs.created }}
+            OCI_REVISION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}-ed
+            ${{ env.IMAGE_NAME }}:latest-ed

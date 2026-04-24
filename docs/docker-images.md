@@ -1,6 +1,6 @@
 # Building Docker images
 
-ZAViewer Docker images are available for download from [dedicated Docker Hub repository](https://hub.docker.com/r/rikencau/zaviewer).
+ZAViewer Docker images are available from GitHub Container Registry as `ghcr.io/brainminds-dataportal/zaviewer:<tag>`.
 
 <br/>
 
@@ -13,10 +13,22 @@ Prerequisite:
 * Clone this git repo to get the latest sources
 
     ```sh
-    git clone https://github.com/cau-riken/zaviewer.git
+    git clone https://github.com/brainminds-dataportal/zaviewer.git
 
     cd zaviewer
     ```
+
+Current Dockerfile bases:
+
+* UI image: Node 22 build stage + Nginx 1.28 runtime
+* Brain slice import utility: Python 3.12 (Bookworm)
+* Region editor image: ZAViewer UI image + Alpine PHP 8.4 packages
+* Backend image: Ubuntu 24.04 + Apache + `iipimage-server`
+
+Publishing note:
+
+* Published images are pushed to GHCR when a Git tag matching `v*` is created.
+* The workflow validates that the tag version matches `package.json` before publishing.
 
 
 ## Light web-server for the User Interface Docker image <a id="build-image-ui"></a>
@@ -36,9 +48,9 @@ The provided Docker script will:
 2. Build the image
 
     ```sh
-    docker build --no-cache --network=host \
-      -f docker_scripts/Dockerfile.ui \
-      -t rikencau/zaviewer:latest-ui .
+      docker build --no-cache --network=host \
+        -f docker_scripts/Dockerfile.ui \
+      -t ghcr.io/brainminds-dataportal/zaviewer:latest-ui .
     ```
 
 **Note:** As explained [there](../README.md#dev-setupnpmrc), a personal github token is required to build the project.
@@ -58,9 +70,9 @@ Alternatively, if you don't want to store your token in the `.npmrc`, you may pr
 2. Build the image
 
     ```sh
-    docker build --no-cache --network=host \
-      -f docker_scripts/Dockerfile.prepDZIImages \
-      -t rikencau/zaviewer:latest-prepimg scripts/
+      docker build --no-cache --network=host \
+        -f docker_scripts/Dockerfile.prepDZIImages \
+      -t ghcr.io/brainminds-dataportal/zaviewer:latest-prepimg scripts/
     ```
 
 ## Region delineation editing UI Docker image<a id="build-image-regionedit"></a>
@@ -76,7 +88,7 @@ In order to save edited regions as SVG files, a minimal backend component needs 
 2. Build the image
 
     ```sh
-    docker build --no-cache --network=host \
-      -f docker_scripts/Dockerfile.ed \
-      -t rikencau/zaviewer:latest-ed .
+      docker build --no-cache --network=host \
+        -f docker_scripts/Dockerfile.ed \
+      -t ghcr.io/brainminds-dataportal/zaviewer:latest-ed .
     ```

@@ -22,21 +22,14 @@
 		<meta http-equiv="Expires" content="-1" />
 		<title>Multimodal 2D Section Viewer</title>
 
-		<script src="./assets/vendors/openseadragonAlexEdit.js"></script>
-		<script src="./assets/vendors/openseadragon-viewerinputhook.min.js"></script>
-		<script src="./assets/vendors/openseadragon-scalebar.js"></script>
-		<script src="./assets/vendors/openseadragon-filtering.js"></script>
-		<script src="./assets/vendors/raphaelFastEdit.js"></script>
-		<script src="./assets/vendors/raphael-svg-import.js"></script>
-		<script src="./assets/vendors/jquery.min.js"></script>
-
-		<link rel="stylesheet" href="./assets/css/ZAViewer.css" />
 		<style>.zav-region-label{font-size:6px;stroke-width:1.2px;}</style>
+		<script src="%BASE_URL%vendors/raphaelFastEdit.js"></script>
+		<script src="%BASE_URL%vendors/raphael-svg-import.js"></script>
 
 		<!--# block name="custom_processing_include" --> 
 		<!-- custom processing extension disabled -->
 		<!--# endblock -->
-		<!--# include file="./ext/customProcessings.html" stub="custom_processing_include" -->
+		<!--# include file="./extension/customProcessings.html" stub="custom_processing_include" -->
 	</head>
 
 	<body>
@@ -70,7 +63,7 @@
 			}
 
 			var browser = get_browser()
-			var isSupported = isSupported(browser);
+			window.__ZAV_BROWSER_SUPPORTED__ = isSupported(browser);
 
 			function isSupported(browser) {
 				var supported = false;
@@ -89,15 +82,17 @@
 				return supported;
 			}
 
-			if (isSupported) {
-				var appscript = document.createElement('script');
-				appscript.setAttribute('src', "./assets/js/main.js");
-				document.body.appendChild(appscript);
-			} else {
-				document.write('<div class="nosupport"><h1>Sorry, your web browser doesn&apos;t seem to be supported...</h1><h3>You can contact us at <a href="https://dataportal.brainminds.jp/contact-us">dataportal.brainminds.jp</a></h3><code>' + navigator.userAgent + '</code></div>');
+			if (!window.__ZAV_BROWSER_SUPPORTED__) {
+				document.addEventListener("DOMContentLoaded", function () {
+					var root = document.getElementById("root");
+					if (root) {
+						root.innerHTML = '<div class="nosupport"><h1>Sorry, your web browser doesn&apos;t seem to be supported...</h1><h3>You can contact us at <a href="https://dataportal.brainminds.jp/contact-us">dataportal.brainminds.jp</a></h3><code>' + navigator.userAgent + '</code></div>';
+					}
+				});
 			}
 		</script>
 		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
 	</body>
 
 </html>

@@ -73,7 +73,7 @@ def changeSize(in_filename, out_filename, scale_factor=0.1, desired_size=None):
     else:
         new_size = orig_size*(scale_factor)
         # Image dimensions are in integers
-        new_size = np.ceil(new_size).astype(np.int)
+        new_size = np.ceil(new_size).astype(int)
         new_size = [int(s) for s in new_size]
         new_spacing = (orig_spacing[0]/scale_factor,
                        orig_spacing[1]/scale_factor)

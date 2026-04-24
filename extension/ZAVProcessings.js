@@ -71,10 +71,17 @@ ZAVProcessings = function () { };
                 const width = imageData.width;
                 const height = imageData.height;
 
+                ort.env.wasm.wasmPaths = {
+                    "ort-wasm-simd-threaded.wasm": "extension/ort-wasm-simd-threaded-1.24.3.wasm",
+                    "ort-wasm-simd-threaded.asyncify.wasm": "extension/ort-wasm-simd-threaded-asyncify-1.24.3.wasm",
+                    "ort-wasm-simd-threaded.jsep.wasm": "extension/ort-wasm-simd-threaded-jsep-1.24.3.wasm",
+                    "ort-wasm-simd-threaded.jspi.wasm": "extension/ort-wasm-simd-threaded-jspi-1.24.3.wasm",
+                };
+
                 return (
 
                     ort.InferenceSession.create(
-                        "ext/models/onnx/udnie-9.onnx",
+                        "extension/models/onnx/udnie-9.onnx",
                         {
                             //NOTE: webgl execution seems not to be supported for now (for these models only?) 
                             //executionProviders: ["webgl"],
@@ -128,7 +135,7 @@ ZAVProcessings = function () { };
                 // initialize a UNET method with a pre-trained model
                 // (local copy of default model, https://github.com/zaidalyafeai/HostedModels)
                 const options = {
-                    modelPath: "ext/models/unet-128/model.json"
+                    modelPath: "extension/models/unet-128/model.json"
                 }
                 return (
                     ml5.uNet("", options).ready
@@ -172,7 +179,7 @@ ZAVProcessings = function () { };
             processImageData: function (imageData) {
                 return (
                     // initialize a pix2pix method with a pre-trained model
-                    ml5.pix2pix("ext/models/edges2pikachu.pict")
+                    ml5.pix2pix("extension/models/edges2pikachu.pict")
                         .then(pix2pixModel => {
                             console.debug("Pix2pix: Model Loaded!");
 
@@ -328,4 +335,3 @@ ZAVProcessings = function () { };
 }(this, function () {
     return ZAVProcessings;
 }));
-

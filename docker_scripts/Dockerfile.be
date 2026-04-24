@@ -1,17 +1,47 @@
-FROM centos:7.8.2003
+FROM ubuntu:24.04
 
+ENV DEBIAN_FRONTEND=noninteractive
 
+ARG OCI_TITLE=ghcr.io/brainminds-dataportal/zaviewer
+ARG OCI_DESCRIPTION="ZAViewer back-end"
+ARG OCI_SOURCE=https://github.com/brainminds-dataportal/zaviewer
+ARG OCI_VERSION=dev-be
+ARG OCI_CREATED=1970-01-01T00:00:00Z
+ARG OCI_REVISION=unknown
 
 # download and install required dependencies
-RUN yum -y install epel-release  && \
-rpm -Uvh https://rpms.remirepo.net/enterprise/remi-release-7.rpm  && \
-yum -y install --enablerepo=remi,remi-php73 php php-mbstring php-pdo php-xml && \
-yum -y install ImageMagick memcached  && \
-yum -y install iipsrv  && \
-yum -y install iipsrv-httpd-fcgi  && \
-mkdir /var/www/iiproot  && \
-ln -s /var/www/html/data /var/www/iiproot/data  && \
-sed -i '/<Directory/i FcgidInitialEnv CORS "*"\nFcgidInitialEnv FILESYSTEM_PREFIX "/var/www/iiproot"\n' /etc/httpd/conf.d/iipsrv.conf
+RUN apt-get update && \
+apt-get install -y --no-install-recommends \
+apache2 \
+ca-certificates \
+iipimage-server \
+imagemagick \
+libapache2-mod-fcgid \
+memcached \
+php \
+php-cli \
+php-mbstring \
+php-sqlite3 \
+php-xml && \
+mkdir -p /var/www/iiproot && \
+ln -s /var/www/html/data /var/www/iiproot/data && \
+a2enmod alias fcgid headers && \
+if [ -f /etc/apache2/conf-available/iipimage-server.conf ]; then a2disconf iipimage-server; fi && \
+cat >/etc/apache2/conf-available/zaviewer-iipsrv.conf <<'EOF' && \
+a2enconf zaviewer-iipsrv && \
+rm -rf /var/lib/apt/lists/*
+Alias /iipsrv /usr/lib/iipimage-server
+<Directory /usr/lib/iipimage-server>
+    Options +ExecCGI
+    Require all granted
+</Directory>
+<Location /iipsrv/iipsrv.fcgi>
+    SetHandler fcgid-script
+    Options +ExecCGI
+    FcgidInitialEnv CORS "*"
+    FcgidInitialEnv FILESYSTEM_PREFIX "/var/www/iiproot"
+</Location>
+EOF
 
 
 #copy admin scripts
@@ -21,28 +51,20 @@ WORKDIR /var/www/html/admin
 
 RUN mkdir data  && \
 php ./init.php  && \
-chown -R apache data  && \
+chown -R www-data:www-data data  && \
 chmod 755 data  && \
 echo -e '{\n\t"admin_path":"./admin/",\n\t"iipserver_path":"/iipsrv/iipsrv.fcgi?IIIF=/data/",\n\t"publish_path":"../data/"\n}' > /var/www/html/path.json
 
-#chcon -R -t httpd_sys_content_rw_t "/var/www/html/admin/data"
-#chmod 755 /var/www/cmd/filelink.sh
-
-
-#start the apache webserver
-#CMD systemctl enable httpd.service && \
-#systemctl start httpd 
-
-#&& \
-#firewall-cmd --add-service=http --permanent && \
-#firewall-cmd --reload
 
 #start the apache webserver (including image server)
-ENTRYPOINT ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+ENTRYPOINT ["apache2ctl", "-D", "FOREGROUND"]
 
-LABEL jp.riken.cau.product="ZAViewer back-end" \
-    jp.riken.cau.version="2.0.0" \
-    jp.riken.cau.release-date="2021-02-16"
+LABEL org.opencontainers.image.title="${OCI_TITLE}" \
+      org.opencontainers.image.description="${OCI_DESCRIPTION}" \
+      org.opencontainers.image.source="${OCI_SOURCE}" \
+      org.opencontainers.image.url="${OCI_SOURCE}" \
+      org.opencontainers.image.version="${OCI_VERSION}" \
+      org.opencontainers.image.created="${OCI_CREATED}" \
+      org.opencontainers.image.revision="${OCI_REVISION}"
 
-#
 EXPOSE 80

@@ -57,13 +57,13 @@ Prerequisite: [Docker Engine](https://docs.docker.com/engine/) must be installed
 **Notes**:
 
 * Depending on your configuration, you might need to have root permission to run docker, in this case you will need to preface the `docker` command with `sudo` in all the following examples (more details [here](https://docs.docker.com/engine/install/linux-postinstall) ).
-* By default, ZAViewer Docker image will be downloaded from Docker Hub registry if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-ui) beforehand.
+* By default, ZAViewer Docker image will be downloaded from GitHub Container Registry (`ghcr.io`) if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-ui) beforehand.
 
 ### **Step by step procedure**
 
 1. Run the web-server container :
     ```sh
-    docker run -it --rm -p 9090:80 rikencau/zaviewer:latest-ui
+    docker run -it --rm -p 9090:80 ghcr.io/brainminds-dataportal/zaviewer:latest-ui
     ```
     **►** This container will display web-server log in the terminal window and keep running until stopped using `[Ctrl-C]`, then the container will be automatically removed (but ZAViewer Docker image will remain in your local repository for later use)
     <br/><br/>
@@ -83,7 +83,7 @@ Prerequisite: [Docker Engine](https://docs.docker.com/engine/) must be installed
    * If you don't intend to use ZAViewer anymore, you may remove locally stored Docker image with the following command:
 
    ```sh
-        docker image rm rikencau/zaviewer:latest-ui
+        docker image rm ghcr.io/brainminds-dataportal/zaviewer:latest-ui
    ```
 
  
@@ -188,7 +188,7 @@ The structure of the region information resource is detailed [there](#dev-region
 
 #### 1.3 Run the script utility (Docker image)
 
-Note: By default, the docker image will be downloaded from Docker Hub registry if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-prepimg) beforehand.
+Note: By default, the docker image will be downloaded from GitHub Container Registry (`ghcr.io`) if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-prepimg) beforehand.
 
 1. Run the import utility script
 
@@ -196,7 +196,7 @@ Note: By default, the docker image will be downloaded from Docker Hub registry i
 
     mkdir OUTPUT
 
-    docker run -it --rm -u "$(id -u):$(id -g)" -v "$PWD":/mnt/hostdir  rikencau/zaviewer:latest-prepimg
+    docker run -it --rm -u "$(id -u):$(id -g)" -v "$PWD":/mnt/hostdir  ghcr.io/brainminds-dataportal/zaviewer:latest-prepimg
     ```
 
 Important note :
@@ -208,7 +208,7 @@ Important note :
 
     ```sh
     docker run -it --rm -u "$(id -u):$(id -g)" -v "$PWD":/mnt/hostdir  \
-      rikencau/zaviewer:latest-prepimg \
+      ghcr.io/brainminds-dataportal/zaviewer:latest-prepimg \
       -i ./INPUT -o OUTPUT
     ```
 
@@ -222,7 +222,7 @@ The same ZAViewer Docker image as before is used, but with different parameters 
     ```sh
     docker run -it --rm \
     -v /full/path/to/output/dir:/usr/share/nginx/html/data:ro \
-    -p 9090:80 rikencau/zaviewer:latest-ui
+    -p 9090:80 ghcr.io/brainminds-dataportal/zaviewer:latest-ui
     ```
 
 2. Launch ZAViewer by opening the following URL in your web browser :
@@ -248,10 +248,10 @@ These routines are Javascript code that can be easily plugged in ZAViewer as exp
 
 #### Step-by-step procedure:
 
-1. Clone ZAViewer git repo to get the latest sources, including extension directory :
+1. Clone ZAViewer git repo to get the latest sources, including the `extension/` directory :
 
     ```sh
-    git clone https://github.com/cau-riken/zaviewer.git
+    git clone https://github.com/brainminds-dataportal/zaviewer.git
 
     cd zaviewer
     ```
@@ -259,9 +259,9 @@ These routines are Javascript code that can be easily plugged in ZAViewer as exp
 
 2. Add your custom processsing :
 
-    * declare your custom processsing code inside the following source file : [`zaviewer/extension/ZAVProcessings.js`](https://github.com/cau-riken/zaviewer/blob/master/extension/ZAVProcessings.js)
+    * declare your custom processsing code inside the following source file : [`zaviewer/extension/ZAVProcessings.js`](https://github.com/brainminds-dataportal/zaviewer/blob/master/extension/ZAVProcessings.js)
 
-    * insert the required dependencies in the inside the html fragment file : [`zaviewer/extension/customProcessings.html`](https://github.com/cau-riken/zaviewer/blob/master/extension/customProcessings.html)
+    * insert the required dependencies in the inside the html fragment file : [`zaviewer/extension/customProcessings.html`](https://github.com/brainminds-dataportal/zaviewer/blob/master/extension/customProcessings.html)
     <br/>(the content of this file will be included in the main page header)
 
 
@@ -275,8 +275,8 @@ These routines are Javascript code that can be easily plugged in ZAViewer as exp
         docker run -it --rm \
         -v /full/path/to/output/dir:/usr/share/nginx/html/data:ro \
         -v /full/path/to/zaviewer/extension/nginx_extra.conf:/etc/nginx/conf.d/nginx_extra.conf:ro \
-        -v /full/path/to/zaviewer/extension:/usr/share/nginx/html/ext:ro \
-        -p 9090:80 rikencau/zaviewer:latest-ed
+        -v /full/path/to/zaviewer/extension:/usr/share/nginx/html/extension:ro \
+        -p 9090:80 ghcr.io/brainminds-dataportal/zaviewer:latest-ed
         ```
 
     * Launch ZAViewer by opening the following URL in your web browser :
@@ -295,7 +295,7 @@ These routines are Javascript code that can be easily plugged in ZAViewer as exp
 ZAViewer allows to edit the region delineations displayed on top of the slice images (using another Docker image).
 As before local data will be displayed, but this time the displayed/edited region SVG will be located in a different directory.
 
-Note: By default, the docker image will be downloaded from Docker Hub registry if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-regionedit) beforehand.
+Note: By default, the docker image will be downloaded from GitHub Container Registry (`ghcr.io`) if it's not already on your local machine; You can also choose to locally [build the image](docs/docker-images.md#build-image-regionedit) beforehand.
 
 
 1. Run the UI+Editor container:
@@ -305,7 +305,7 @@ Note: By default, the docker image will be downloaded from Docker Hub registry i
     -v /full/path/to/output/dir:/usr/share/nginx/html/data:rw \
     -v /full/path/to/zaviewer/extension/nginx_extra.conf:/etc/nginx/conf.d/nginx_extra.conf:ro \
     -v /full/path/to/editableSVGs/dir:/usr/share/nginx/html/data/SVGEdit:rw \
-    -p 9090:80 rikencau/zaviewer:latest-ed
+    -p 9090:80 ghcr.io/brainminds-dataportal/zaviewer:latest-ed
     ```
 
     **Notes**
@@ -336,12 +336,12 @@ Note: By default, the docker image will be downloaded from Docker Hub registry i
 
 ## Setting up building environment to generate client UI bundles from the source code
 
-ZAViewer UI source code is composed of Javascript and CSS files that are bundled to produce the WebApp deliverable.
+ZAViewer UI source code is composed of TypeScript/TSX and CSS/SCSS files under `src/`, plus deploy-time static files under `public/`, all bundled or copied by Vite to produce the WebApp deliverable.
 
 
 ### requirement and dependencies
 
-* `NodeJs` ^v16.13.2 (and `npm` ^v8.13.1) must be installed on your platform beforehand
+* `NodeJs` ^v20.19.0 (and a recent `npm`) must be installed on your platform beforehand
 
 
 Use terminal windows and go to source folder
@@ -374,13 +374,30 @@ Depending on your current settings, you may be in one of the 2 following cases:
 npm install
 ```
 
+#### Run the development server
+
+```sh
+npm run dev
+```
+
+The Vite dev server runs on port `9000` by default.
+
+The source tree follows the usual Vite layout:
+
+* `src/` contains the React + TypeScript application sources
+* `public/` contains static files copied as-is to the root of `dist/`
+
 #### Build bundles from sources
 
 ```sh
 npm run build
 ```
 
-`Javascript` and `css` bundles are produced in `assets/` subfolder
+The production-ready output is produced in the `dist/` folder.
+
+This folder contains the built `index.html`, the standard Vite-generated `assets/` directory, and root-level static resources copied from `public/` such as `img/` and `vendors/`.
+
+Most third-party browser libraries are now bundled from `dependencies`; `public/vendors/` is mainly reserved for the remaining custom Raphael-based files and license texts that still need to stay as standalone scripts. The backend/admin assets live in the repository root `admin/`, and custom processing / nginx helper files live in the repository root `extension/`; neither is part of the Vite build output.
 
 <br/><br/>
 

@@ -4,9 +4,20 @@ export function isNotFoundError(error: unknown) {
   return axios.isAxiosError(error) && error.response?.status === 404;
 }
 
-export async function getJson(url: string) {
+export async function getJson<T = unknown>(url: string) {
   const response = await axios.get(url);
-  return response.data;
+  return response.data as T;
+}
+
+export async function getOptionalJson<T = unknown>(url: string) {
+  try {
+    return await getJson<T>(url);
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function postFormJson(url: string, data: Record<string, string | number>) {

@@ -9,11 +9,11 @@ import Utils from './Utils';
 
 import RegionsManager from './RegionsManager';
 import ZAVConfig from './ZAVConfig';
-import RoiInfos from './RoiInfo';
+import { type IROIsPayload, RoiInfos } from './RoiInfo';
 
 import CustomFilters from './CustomFilters';
 import UserSettings from './UserSettings';
-import { getJson, getXmlDocument } from './common/http';
+import { getJson, getOptionalJson, getXmlDocument } from './common/http';
 
 export const VIEWER_ID = 'openseadragon1';
 export const NAVIGATOR_ID = 'navigatorDiv';
@@ -25,6 +25,8 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 
 /** Class in charge of managing viewer's main display (OSD) and state of related elements */
 class ViewerManager {
+  static roiInfosRequest = undefined;
+
   static get VIEWER_ID() {
     return VIEWER_ID;
   }
@@ -55,6 +57,51 @@ class ViewerManager {
     ViewerManager.viewer.setMouseNavEnabled(enabled);
   }
 
+  static refreshViewerCanvas() {
+    if (!ViewerManager.viewer) {
+      return;
+    }
+
+    ViewerManager.viewer.forceRedraw();
+    ViewerManager.viewer.world.draw();
+    ViewerManager.refreshCanvasContent();
+  }
+
+  static ensureRoiInfosLoaded() {
+    if (ViewerManager.roiInfosRequest) {
+      return ViewerManager.roiInfosRequest;
+    }
+
+    if (!ViewerManager.config?.PUBLISH_PATH || !ViewerManager.config?.svgFolderName) {
+      return Promise.resolve(null);
+    }
+
+    const roiInfoUrl = Utils.makePath(
+      ViewerManager.config.PUBLISH_PATH,
+      ViewerManager.config.svgFolderName,
+      `rois.json${ViewerManager.config.dataVersionTag ? ViewerManager.config.dataVersionTag : ''}`,
+    );
+
+    ViewerManager.roiInfosRequest = getOptionalJson<IROIsPayload>(roiInfoUrl)
+      .then((roiInfo) => {
+        if (roiInfo) {
+          RoiInfos.init(roiInfo);
+          if (UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowOverlayROI, null) == null) {
+            ViewerManager.setROIDisplay(roiInfo.displayRoi);
+          }
+          ViewerManager.signalStatusChanged(ViewerManager.status);
+        }
+
+        return roiInfo;
+      })
+      .catch((error) => {
+        ViewerManager.roiInfosRequest = undefined;
+        throw error;
+      });
+
+    return ViewerManager.roiInfosRequest;
+  }
+
   /**
    * Create ViewManager from the specified config and setup underlying OpenSeaDragon and related components
    * @param {object} config - configuration used as blueprint to setup the viewer
@@ -63,6 +110,7 @@ class ViewerManager {
    */
   static init(config, callbackWhenStatusChanged, history) {
     ViewerManager.config = config;
+    ViewerManager.roiInfosRequest = undefined;
 
     ViewerManager.history = history;
     //some continuous operations must not be recorded immediately in history (e.g. zooming, paning)
@@ -1587,6 +1635,10 @@ class ViewerManager {
         };
 
         if (that.status.hasROIs) {
+          void ViewerManager.ensureRoiInfosLoaded().catch((error) => {
+            console.error(error);
+          });
+
           //import ROI's SVG path elements
           const rois_paths = ROISrcGroup.getElementsByTagName('path');
           for (var i = 0; i < rois_paths.length; i++) {
@@ -2917,9 +2969,7 @@ class ViewerManager {
       //already 2 points recorded, reset measuring line
       if (ViewerManager.status.position[0].c == 2) {
         ViewerManager.resetPositionview();
-        ViewerManager.viewer.drawer.clear();
-        ViewerManager.viewer.world.draw();
-        ViewerManager.refreshCanvasContent();
+        ViewerManager.refreshViewerCanvas();
         return;
       }
 
@@ -3042,9 +3092,7 @@ class ViewerManager {
   static claerPosition() {
     ViewerManager.status.position[0].c = 2;
     ViewerManager.resetPositionview();
-    ViewerManager.viewer.drawer.clear();
-    ViewerManager.viewer.world.draw();
-    ViewerManager.refreshCanvasContent();
+    ViewerManager.refreshViewerCanvas();
     return;
   }
 

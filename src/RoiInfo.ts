@@ -17,6 +17,7 @@ export interface IRoi {
   };
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: Existing API is intentionally static across the app.
 export class RoiInfos {
   private static roiById = new Map<string, IRoi>();
   static hasROI = this.roiById.size > 0;
@@ -30,6 +31,11 @@ export class RoiInfos {
   static init(data: IROIsPayload) {
     RoiInfos.roiById = new Map<string, IRoi>(data.rois.map((r) => [r.roiId, r]));
     RoiInfos.hasROI = RoiInfos.roiById.size > 0;
+  }
+
+  static clear() {
+    RoiInfos.roiById = new Map<string, IRoi>();
+    RoiInfos.hasROI = false;
   }
 
   static getRoiById(roiId: string) {

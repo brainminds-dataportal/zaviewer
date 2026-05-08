@@ -1,33 +1,24 @@
-import * as React from 'react';
-
-import { PopoverNext, PopoverInteractionKind, Position, popoverPositionToNextPlacement } from '@blueprintjs/core';
-
+import { PopoverInteractionKind, PopoverNext, Position, popoverPositionToNextPlacement } from '@blueprintjs/core';
 import { createBrowserHistory } from 'history';
+import * as React from 'react';
 
 import { Pane, SplitPane } from 'react-split-pane';
 
 const RegionTreePanel = React.lazy(() => import('./RegionTreePanel'));
-import ViewerComposed from './ViewerComposed';
-import { DrawerHandle, CollapseDirection } from './Drawer';
-import ZAVConfig from '../ZAVConfig';
-
-import RegionsManager, { type IRegionsStatus, type IRegionsPayload } from '../RegionsManager';
-import ViewerManager from '../ViewerManager';
-
-import { type IROIsPayload, RoiInfos } from '../RoiInfo';
-
-import Utils from '../Utils';
-import UserSettings from '../UserSettings';
 
 import axios from 'axios';
-import { isNotFoundError } from '../common/http';
+import RegionsManager, { type IRegionsPayload, type IRegionsStatus } from '../RegionsManager';
+import { RoiInfos } from '../RoiInfo';
+import ViewerManager from '../ViewerManager';
+import ZAVConfig from '../ZAVConfig';
+import { CollapseDirection, DrawerHandle } from './Drawer';
+import ViewerComposed from './ViewerComposed';
 
 import './App.scss';
 import './Themes.scss';
 
-import { TourContext } from './GuidedTour';
-
 import { FocusStyleManager } from '@blueprintjs/core';
+import { TourContext } from './GuidedTour';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
@@ -40,7 +31,9 @@ type AppProps = {
   configId?: string;
   dataSrc?: string;
   dataVersionTag?: string;
-  initConfig?: {};
+  initConfig?: {
+    rs?: string;
+  };
 };
 
 /** Main component of the ZAViewer */
@@ -54,120 +47,103 @@ const App = (props: AppProps) => {
 
   const [regionsStatus, setRegionsStatus] = React.useState<IRegionsStatus | undefined>(undefined);
 
-  const loadAndInitRegionsTree = (
-    treeDataUrl: string,
-    hasBackend: boolean,
-    hasMultiPlanes: boolean,
-    preselected: string[] | undefined,
-  ) => {
-    axios({
-      method: hasBackend ? 'POST' : 'GET',
-      url: treeDataUrl,
-    })
-
-      .then((response) => {
-        const payload: IRegionsPayload = response.data;
-
-        //retrieve region data asynchronously...
-        RegionsManager.init(
-          payload,
-          (newRegionsStatus) => {
-            if (needsExtraInit.current && preselected) {
-              //Perform the focus on selected region center only once
-              needsExtraInit.current = false;
-
-              //Try to switch to center slice of (last) selected region
-              const selectedRegion = RegionsManager.getLastSelected();
-              if (selectedRegion) {
-                const centerSlice = RegionsManager.getRegionCenterSlice(
-                  selectedRegion,
-                  hasMultiPlanes,
-                  ViewerManager.getActivePlane(),
-                );
-                if (typeof centerSlice != 'undefined') {
-                  ViewerManager.goToSlice(centerSlice);
-                }
-                //display at least regions' border, and labels
-                if (!ViewerManager.isShowingRegions()) {
-                  ViewerManager.setBorderDisplay(true);
-                }
-                ViewerManager.setLabelDisplay(true);
-              }
-            }
-
-            //... and update state after region data change
-            setRegionsStatus(newRegionsStatus);
-          },
-          preselected,
-        );
+  const loadAndInitRegionsTree = React.useCallback(
+    (treeDataUrl: string, hasBackend: boolean, hasMultiPlanes: boolean, preselected: string[] | undefined) => {
+      axios({
+        method: hasBackend ? 'POST' : 'GET',
+        url: treeDataUrl,
       })
-      .catch((error) => {
-        // handle error
-        console.error(error);
-      });
-  };
+        .then((response) => {
+          const payload: IRegionsPayload = response.data;
 
-  const resetRegionsTree = (someConfig?, preselected?: string[]) => {
-    const usedConfig = someConfig || config;
-    //load regions related data
-    const treeDataUrl = usedConfig.getTreeDataUrl();
-    loadAndInitRegionsTree(treeDataUrl, usedConfig.hasBackend, usedConfig.hasMultiPlanes, preselected);
-  };
+          //retrieve region data asynchronously...
+          RegionsManager.init(
+            payload,
+            (newRegionsStatus) => {
+              if (needsExtraInit.current && preselected) {
+                //Perform the focus on selected region center only once
+                needsExtraInit.current = false;
+
+                //Try to switch to center slice of (last) selected region
+                const selectedRegion = RegionsManager.getLastSelected();
+                if (selectedRegion) {
+                  const centerSlice = RegionsManager.getRegionCenterSlice(
+                    selectedRegion,
+                    hasMultiPlanes,
+                    ViewerManager.getActivePlane(),
+                  );
+                  if (typeof centerSlice !== 'undefined') {
+                    ViewerManager.goToSlice(centerSlice);
+                  }
+                  //display at least regions' border, and labels
+                  if (!ViewerManager.isShowingRegions()) {
+                    ViewerManager.setBorderDisplay(true);
+                  }
+                  ViewerManager.setLabelDisplay(true);
+                }
+              }
+
+              //... and update state after region data change
+              setRegionsStatus(newRegionsStatus);
+            },
+            preselected,
+          );
+        })
+        .catch((error) => {
+          // handle error
+          console.error(error);
+        });
+    },
+    [],
+  );
+
+  const resetRegionsTree = React.useCallback(
+    (someConfig?, preselected?: string[]) => {
+      const usedConfig = someConfig || config;
+      //load regions related data
+      const treeDataUrl = usedConfig.getTreeDataUrl();
+      loadAndInitRegionsTree(treeDataUrl, usedConfig.hasBackend, usedConfig.hasMultiPlanes, preselected);
+    },
+    [config, loadAndInitRegionsTree],
+  );
 
   React.useEffect(() => {
     //retrieve config asynchronously...
     ZAVConfig.getConfig(props.configId, props.dataSrc, props.dataVersionTag, (newConfig) => {
-      console.info('[ZAV debug] Config loaded', {
-        configId: props.configId,
-        dataSrc: props.dataSrc,
-        dataVersionTag: props.dataVersionTag,
-        hasBackend: newConfig?.hasBackend,
-        hasCOSource: newConfig?.hasCOSource,
-        hasMultiPlanes: newConfig?.hasMultiPlanes,
-        firstActivePlane: newConfig?.firstActivePlane,
-        slideCounts: {
-          axial: newConfig?.axialSlideCount,
-          coronal: newConfig?.coronalSlideCount,
-          sagittal: newConfig?.sagittalSlideCount,
-          total: newConfig?.getTotalSlidesCount?.(),
-        },
-        publishPath: newConfig?.PUBLISH_PATH,
-        iipServerPath: newConfig?.IIPSERVER_PATH,
-        volumeUrl: newConfig?.volumeUrl,
-        layers: Object.keys(newConfig?.layers || {}),
-      });
-
-      setConfig(newConfig);
-
-      //preselected regions (specified on opening URL)
-      const preselected = props?.initConfig?.rs ? String(props?.initConfig?.rs).split(',') : undefined;
-      resetRegionsTree(newConfig, preselected);
-
-      //load regions of interest related data
-      const roiInfoUrl = Utils.makePath(
-        newConfig.PUBLISH_PATH,
-        newConfig.svgFolderName,
-        'rois.json' + (newConfig.dataVersionTag ? newConfig.dataVersionTag : ''),
-      );
-
-      axios
-        .request<IROIsPayload>({
-          method: 'GET',
-          url: roiInfoUrl,
-        })
-        .then((response) => {
-          RoiInfos.init(response.data);
-          if (UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowOverlayROI, null) == null) {
-            ViewerManager.setROIDisplay(response.data.displayRoi);
-          }
-        })
-        .catch((error) => {
-          if (!isNotFoundError(error)) {
-            console.error(error);
-          }
-        });
+      setConfig((currentConfig) => (currentConfig === newConfig ? currentConfig : newConfig));
     });
-  }, [props.configId, props.dataSrc]);
+  }, [props.configId, props.dataSrc, props.dataVersionTag]);
+
+  React.useEffect(() => {
+    if (!config) {
+      return;
+    }
+
+    console.info('[ZAV debug] Config loaded', {
+      configId: props.configId,
+      dataSrc: props.dataSrc,
+      dataVersionTag: props.dataVersionTag,
+      hasBackend: config?.hasBackend,
+      hasCOSource: config?.hasCOSource,
+      hasMultiPlanes: config?.hasMultiPlanes,
+      firstActivePlane: config?.firstActivePlane,
+      slideCounts: {
+        axial: config?.axialSlideCount,
+        coronal: config?.coronalSlideCount,
+        sagittal: config?.sagittalSlideCount,
+        total: config?.getTotalSlidesCount?.(),
+      },
+      publishPath: config?.PUBLISH_PATH,
+      iipServerPath: config?.IIPSERVER_PATH,
+      volumeUrl: config?.volumeUrl,
+      layers: Object.keys(config?.layers || {}),
+    });
+
+    const preselected = props?.initConfig?.rs ? String(props?.initConfig?.rs).split(',') : undefined;
+    resetRegionsTree(config, preselected);
+
+    RoiInfos.clear();
+  }, [config, props.configId, props.dataSrc, props.dataVersionTag, props?.initConfig?.rs, resetRegionsTree]);
 
   //
   const currentTourStep = React.useContext(TourContext).stepContext?.currentStep;
@@ -199,11 +175,21 @@ const App = (props: AppProps) => {
                     href="https://dataportal.brainminds.jp/"
                     title="Click to go to Brain/MINDS dataportal"
                   >
-                    <img src={`${publicBaseUrl}img/brain-minds_borderlogo.svg`} height={32} />
+                    <img
+                      src={`${publicBaseUrl}img/brain-minds_borderlogo.svg`}
+                      alt="Brain/MINDS Data Portal"
+                      height={32}
+                    />
                   </a>
                 </div>
                 <div>
-                  <img id="zav_logo" src={`${publicBaseUrl}img/logo.png`} height={23} draggable="false" />
+                  <img
+                    id="zav_logo"
+                    src={`${publicBaseUrl}img/logo.png`}
+                    alt="ZAViewer"
+                    height={23}
+                    draggable="false"
+                  />
                 </div>
                 <div style={{ verticalAlign: 'bottom' }}>
                   <div id="zav_BrandingPlaceHolder" style={{ maxWidth: 280, height: 32, overflow: 'clip' }}></div>

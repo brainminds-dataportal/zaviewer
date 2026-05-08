@@ -1,12 +1,10 @@
 // @ts-nocheck
-import React from 'react';
 
 import { HTMLSelect, Switch } from '@blueprintjs/core';
-
-import ParamAdjusterLabel from './ParamAdjusterLabel';
-import BorderSettings from './BorderSettings';
-
+import React from 'react';
 import ViewerManager from '../ViewerManager';
+import BorderSettings from './BorderSettings';
+import ParamAdjusterLabel from './ParamAdjusterLabel';
 
 class RegionOptions extends React.Component {
   constructor(props) {
@@ -27,7 +25,7 @@ class RegionOptions extends React.Component {
             <div style={{ width: 156, display: 'inline-block', marginLeft: 6 }}>
               <HTMLSelect fill={true} value={String(this.props.currentAtlas ?? 0)} onChange={this.handleSelectAtlas}>
                 {this.props.atlases.map((a, index) => (
-                  <option key={'atlas-' + index} value={String(index)}>
+                  <option key={`${a.regionsSVG}-${a.regionsTreeDef}`} value={String(index)}>
                     {a.label}
                   </option>
                 ))}
@@ -37,7 +35,12 @@ class RegionOptions extends React.Component {
         ) : null}
         <div title="adjust regions' area opacity">
           <span title="toggle display of regions' area">
-            <Switch checked={this.props.displayAreas} onChange={this.handleClickHideShow} inline label="areas" />
+            <Switch
+              checked={Boolean(this.props.displayAreas)}
+              onChange={this.handleClickHideShow}
+              inline
+              label="areas"
+            />
           </span>
           <ParamAdjusterLabel
             icon="eye-open"
@@ -54,12 +57,17 @@ class RegionOptions extends React.Component {
                 <span style={{ fontSize: 8 }}>&nbsp;%</span>
               </span>
             )}
-            enabled={this.props.displayAreas}
+            enabled={Boolean(this.props.displayAreas)}
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span title="toggle display of regions' border">
-            <Switch checked={this.props.displayBorders} onChange={this.handleBorderChange} inline label="borders" />
+            <Switch
+              checked={Boolean(this.props.displayBorders)}
+              onChange={this.handleBorderChange}
+              inline
+              label="borders"
+            />
           </span>
 
           <span title="click to set regions' custom border">
@@ -73,7 +81,12 @@ class RegionOptions extends React.Component {
         </div>
         {this.props.hasRegionLabels ? (
           <div title="toggle display of region labels">
-            <Switch checked={this.props.displayLabels} onChange={this.handleClickLabelsShow} inline label="labels" />
+            <Switch
+              checked={Boolean(this.props.displayLabels)}
+              onChange={this.handleClickLabelsShow}
+              inline
+              label="labels"
+            />
           </div>
         ) : null}
       </div>
@@ -97,7 +110,7 @@ class RegionOptions extends React.Component {
   }
 
   handleSelectAtlas(event) {
-    const selectedAtlasIndex = parseInt(event.currentTarget.value);
+    const selectedAtlasIndex = parseInt(event.currentTarget.value, 10);
     ViewerManager.setSelectedAtlasIndex(selectedAtlasIndex);
     if (this.props.resetRegionsTree) {
       this.props.resetRegionsTree();

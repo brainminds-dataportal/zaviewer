@@ -1,7 +1,4 @@
 // @ts-nocheck
-import React from 'react';
-import ReactDOM from 'react-dom';
-import classNames from 'classnames';
 
 import {
   Classes,
@@ -9,32 +6,30 @@ import {
   HotkeysTarget2,
   Icon,
   Overlay,
-  PopoverNext,
   PopoverInteractionKind,
+  PopoverNext,
   Position,
   popoverPositionToNextPlacement,
 } from '@blueprintjs/core';
-
-import Drawer from './Drawer';
-
-import OSDMain from './OSDMain';
-import MeasureInfoPanel from './MeasureInfoPanel';
-import ProcessingPanel from './ProcessingPanel';
-import SubViewPanel from './SubViewPanel';
-import SliderNavigatorPanel from './SliderNavigatorPanel';
-import RegionOptions from './RegionOptions';
-import ROIOptions from './ROIOptions';
-import RegionEditPanel from './RegionEditPanel';
-import QuickActionButtons from './QuickActionButtons';
-
-import ViewerManager from '../ViewerManager';
+import classNames from 'classnames';
+import React from 'react';
+import ReactDOM from 'react-dom';
 import RegionsManager from '../RegionsManager';
 import RoiInfo from '../RoiInfo';
+import ViewerManager from '../ViewerManager';
 import ZAVConfig from '../ZAVConfig';
-
-import MetadataView from './MetadataView';
-
+import Drawer from './Drawer';
 import { TourContext } from './GuidedTour';
+import MeasureInfoPanel from './MeasureInfoPanel';
+import MetadataView from './MetadataView';
+import OSDMain from './OSDMain';
+import ProcessingPanel from './ProcessingPanel';
+import QuickActionButtons from './QuickActionButtons';
+import RegionEditPanel from './RegionEditPanel';
+import RegionOptions from './RegionOptions';
+import ROIOptions from './ROIOptions';
+import SliderNavigatorPanel from './SliderNavigatorPanel';
+import SubViewPanel from './SubViewPanel';
 
 import './ViewerComposed.scss';
 
@@ -52,12 +47,12 @@ class TitledCard extends React.Component {
 
   render() {
     return (
-      <div className={'zav-TitledCard' + (this.props.className ? ' ' + this.props.className : '')}>
+      <div className={`zav-TitledCard${this.props.className ? ` ${this.props.className}` : ''}`}>
         <div className={'zav-TitledCardHead'}>
           {this.state.isCollapsible ? (
             <div
               className="zav-TitledCardHeadExpColButton"
-              onClick={() => this.setState((state) => ({ isOpen: !this.state.isOpen }))}
+              onClick={() => this.setState((_state) => ({ isOpen: !this.state.isOpen }))}
             >
               <Icon icon={this.state.isOpen ? 'chevron-up' : 'chevron-down'} size={12} />
             </div>
@@ -79,17 +74,17 @@ class BrandingMark extends React.Component {
   }
   componentDidMount() {
     this.placeHolder = document.getElementById('zav_BrandingPlaceHolder');
-    this.placeHolder && this.placeHolder.appendChild(this.el);
+    this.placeHolder?.appendChild(this.el);
   }
   componentWillUnmount() {
-    this.placeHolder && this.placeHolder.removeChild(this.el);
+    this.placeHolder?.removeChild(this.el);
   }
   render() {
     return this.placeHolder
       ? ReactDOM.createPortal(
           <div style={{ color: '#E1E1E1', verticalAlign: 'middle', fontSize: '10px' }}>
-            {this.props.brandingInfo && this.props.brandingInfo.short && <span>{this.props.brandingInfo.short} </span>}
-            {this.props.brandingInfo && this.props.brandingInfo.descr && (
+            {this.props.brandingInfo?.short && <span>{this.props.brandingInfo.short} </span>}
+            {this.props.brandingInfo?.descr && (
               <PopoverNext
                 content={
                   <div
@@ -157,7 +152,19 @@ class ViewerComposed extends React.Component {
   constructor(props) {
     super(props);
     this.initialized = false;
-    this.state = { showRegions: false, pos: undefined, initExpanded: false, isToolbarExpanded: false };
+    this.state = {
+      showRegions: props.config?.showRegions ?? false,
+      displayAreas: props.config?.displayAreas ?? false,
+      displayBorders: props.config?.displayBorders ?? false,
+      displayLabels: props.config?.displayLabels ?? false,
+      displayROIs: props.config?.displayROIs ?? false,
+      hasRegionLabels: false,
+      initRegionsOpacity: 0.4,
+      regionsOpacity: 0.4,
+      pos: undefined,
+      initExpanded: false,
+      isToolbarExpanded: false,
+    };
   }
 
   initializeViewerIfNeeded() {
@@ -212,7 +219,7 @@ class ViewerComposed extends React.Component {
       ) : null;
 
     const globalHeaderText =
-      (this.props.config && this.props.config.datasetId ? this.props.config.datasetId + ' — ' : '') + 'Global view';
+      `${this.props.config && this.props.config.datasetId ? `${this.props.config.datasetId} — ` : ''}Global view`;
     const globalDatasetVersion =
       this.props.config && this.props.config.datasetVersion ? (
         <a href={this.props.config.datasetVersion.uri} target="_blank" rel="noopener">
@@ -242,7 +249,7 @@ class ViewerComposed extends React.Component {
 
     const subviewTitleSuffix =
       this.props.config && !this.props.config.hasMultiPlanes
-        ? ' — ' + ZAVConfig.getPlaneLabel(ZAVConfig.getPreferredSubviewForPlane(this.state.activePlane)) + ' view'
+        ? ` — ${ZAVConfig.getPlaneLabel(ZAVConfig.getPreferredSubviewForPlane(this.state.activePlane))} view`
         : '';
 
     const currentTourStep = this.context.stepContext?.currentStep;
@@ -353,10 +360,10 @@ class ViewerComposed extends React.Component {
                           <Icon icon="cube" color="#FFF" />
                         </div>
                       </PopoverNext>
-                      <span>{'Slices navigation' + subviewTitleSuffix}</span>
+                      <span>{`Slices navigation${subviewTitleSuffix}`}</span>
                     </div>
                   ) : (
-                    <span>{'Slices navigation' + subviewTitleSuffix}</span>
+                    <span>{`Slices navigation${subviewTitleSuffix}`}</span>
                   )
                 }
               >

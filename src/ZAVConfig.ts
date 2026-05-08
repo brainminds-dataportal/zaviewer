@@ -4,7 +4,7 @@ import _ from 'underscore';
 import axios from 'axios';
 import LabelMapper from './LabelMapper';
 
-import { getJson, getText, isNotFoundError, postFormJson } from './common/http';
+import { getJson, getOptionalJson, getText, postFormJson } from './common/http';
 import Utils from './Utils';
 
 import UserSettings from './UserSettings';
@@ -44,6 +44,8 @@ export const PLANE_PREFSUBVIEW = { [AXIAL]: CORONAL, [CORONAL]: SAGITTAL, [SAGIT
 
 /** Class in charge of retrieving and holding configuration associated to a dataset */
 class ZAVConfig {
+  static configRequests = new Map();
+
   static get AXIAL() {
     return AXIAL;
   }
@@ -86,8 +88,41 @@ class ZAVConfig {
     return PLANE_PREFSUBVIEW[plane];
   }
 
+  static getConfigRequestKey(configId, dataSrc, dataVersionTag) {
+    return JSON.stringify([configId ?? null, dataSrc ?? null, dataVersionTag ?? '']);
+  }
+
   static getConfig(configId, dataSrc, dataVersionTag, callbackWhenReady) {
-    return new ZAVConfig(configId, dataSrc ? dataSrc.toString().trim() : undefined, dataVersionTag, callbackWhenReady);
+    const normalizedDataSrc = dataSrc ? dataSrc.toString().trim() : undefined;
+    const requestKey = ZAVConfig.getConfigRequestKey(configId, normalizedDataSrc, dataVersionTag);
+    const existingRequest = ZAVConfig.configRequests.get(requestKey);
+
+    if (existingRequest) {
+      if (callbackWhenReady) {
+        if (existingRequest.isReady) {
+          queueMicrotask(() => callbackWhenReady(existingRequest.instance.config));
+        } else {
+          existingRequest.callbacks.push(callbackWhenReady);
+        }
+      }
+      return existingRequest.instance;
+    }
+
+    const requestState = {
+      callbacks: callbackWhenReady ? [callbackWhenReady] : [],
+      instance: undefined,
+      isReady: false,
+    };
+    const notifyWhenReady = (config) => {
+      requestState.isReady = true;
+      const callbacks = requestState.callbacks.slice();
+      requestState.callbacks.length = 0;
+      callbacks.forEach((callback) => callback(config));
+    };
+
+    requestState.instance = new ZAVConfig(configId, normalizedDataSrc, dataVersionTag, notifyWhenReady);
+    ZAVConfig.configRequests.set(requestKey, requestState);
+    return requestState.instance;
   }
 
   /**
@@ -455,19 +490,23 @@ class ZAVConfig {
     void (async () => {
       try {
         const data = await getJson(configUrl);
-        const datasetInfoUrl = this.config.resolveSimpleUrl(Utils.makePath(data.data_root_path, 'datasetInfo.json'));
+        if (data.dataset_id) {
+          this.config.datasetId = data.dataset_id;
+        }
 
-        void getJson(datasetInfoUrl)
-          .then((datasetInfo) => {
-            if (datasetInfo) {
-              this.config.dataset_info = this.expandDatasetImagesUrl(datasetInfo, datasetInfo);
-            }
-          })
-          .catch((error) => {
-            if (!isNotFoundError(error)) {
+        if (this.config.datasetId) {
+          const datasetInfoUrl = this.config.resolveSimpleUrl(Utils.makePath(data.data_root_path, 'datasetInfo.json'));
+
+          void getOptionalJson(datasetInfoUrl)
+            .then((datasetInfo) => {
+              if (datasetInfo) {
+                this.config.dataset_info = this.expandDatasetImagesUrl(datasetInfo, datasetInfo);
+              }
+            })
+            .catch((error) => {
               console.info('Error while retrieving info for current dataset: ', error);
-            }
-          });
+            });
+        }
 
         this.parseLayersConfig(callbackWhenReady, data);
       } catch (error) {

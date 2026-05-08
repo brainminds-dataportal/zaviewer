@@ -395,6 +395,7 @@ class ViewerComposed extends React.Component {
                                 <SubViewPanel
                                     activePlane={this.state.activePlane}
                                     chosenSlice={this.state.chosenSlice}
+                                    isToolbarExpanded={this.state.isToolbarExpanded}
                                     config={this.props.config}
                                 />
                             </TitledCard>

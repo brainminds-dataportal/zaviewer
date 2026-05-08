@@ -330,6 +330,7 @@ class SubViewPanel extends React.Component {
     shouldComponentUpdate(nextProps, nextState) {
         return nextProps.activePlane !== this.props.activePlane
             || nextProps.chosenSlice !== this.props.chosenSlice
+            || nextProps.isToolbarExpanded !== this.props.isToolbarExpanded
             || nextProps.config !== this.props.config
             || nextState.displayedSlice !== this.state.displayedSlice
             || nextState.isDraggingSlice !== this.state.isDraggingSlice;
@@ -448,6 +449,7 @@ class SubViewPanel extends React.Component {
                             onPointerCancelCapture={this.endSliceSliderInteraction}
                         >
                             <Slider
+                                key={`${this.props.activePlane}-${this.props.isToolbarExpanded ? 'expanded' : 'collapsed'}`}
                                 className="zav-Slider zav-SubVSliceSlider"
                                 min={0}
                                 max={maxSliceNum}

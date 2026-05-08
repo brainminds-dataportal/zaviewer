@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 export function isNotFoundError(error: unknown) {
   return axios.isAxiosError(error) && error.response?.status === 404;
@@ -18,7 +18,7 @@ export async function postFormJson(url: string, data: Record<string, string | nu
 
   const response = await axios.post(url, body, {
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     },
   });
 
@@ -27,13 +27,13 @@ export async function postFormJson(url: string, data: Record<string, string | nu
 
 export async function getText(url: string) {
   const response = await axios.get(url, {
-    responseType: "text",
+    responseType: 'text',
   });
 
   return response.data;
 }
 
-export async function getXmlDocument(url: string, mimeType = "application/xml") {
+export async function getXmlDocument(url: string, mimeType = 'application/xml') {
   const content = await getText(url);
   return new DOMParser().parseFromString(content, mimeType);
 }

@@ -1,9 +1,6 @@
-import OpenSeadragon from "openseadragon";
+import OpenSeadragon from 'openseadragon';
 
-type FilterProcessor = (
-  context: CanvasRenderingContext2D,
-  callback: () => void,
-) => void;
+type FilterProcessor = (context: CanvasRenderingContext2D, callback: () => void) => void;
 
 type FilterTarget = OpenSeadragon.TiledImage | OpenSeadragon.TiledImage[];
 
@@ -14,11 +11,11 @@ interface FilterDefinition {
 
 interface FilterOptions {
   viewer?: OpenSeadragon.Viewer;
-  loadMode?: "sync" | "async";
+  loadMode?: 'sync' | 'async';
   filters?: FilterDefinition | FilterDefinition[];
 }
 
-declare module "openseadragon" {
+declare module 'openseadragon' {
   interface Viewer {
     filterPluginInstance?: FilterPluginCompat;
     setFilterOptions(options?: FilterOptions): void;
@@ -33,31 +30,26 @@ class FilterPluginCompat {
 
   constructor(options: FilterOptions) {
     if (!options.viewer) {
-      throw new Error("A viewer must be specified.");
+      throw new Error('A viewer must be specified.');
     }
 
     this.viewer = options.viewer;
-    this.viewer.addHandler("tile-invalidated", this.handleTileInvalidated);
+    this.viewer.addHandler('tile-invalidated', this.handleTileInvalidated);
     this.setOptions(options);
   }
 
   setOptions(options: FilterOptions = {}) {
     const filters = normalizeFilters(options.filters);
     const nextItems = collectItems(this.viewer.world, filters);
-    const itemsToInvalidate = new Set<OpenSeadragon.TiledImage>([
-      ...this.previousItems,
-      ...nextItems,
-    ]);
+    const itemsToInvalidate = new Set<OpenSeadragon.TiledImage>([...this.previousItems, ...nextItems]);
 
     this.filters = filters;
     this.filterIncrement += 1;
     this.previousItems = nextItems;
 
-    const invalidatePromise = Promise.all(
-      [...itemsToInvalidate].map((item) => item.requestInvalidate(true)),
-    );
+    const invalidatePromise = Promise.all([...itemsToInvalidate].map((item) => item.requestInvalidate(true)));
 
-    if (options.loadMode === "sync") {
+    if (options.loadMode === 'sync') {
       void invalidatePromise.finally(() => {
         this.viewer.forceRedraw();
       });
@@ -67,9 +59,7 @@ class FilterPluginCompat {
     void invalidatePromise;
   }
 
-  private handleTileInvalidated = async (
-    event: OpenSeadragon.TileInvalidatedEvent,
-  ) => {
+  private handleTileInvalidated = async (event: OpenSeadragon.TileInvalidatedEvent) => {
     const processors = getFilterProcessors(this.filters, event.tiledImage);
     if (processors.length === 0) {
       return;
@@ -80,9 +70,7 @@ class FilterPluginCompat {
       return;
     }
 
-    const context = (await event.getData(
-      "context2d",
-    )) as CanvasRenderingContext2D | null;
+    const context = (await event.getData('context2d')) as CanvasRenderingContext2D | null;
 
     if (!context) {
       return;
@@ -104,12 +92,12 @@ class FilterPluginCompat {
       return;
     }
 
-    await event.setData(context, "context2d");
+    await event.setData(context, 'context2d');
   };
 }
 
 function normalizeFilters(
-  filters: FilterOptions["filters"],
+  filters: FilterOptions['filters'],
 ): Array<FilterDefinition & { processors: FilterProcessor[] }> {
   if (!filters) {
     return [];
@@ -118,14 +106,12 @@ function normalizeFilters(
   const normalizedFilters = Array.isArray(filters) ? filters : [filters];
   return normalizedFilters.map((filter) => {
     if (!filter.processors) {
-      throw new Error("Filter processors must be specified.");
+      throw new Error('Filter processors must be specified.');
     }
 
     return {
       ...filter,
-      processors: Array.isArray(filter.processors)
-        ? filter.processors
-        : [filter.processors],
+      processors: Array.isArray(filter.processors) ? filter.processors : [filter.processors],
     };
   });
 }
@@ -150,7 +136,7 @@ function collectItems(
     const targets = Array.isArray(filter.items) ? filter.items : [filter.items];
     for (const item of targets) {
       if (items.has(item)) {
-        throw new Error("An item can not have filters assigned multiple times.");
+        throw new Error('An item can not have filters assigned multiple times.');
       }
       items.add(item);
     }
@@ -219,9 +205,7 @@ async function isEventOutdated(event: OpenSeadragon.TileInvalidatedEvent) {
 }
 
 if (!OpenSeadragon.Viewer.prototype.setFilterOptions) {
-  OpenSeadragon.Viewer.prototype.setFilterOptions = function setFilterOptions(
-    options: FilterOptions = {},
-  ) {
+  OpenSeadragon.Viewer.prototype.setFilterOptions = function setFilterOptions(options: FilterOptions = {}) {
     if (!this.filterPluginInstance) {
       this.filterPluginInstance = new FilterPluginCompat({
         ...options,

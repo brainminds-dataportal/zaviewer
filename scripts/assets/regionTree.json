@@ -7,17 +7,7 @@
       "name": "WHOLE BRAIN",
       "exists": 1,
       "color": "#7f7f7f",
-      "children": [
-        "FORE",
-        "SUL",
-        "CN",
-        "STEM",
-        "CvO",
-        "GH",
-        "FB",
-        "V",
-        "CB"
-      ]
+      "children": ["FORE", "SUL", "CN", "STEM", "CvO", "GH", "FB", "V", "CB"]
     },
     {
       "id": 1,
@@ -26,10 +16,7 @@
       "name": "FOREBRAIN (TELENCEPHALON and DIENCEPHALON)",
       "exists": 1,
       "color": "#007d7f",
-      "children": [
-        "TEL",
-        "DIEN"
-      ]
+      "children": ["TEL", "DIEN"]
     },
     {
       "id": 2,
@@ -38,12 +25,7 @@
       "name": "TELENCEPHALON",
       "exists": 1,
       "color": "#3d8e95",
-      "children": [
-        "CER",
-        "OLB",
-        "SEP",
-        "BG"
-      ]
+      "children": ["CER", "OLB", "SEP", "BG"]
     },
     {
       "id": 3,
@@ -52,11 +34,7 @@
       "name": "CEREBRUM;CEREBRAL CORTEX",
       "exists": 1,
       "color": "#97b64d",
-      "children": [
-        "CorA",
-        "OlfC",
-        "HipF"
-      ]
+      "children": ["CorA", "OlfC", "HipF"]
     },
     {
       "id": 4,
@@ -93,15 +71,7 @@
       "abb": "DLPFC",
       "name": "Dorsolateral prefrontal cortex",
       "exists": 1,
-      "children": [
-        "A10",
-        "A9",
-        "A8b",
-        "A46D",
-        "A46V",
-        "A8aD",
-        "A8aV"
-      ]
+      "children": ["A10", "A9", "A8b", "A46D", "A46V", "A8aD", "A8aV"]
     },
     {
       "id": 6,
@@ -186,13 +156,7 @@
       "abb": "VLPFC",
       "name": "Ventrolateral prefrontal cortex",
       "exists": 1,
-      "children": [
-        "A47L",
-        "A47M",
-        "A45",
-        "A47O",
-        "ProM"
-      ]
+      "children": ["A47L", "A47M", "A45", "A47O", "ProM"]
     },
     {
       "id": 14,
@@ -255,16 +219,7 @@
       "abb": "OFC",
       "name": "Orbitalfrontal cortex",
       "exists": 1,
-      "children": [
-        "A11",
-        "A13a",
-        "A13b",
-        "A13L",
-        "A13M",
-        "OPAl",
-        "OPro",
-        "Gu"
-      ]
+      "children": ["A11", "A13a", "A13b", "A13L", "A13M", "OPAl", "OPro", "Gu"]
     },
     {
       "id": 20,
@@ -360,12 +315,7 @@
       "abb": "MVPFC",
       "name": "Medial ventral prefrontal cortex",
       "exists": 1,
-      "children": [
-        "A14C",
-        "A14R",
-        "A25",
-        "A32V"
-      ]
+      "children": ["A14C", "A14R", "A25", "A32V"]
     },
     {
       "id": 29,
@@ -417,13 +367,7 @@
       "abb": "ACC",
       "name": "Anterior cingulate cortex",
       "exists": 1,
-      "children": [
-        "A32",
-        "A24a",
-        "A24b",
-        "A24c",
-        "A24d"
-      ]
+      "children": ["A32", "A24a", "A24b", "A24c", "A24d"]
     },
     {
       "id": 34,
@@ -486,16 +430,7 @@
       "abb": "MOT",
       "name": "Motor and premotor cortex",
       "exists": 1,
-      "children": [
-        "A4ab",
-        "A4c",
-        "A6DC",
-        "A6DR",
-        "A6M",
-        "A6Va",
-        "A6Vb",
-        "A8C"
-      ]
+      "children": ["A4ab", "A4c", "A6DC", "A6DR", "A6M", "A6Va", "A6Vb", "A8C"]
     },
     {
       "id": 40,
@@ -591,16 +526,7 @@
       "abb": "LSC",
       "name": "Insular and rostral lateral sulcus Cortex",
       "exists": 1,
-      "children": [
-        "AI",
-        "DI",
-        "GI",
-        "ReI",
-        "IPro",
-        "PaIL",
-        "PaIM",
-        "TPro"
-      ]
+      "children": ["AI", "DI", "GI", "ReI", "IPro", "PaIL", "PaIM", "TPro"]
     },
     {
       "id": 49,
@@ -696,15 +622,7 @@
       "abb": "SOM",
       "name": "Somatosensory cortex",
       "exists": 1,
-      "children": [
-        "A3a",
-        "A3b",
-        "A1/2",
-        "S2E",
-        "S2I",
-        "S2PR",
-        "S2PV"
-      ]
+      "children": ["A3a", "A3b", "A1/2", "S2E", "S2I", "S2PR", "S2PV"]
     },
     {
       "id": 58,
@@ -966,15 +884,7 @@
       "abb": "LIT",
       "name": "Lateral and inferior temporal cortex",
       "exists": 1,
-      "children": [
-        "TE1",
-        "TE2",
-        "TE3",
-        "TEO",
-        "PGa/IPa",
-        "TPO",
-        "TPPro"
-      ]
+      "children": ["TE1", "TE2", "TE3", "TEO", "PGa/IPa", "TPO", "TPPro"]
     },
     {
       "id": 81,
@@ -1059,18 +969,7 @@
       "abb": "VT",
       "name": "Ventral temporal cortex",
       "exists": 1,
-      "children": [
-        "Ent",
-        "A36",
-        "A35",
-        "TF",
-        "TL",
-        "TH",
-        "TLO",
-        "TFO",
-        "PaS",
-        "PrS"
-      ]
+      "children": ["Ent", "A36", "A35", "TF", "TL", "TH", "TLO", "TFO", "PaS", "PrS"]
     },
     {
       "id": 89,
@@ -1182,16 +1081,7 @@
       "abb": "PCRSC",
       "name": "Posterior cingulate, medial and retrosplenial cortex",
       "exists": 1,
-      "children": [
-        "A23a",
-        "A23b",
-        "A23c",
-        "A23V",
-        "A29a-c",
-        "A29d",
-        "A30",
-        "ProSt"
-      ]
+      "children": ["A23a", "A23b", "A23c", "A23V", "A29a-c", "A29d", "A30", "ProSt"]
     },
     {
       "id": 100,
@@ -1287,21 +1177,7 @@
       "abb": "PPC",
       "name": "Posterior parietal cortex",
       "exists": 1,
-      "children": [
-        "PGM",
-        "A31",
-        "PF",
-        "PFG",
-        "V6A",
-        "PE",
-        "PEC",
-        "OPt",
-        "PG",
-        "VIP",
-        "MIP",
-        "AIP",
-        "LIP"
-      ]
+      "children": ["PGM", "A31", "PF", "PFG", "V6A", "PE", "PEC", "OPt", "PG", "VIP", "MIP", "AIP", "LIP"]
     },
     {
       "id": 109,
@@ -1452,20 +1328,7 @@
       "abb": "VC",
       "name": "Visual cortex",
       "exists": 1,
-      "children": [
-        "V1",
-        "V2",
-        "V3",
-        "V3A",
-        "A19DI",
-        "A19M",
-        "V4",
-        "V4T",
-        "V5",
-        "MST",
-        "FST",
-        "V6"
-      ]
+      "children": ["V1", "V2", "V3", "V3A", "A19DI", "A19M", "V4", "V4T", "V5", "MST", "FST", "V6"]
     },
     {
       "id": 123,
@@ -1609,11 +1472,7 @@
       "groups": {
         "g116": "Pir"
       },
-      "children": [
-        "Pir 1",
-        "Pir 2",
-        "Pir 3"
-      ]
+      "children": ["Pir 1", "Pir 2", "Pir 3"]
     },
     {
       "id": 136,
@@ -1680,10 +1539,7 @@
       "abb": "OlfC",
       "name": "Olfactory cortex",
       "exists": 1,
-      "children": [
-        "TT",
-        "Tu"
-      ]
+      "children": ["TT", "Tu"]
     },
     {
       "id": 145,
@@ -1700,10 +1556,7 @@
       "name": "Olfactry tubercle",
       "exists": 1,
       "color": "#ffff00",
-      "children": [
-        "ICj",
-        "ICjM"
-      ]
+      "children": ["ICj", "ICjM"]
     },
     {
       "id": 147,
@@ -1728,11 +1581,7 @@
       "name": "Hippocampal formation",
       "exists": 1,
       "color": "#00a9cc",
-      "children": [
-        "DG",
-        "Hip ",
-        "S"
-      ]
+      "children": ["DG", "Hip ", "S"]
     },
     {
       "id": 150,
@@ -1741,11 +1590,7 @@
       "name": "Dentate gyrus",
       "exists": 1,
       "color": "#00859b",
-      "children": [
-        "GrDG",
-        "MoDG",
-        "PoDG"
-      ]
+      "children": ["GrDG", "MoDG", "PoDG"]
     },
     {
       "id": 151,
@@ -1774,16 +1619,7 @@
       "abb": "Hip ",
       "name": "Hippocampus",
       "exists": 1,
-      "children": [
-        "LMol",
-        "Or",
-        "Py",
-        "Rad",
-        "SLu",
-        "CA1",
-        "CA2",
-        "CA3"
-      ]
+      "children": ["LMol", "Or", "Py", "Rad", "SLu", "CA1", "CA2", "CA3"]
     },
     {
       "id": 155,
@@ -1859,9 +1695,7 @@
       "name": "OLFACTORY BULB",
       "exists": 1,
       "color": "#ccbb00",
-      "children": [
-        "OB"
-      ]
+      "children": ["OB"]
     },
     {
       "id": 165,
@@ -1870,21 +1704,7 @@
       "name": "Olfactory bulb",
       "exists": 1,
       "color": "#f4bd35",
-      "children": [
-        "AOB",
-        "AON",
-        "E",
-        "EPlA",
-        "EPl",
-        "GlA",
-        "Gl",
-        "GrA",
-        "GrO",
-        "IPl",
-        "MiA",
-        "Mi",
-        "ON"
-      ]
+      "children": ["AOB", "AON", "E", "EPlA", "EPl", "GlA", "Gl", "GrA", "GrO", "IPl", "MiA", "Mi", "ON"]
     },
     {
       "id": 166,
@@ -1999,18 +1819,7 @@
       "name": "SEPTUM",
       "exists": 1,
       "color": "#009cd1",
-      "children": [
-        "HDB",
-        "VDB",
-        "Ld",
-        "LDB",
-        "LS",
-        "MS",
-        "PDZ",
-        "SFi",
-        "SHi",
-        "TS"
-      ]
+      "children": ["HDB", "VDB", "Ld", "LDB", "LS", "MS", "PDZ", "SFi", "SHi", "TS"]
     },
     {
       "id": 180,
@@ -2050,11 +1859,7 @@
       "name": "Lateral septal nuclei",
       "exists": 1,
       "color": "#7e7edb",
-      "children": [
-        "LSD",
-        "LSI",
-        "LSV"
-      ]
+      "children": ["LSD", "LSI", "LSV"]
     },
     {
       "id": 185,
@@ -2125,20 +1930,7 @@
       "name": "BASAL GANGLIA",
       "exists": 1,
       "color": "#0073a2",
-      "children": [
-        "St",
-        "AMG",
-        "STh",
-        "VEn",
-        "VP",
-        "B",
-        "Cl",
-        "DEn",
-        "GP",
-        "IEn",
-        "SIB",
-        "SNBG"
-      ]
+      "children": ["St", "AMG", "STh", "VEn", "VP", "B", "Cl", "DEn", "GP", "IEn", "SIB", "SNBG"]
     },
     {
       "id": 194,
@@ -2147,11 +1939,7 @@
       "name": "Striatum",
       "exists": 1,
       "color": "#00a474",
-      "children": [
-        "Cd",
-        "Pu",
-        "Acb"
-      ]
+      "children": ["Cd", "Pu", "Acb"]
     },
     {
       "id": 195,
@@ -2176,10 +1964,7 @@
       "name": "Accumbens nucleus",
       "exists": 1,
       "color": "#3c6754",
-      "children": [
-        "AcbC",
-        "AcbSh"
-      ]
+      "children": ["AcbC", "AcbSh"]
     },
     {
       "id": 198,
@@ -2196,11 +1981,7 @@
       "name": "Accumbens nucleus;shell",
       "exists": 1,
       "color": "#a1e2b6",
-      "children": [
-        "MAcbSh",
-        "DAcbSh",
-        "LAcbSh"
-      ]
+      "children": ["MAcbSh", "DAcbSh", "LAcbSh"]
     },
     {
       "id": 200,
@@ -2230,16 +2011,7 @@
       "name": "Amygdala",
       "exists": 1,
       "color": "#855896",
-      "children": [
-        "Lbn",
-        "AHi",
-        "APir",
-        "ASt",
-        "CoAG",
-        "PaL",
-        "CxA",
-        "EXA"
-      ]
+      "children": ["Lbn", "AHi", "APir", "ASt", "CoAG", "PaL", "CxA", "EXA"]
     },
     {
       "id": 204,
@@ -2248,11 +2020,7 @@
       "name": "Latero-basal nuclear complex (bassolateral group)",
       "exists": 1,
       "color": "#765276",
-      "children": [
-        "La",
-        "BM",
-        "BL"
-      ]
+      "children": ["La", "BM", "BL"]
     },
     {
       "id": 205,
@@ -2269,13 +2037,7 @@
       "name": "Basomedial amygdaloid nucleus",
       "exists": 1,
       "color": "#c573b2",
-      "children": [
-        "BMVM",
-        "BMD",
-        "BMMC",
-        "BMPC",
-        "BMV"
-      ]
+      "children": ["BMVM", "BMD", "BMMC", "BMPC", "BMV"]
     },
     {
       "id": 207,
@@ -2321,13 +2083,7 @@
       "name": "Basolateral amygdaloid nucleus",
       "exists": 1,
       "color": "#422c41",
-      "children": [
-        "BLI",
-        "BLVL",
-        "BLVM",
-        "BLD",
-        "BLDL"
-      ]
+      "children": ["BLI", "BLVL", "BLVM", "BLD", "BLDL"]
     },
     {
       "id": 213,
@@ -2397,11 +2153,7 @@
       "name": "Cortical amygdaloid group (corticomedial group)",
       "exists": 1,
       "color": "#a757a8",
-      "children": [
-        "Co",
-        "Ce",
-        "Me"
-      ]
+      "children": ["Co", "Ce", "Me"]
     },
     {
       "id": 222,
@@ -2409,12 +2161,7 @@
       "abb": "Co",
       "name": "Cortical amugdaloid nucleus",
       "exists": 1,
-      "children": [
-        "AA",
-        "ACo",
-        "LOT",
-        "PCo"
-      ]
+      "children": ["AA", "ACo", "LOT", "PCo"]
     },
     {
       "id": 223,
@@ -2455,11 +2202,7 @@
       "name": "Central amygdaloid nucleus",
       "exists": 1,
       "color": "#9f3e8d",
-      "children": [
-        "CeC",
-        "CeL",
-        "CeM"
-      ]
+      "children": ["CeC", "CeL", "CeM"]
     },
     {
       "id": 228,
@@ -2511,12 +2254,7 @@
       "abb": "EXA",
       "name": "Extended amygdala",
       "exists": 1,
-      "children": [
-        "EA",
-        "I",
-        "IM",
-        "IPAC"
-      ]
+      "children": ["EA", "I", "IM", "IPAC"]
     },
     {
       "id": 235,
@@ -2524,9 +2262,7 @@
       "abb": "EA",
       "name": "Extended amygdala",
       "exists": 1,
-      "children": [
-        "ST"
-      ]
+      "children": ["ST"]
     },
     {
       "id": 236,
@@ -2535,15 +2271,7 @@
       "name": "Bed nucleus of the stria terminalis",
       "exists": 1,
       "color": "#ddeb86",
-      "children": [
-        "STMV",
-        "Fu",
-        "STIA",
-        "STLD",
-        "STLP",
-        "STMA",
-        "STMP"
-      ]
+      "children": ["STMV", "Fu", "STIA", "STLD", "STLP", "STMA", "STMP"]
     },
     {
       "id": 237,
@@ -2671,10 +2399,7 @@
       "abb": "GP",
       "name": "Globus pallidus",
       "exists": 1,
-      "children": [
-        "IGP",
-        "EGP"
-      ]
+      "children": ["IGP", "EGP"]
     },
     {
       "id": 254,
@@ -2715,11 +2440,7 @@
       "name": "Substantia nigra",
       "exists": 1,
       "color": "#2a7762",
-      "children": [
-        "SNL",
-        "SNR",
-        "SNC"
-      ]
+      "children": ["SNL", "SNR", "SNC"]
     },
     {
       "id": 259,
@@ -2744,11 +2465,7 @@
       "name": "Substantia nigra; compact part",
       "exists": 1,
       "color": "#61d55f",
-      "children": [
-        "SNCD",
-        "SNCM",
-        "SNCV"
-      ]
+      "children": ["SNCD", "SNCM", "SNCV"]
     },
     {
       "id": 262,
@@ -2778,12 +2495,7 @@
       "name": "DIENCEPHALON",
       "exists": 1,
       "color": "#252a35",
-      "children": [
-        "HYPO",
-        "THAL",
-        "Pt",
-        "EPI"
-      ]
+      "children": ["HYPO", "THAL", "Pt", "EPI"]
     },
     {
       "id": 266,
@@ -2966,11 +2678,7 @@
       "name": "Mammillary body",
       "exists": 1,
       "color": "#665971",
-      "children": [
-        "LM",
-        "ML",
-        "MM"
-      ]
+      "children": ["LM", "ML", "MM"]
     },
     {
       "id": 286,
@@ -3018,11 +2726,7 @@
       "name": "Paraventricular hypothalamic nucleus",
       "exists": 1,
       "color": "#614876",
-      "children": [
-        "PaDC",
-        "PaLM",
-        "PaPo"
-      ]
+      "children": ["PaDC", "PaLM", "PaPo"]
     },
     {
       "id": 292,
@@ -3088,12 +2792,7 @@
       "name": "Preoptic area",
       "exists": 1,
       "color": "#744b98",
-      "children": [
-        "LPO",
-        "MPA",
-        "MPO",
-        "MnPO"
-      ]
+      "children": ["LPO", "MPA", "MPO", "MnPO"]
     },
     {
       "id": 301,
@@ -3155,15 +2854,7 @@
       "name": "THALAMUS",
       "exists": 1,
       "color": "#384d98",
-      "children": [
-        "ASN",
-        "MTT",
-        "VST",
-        "SST",
-        "AuT",
-        "MIN",
-        "VNT"
-      ]
+      "children": ["ASN", "MTT", "VST", "SST", "AuT", "MIN", "VNT"]
     },
     {
       "id": 309,
@@ -3171,13 +2862,7 @@
       "abb": "ASN",
       "name": "Association nuclei",
       "exists": 1,
-      "children": [
-        "LTN",
-        "Pul",
-        "MD",
-        "ANN",
-        "PT"
-      ]
+      "children": ["LTN", "Pul", "MD", "ANN", "PT"]
     },
     {
       "id": 310,
@@ -3185,10 +2870,7 @@
       "abb": "LTN",
       "name": "Lateral nuclei",
       "exists": 1,
-      "children": [
-        "LD",
-        "LP"
-      ]
+      "children": ["LD", "LP"]
     },
     {
       "id": 311,
@@ -3213,16 +2895,7 @@
       "name": "Pulvinar",
       "exists": 1,
       "color": "#988376",
-      "children": [
-        "APul",
-        "IPul",
-        "IPulCL",
-        "IPulCM",
-        "IPulM",
-        "IPulP",
-        "LPul",
-        "MPul"
-      ]
+      "children": ["APul", "IPul", "IPulCL", "IPulCM", "IPulM", "IPulP", "LPul", "MPul"]
     },
     {
       "id": 314,
@@ -3291,11 +2964,7 @@
       "name": "Mediodorsal thalamic nucleus",
       "exists": 1,
       "color": "#343d55",
-      "children": [
-        "MDC",
-        "MDL",
-        "MDM"
-      ]
+      "children": ["MDC", "MDL", "MDM"]
     },
     {
       "id": 323,
@@ -3327,11 +2996,7 @@
       "name": "Anterior nuclei",
       "exists": 1,
       "color": "#3a4861",
-      "children": [
-        "AD",
-        "AM",
-        "AV"
-      ]
+      "children": ["AD", "AM", "AV"]
     },
     {
       "id": 327,
@@ -3372,10 +3037,7 @@
       "name": "Motor thalamus",
       "exists": 1,
       "color": "#00526b",
-      "children": [
-        "VA",
-        "VL"
-      ]
+      "children": ["VA", "VL"]
     },
     {
       "id": 332,
@@ -3384,11 +3046,7 @@
       "name": "Ventral anterior thalamic nucleus",
       "exists": 1,
       "color": "#4c64b7",
-      "children": [
-        "VAL",
-        "VAMC",
-        "VAM"
-      ]
+      "children": ["VAL", "VAMC", "VAM"]
     },
     {
       "id": 333,
@@ -3420,12 +3078,7 @@
       "abb": "VL",
       "name": "Ventral lateral thalamic nucleus",
       "exists": 1,
-      "children": [
-        "VLM",
-        "VLD",
-        "VLV",
-        "VLLa"
-      ]
+      "children": ["VLM", "VLD", "VLV", "VLLa"]
     },
     {
       "id": 337,
@@ -3466,9 +3119,7 @@
       "name": "Visual thalamus",
       "exists": 1,
       "color": "#006e7b",
-      "children": [
-        "DLG"
-      ]
+      "children": ["DLG"]
     },
     {
       "id": 342,
@@ -3477,17 +3128,7 @@
       "name": "Dorsal lateral geniculate nucleus",
       "exists": 1,
       "color": "#2b618f",
-      "children": [
-        "ExMC",
-        "ExPC",
-        "InMC",
-        "InPC",
-        "K1",
-        "K2",
-        "K3",
-        "K4",
-        "PrG"
-      ]
+      "children": ["ExMC", "ExPC", "InMC", "InPC", "K1", "K2", "K3", "K4", "PrG"]
     },
     {
       "id": 343,
@@ -3559,15 +3200,7 @@
       "name": "Somatosensory thalamus",
       "exists": 1,
       "color": "#009dbf",
-      "children": [
-        "Po",
-        "Eth",
-        "PoT",
-        "SG",
-        "VPI",
-        "VPS",
-        "VPC"
-      ]
+      "children": ["Po", "Eth", "PoT", "SG", "VPI", "VPS", "VPC"]
     },
     {
       "id": 353,
@@ -3621,11 +3254,7 @@
       "abb": "VPC",
       "name": "Ventoposterior complex",
       "exists": 1,
-      "children": [
-        "VPPC",
-        "VPL",
-        "VPM"
-      ]
+      "children": ["VPPC", "VPL", "VPM"]
     },
     {
       "id": 360,
@@ -3658,9 +3287,7 @@
       "name": "Auditory thalamus",
       "exists": 1,
       "color": "#1f477a",
-      "children": [
-        "MG"
-      ]
+      "children": ["MG"]
     },
     {
       "id": 364,
@@ -3669,11 +3296,7 @@
       "name": "Medial geniculate nucleus",
       "exists": 1,
       "color": "#1f477a",
-      "children": [
-        "MGD",
-        "MGM",
-        "MGV"
-      ]
+      "children": ["MGD", "MGM", "MGV"]
     },
     {
       "id": 365,
@@ -3702,23 +3325,7 @@
       "abb": "MIN",
       "name": "Midline and intralaminar nuclei",
       "exists": 1,
-      "children": [
-        "OPC",
-        "PC",
-        "PaF",
-        "PIL",
-        "PLi",
-        "RRe",
-        "Re",
-        "Rh",
-        "Xi",
-        "Ang",
-        "CM",
-        "CL",
-        "CMn",
-        "IAM",
-        "IMD"
-      ]
+      "children": ["OPC", "PC", "PaF", "PIL", "PLi", "RRe", "Re", "Rh", "Xi", "Ang", "CM", "CL", "CMn", "IAM", "IMD"]
     },
     {
       "id": 369,
@@ -3840,15 +3447,7 @@
       "abb": "VNT",
       "name": "Ventral thalamus",
       "exists": 1,
-      "children": [
-        "Rt",
-        "SubG",
-        "SubI",
-        "SPF",
-        "SPFPC",
-        "ZI",
-        "PSTh"
-      ]
+      "children": ["Rt", "SubG", "SubI", "SPF", "SPFPC", "ZI", "PSTh"]
     },
     {
       "id": 385,
@@ -3894,12 +3493,7 @@
       "name": "Zona incerta",
       "exists": 1,
       "color": "#441984",
-      "children": [
-        "ZIR",
-        "ZIV",
-        "ZIC",
-        "ZID"
-      ]
+      "children": ["ZIR", "ZIV", "ZIC", "ZID"]
     },
     {
       "id": 391,
@@ -3943,15 +3537,7 @@
       "name": "PRETECTUM",
       "exists": 1,
       "color": "#4347a2",
-      "children": [
-        "APT",
-        "MCPC",
-        "MPT",
-        "OT",
-        "OPT",
-        "PrC",
-        "ReC"
-      ]
+      "children": ["APT", "MCPC", "MPT", "OT", "OPT", "PrC", "ReC"]
     },
     {
       "id": 397,
@@ -4013,10 +3599,7 @@
       "name": "EPITHALAMUS",
       "exists": 1,
       "color": "#8865b2",
-      "children": [
-        "PV",
-        "Hb"
-      ]
+      "children": ["PV", "Hb"]
     },
     {
       "id": 405,
@@ -4025,10 +3608,7 @@
       "name": "Paraventricular thalamic nucleus",
       "exists": 1,
       "color": "#a294c8",
-      "children": [
-        "PVA",
-        "PVP"
-      ]
+      "children": ["PVA", "PVP"]
     },
     {
       "id": 406,
@@ -4053,10 +3633,7 @@
       "name": "Habenular nucleus",
       "exists": 1,
       "color": "#7967c3",
-      "children": [
-        "MHb",
-        "LHb"
-      ]
+      "children": ["MHb", "LHb"]
     },
     {
       "id": 409,
@@ -4080,22 +3657,7 @@
       "abb": "SUL",
       "name": "SULCUS",
       "exists": 1,
-      "children": [
-        "cal",
-        "hif",
-        "ips",
-        "lf",
-        "ots",
-        "orbs",
-        "plf",
-        "pcuf",
-        "ppf",
-        "prf",
-        "rf",
-        "sf",
-        "sts",
-        "vmf"
-      ]
+      "children": ["cal", "hif", "ips", "lf", "ots", "orbs", "plf", "pcuf", "ppf", "prf", "rf", "sf", "sts", "vmf"]
     },
     {
       "id": 412,
@@ -4202,19 +3764,7 @@
       "name": "CRANIAL NERVE",
       "exists": 1,
       "color": "#6e7972",
-      "children": [
-        "6n",
-        "8cn",
-        "7n",
-        "12n",
-        "7ni",
-        "3n",
-        "2n",
-        "5n",
-        "4n",
-        "8vn",
-        "8n"
-      ]
+      "children": ["6n", "8cn", "7n", "12n", "7ni", "3n", "2n", "5n", "4n", "8vn", "8n"]
     },
     {
       "id": 427,
@@ -4307,11 +3857,7 @@
       "name": "BRAIN STEM (MIDBRAIN+PONS+MEDULLA OBLONGATA)",
       "exists": 1,
       "color": "#b90b50",
-      "children": [
-        "MED",
-        "PONS",
-        "MID"
-      ]
+      "children": ["MED", "PONS", "MID"]
     },
     {
       "id": 439,
@@ -4383,10 +3929,7 @@
       "name": "Ambiguus nucleus",
       "exists": 1,
       "color": "#efc6c3",
-      "children": [
-        "AmbC",
-        "AmbL"
-      ]
+      "children": ["AmbC", "AmbL"]
     },
     {
       "id": 443,
@@ -4475,16 +4018,7 @@
       "abb": "IO",
       "name": "Inferior olive",
       "exists": 1,
-      "children": [
-        "IOBe",
-        "IOK",
-        "IOD",
-        "IOM",
-        "IOPr",
-        "IOA",
-        "IOB",
-        "IOC"
-      ]
+      "children": ["IOBe", "IOK", "IOD", "IOM", "IOPr", "IOA", "IOB", "IOC"]
     },
     {
       "id": 455,
@@ -4648,11 +4182,7 @@
       "name": "Nucleus of the spinal trigeminal tract",
       "exists": 1,
       "color": "#7a453d",
-      "children": [
-        "Sp5I",
-        "Sp5O",
-        "Sp5C"
-      ]
+      "children": ["Sp5I", "Sp5O", "Sp5C"]
     },
     {
       "id": 477,
@@ -4704,9 +4234,7 @@
       "name": "Prepositus nucleus",
       "exists": 1,
       "color": "#b1159e",
-      "children": [
-        "PrMC"
-      ]
+      "children": ["PrMC"]
     },
     {
       "id": 484,
@@ -4722,10 +4250,7 @@
       "name": "Raphe nuclei",
       "exists": 1,
       "color": "#e64b6b",
-      "children": [
-        "ROb",
-        "RPa"
-      ]
+      "children": ["ROb", "RPa"]
     },
     {
       "id": 486,
@@ -4748,19 +4273,7 @@
       "name": "Reticular formation",
       "exists": 1,
       "color": "#df828a",
-      "children": [
-        "PCRtA",
-        "RVL",
-        "CVL",
-        "DPGi",
-        "Gi",
-        "IRt",
-        "LPGi",
-        "LRt",
-        "MdD",
-        "MdV",
-        "PCRt"
-      ]
+      "children": ["PCRtA", "RVL", "CVL", "DPGi", "Gi", "IRt", "LPGi", "LRt", "MdD", "MdV", "PCRt"]
     },
     {
       "id": 489,
@@ -4796,10 +4309,7 @@
       "abb": "Gi",
       "name": "Gigantocellular reticular nucleus",
       "exists": 1,
-      "children": [
-        "GiA",
-        "GiV"
-      ]
+      "children": ["GiA", "GiV"]
     },
     {
       "id": 494,
@@ -4836,10 +4346,7 @@
       "name": "Lateral reticular nucleus",
       "exists": 1,
       "color": "#952bd1",
-      "children": [
-        "LRtPC",
-        "LRtS5"
-      ]
+      "children": ["LRtPC", "LRtS5"]
     },
     {
       "id": 499,
@@ -4897,18 +4404,7 @@
       "name": "Solitary nucleus",
       "exists": 1,
       "color": "#793f3f",
-      "children": [
-        "SolC",
-        "SolDL",
-        "SolG",
-        "SolIM",
-        "SolI",
-        "SolM",
-        "SolPaC",
-        "SolRL",
-        "SolV",
-        "SolVL"
-      ]
+      "children": ["SolC", "SolDL", "SolG", "SolIM", "SolI", "SolM", "SolPaC", "SolRL", "SolV", "SolVL"]
     },
     {
       "id": 507,
@@ -4995,13 +4491,7 @@
       "name": "Vestibular nuclei",
       "exists": 1,
       "color": "#693c34",
-      "children": [
-        "LVe",
-        "MVe",
-        "Y",
-        "SpVe",
-        "SuVe"
-      ]
+      "children": ["LVe", "MVe", "Y", "SpVe", "SuVe"]
     },
     {
       "id": 519,
@@ -5018,10 +4508,7 @@
       "name": "Medial vestibular nucleus",
       "exists": 1,
       "color": "#e6d5c6",
-      "children": [
-        "MVeMC",
-        "MVePC"
-      ]
+      "children": ["MVeMC", "MVePC"]
     },
     {
       "id": 521,
@@ -5131,13 +4618,7 @@
       "name": "Raphe nuclei",
       "exists": 1,
       "color": "#e64b6b",
-      "children": [
-        "CLi",
-        "MnR",
-        "PMnR",
-        "RIP",
-        "RMg"
-      ]
+      "children": ["CLi", "MnR", "PMnR", "RIP", "RMg"]
     },
     {
       "id": 529,
@@ -5189,13 +4670,7 @@
       "name": "Reticular formation",
       "exists": 1,
       "color": "#df828a",
-      "children": [
-        "PnC",
-        "PnO",
-        "PnV",
-        "RtTg",
-        "RtTgL"
-      ]
+      "children": ["PnC", "PnO", "PnV", "RtTg", "RtTgL"]
     },
     {
       "id": 536,
@@ -5282,14 +4757,7 @@
       "abb": "SOl",
       "name": "Superior olive",
       "exists": 1,
-      "children": [
-        "DPO",
-        "LSO",
-        "LVPO",
-        "MSO",
-        "MVPO",
-        "SPO"
-      ]
+      "children": ["DPO", "LSO", "LVPO", "MSO", "MVPO", "SPO"]
     },
     {
       "id": 548,
@@ -5409,12 +4877,7 @@
       "name": "Cochlear nuclei",
       "exists": 1,
       "color": "#be0032",
-      "children": [
-        "DC",
-        "GrC",
-        "VCA",
-        "VCP"
-      ]
+      "children": ["DC", "GrC", "VCA", "VCP"]
     },
     {
       "id": 564,
@@ -5514,11 +4977,7 @@
       "name": "Parabrachial nuclei",
       "exists": 1,
       "color": "#fbe300",
-      "children": [
-        "MPB",
-        "LPB",
-        "MPBE"
-      ]
+      "children": ["MPB", "LPB", "MPBE"]
     },
     {
       "id": 577,
@@ -5533,15 +4992,7 @@
       "abb": "LPB",
       "name": "Lateral parabrachial nucleus",
       "exists": 1,
-      "children": [
-        "LPBC",
-        "LPBCr",
-        "LPBD",
-        "LPBE",
-        "LPBI",
-        "LPBS",
-        "LPBV"
-      ]
+      "children": ["LPBC", "LPBCr", "LPBD", "LPBE", "LPBI", "LPBS", "LPBV"]
     },
     {
       "id": 579,
@@ -5718,10 +5169,7 @@
       "name": "Principal sensory trigeminal nucleus",
       "exists": 1,
       "color": "#706352",
-      "children": [
-        "Pr5DM",
-        "Pr5VL"
-      ]
+      "children": ["Pr5DM", "Pr5VL"]
     },
     {
       "id": 603,
@@ -5819,11 +5267,7 @@
       "name": "Inferior colliculus",
       "exists": 1,
       "color": "#fa9cb8",
-      "children": [
-        "ECIC",
-        "CIC",
-        "DCIC"
-      ]
+      "children": ["ECIC", "CIC", "DCIC"]
     },
     {
       "id": 612,
@@ -5864,13 +5308,7 @@
       "name": "Interpeduncular nucleus",
       "exists": 1,
       "color": "#593ab8",
-      "children": [
-        "IPA",
-        "IPC",
-        "IPI",
-        "IPL",
-        "IPR"
-      ]
+      "children": ["IPA", "IPC", "IPI", "IPL", "IPR"]
     },
     {
       "id": 617,
@@ -5960,15 +5398,7 @@
       "name": "Periaqueductal gray",
       "exists": 1,
       "color": "#d53e62",
-      "children": [
-        "DLPAG",
-        "DMPAG",
-        "LPAG",
-        "PlPAG",
-        "Su3C",
-        "Su3",
-        "VLPAG"
-      ]
+      "children": ["DLPAG", "DMPAG", "LPAG", "PlPAG", "Su3C", "Su3", "VLPAG"]
     },
     {
       "id": 629,
@@ -6061,10 +5491,7 @@
       "name": "Red nucleus",
       "exists": 1,
       "color": "#ff7f8f",
-      "children": [
-        "RMC",
-        "RPC"
-      ]
+      "children": ["RMC", "RPC"]
     },
     {
       "id": 642,
@@ -6087,10 +5514,7 @@
       "name": "Raphe nuclei",
       "exists": 1,
       "color": "#e64b6b",
-      "children": [
-        "RLi",
-        "DR"
-      ]
+      "children": ["RLi", "DR"]
     },
     {
       "id": 645,
@@ -6107,14 +5531,7 @@
       "name": "Dorsal raphe nucleus",
       "exists": 1,
       "color": "#b88e91",
-      "children": [
-        "DRC",
-        "DRD",
-        "DRI",
-        "DRL",
-        "DRV",
-        "DRVL"
-      ]
+      "children": ["DRC", "DRD", "DRI", "DRL", "DRV", "DRVL"]
     },
     {
       "id": 647,
@@ -6165,11 +5582,7 @@
       "name": "Reticular formation",
       "exists": 1,
       "color": "#df828a",
-      "children": [
-        "CnF",
-        "mRt",
-        "PrCnF"
-      ]
+      "children": ["CnF", "mRt", "PrCnF"]
     },
     {
       "id": 654,
@@ -6206,15 +5619,7 @@
       "name": "Superior colliculus",
       "exists": 1,
       "color": "#be003f",
-      "children": [
-        "DpG",
-        "DpWh",
-        "InG",
-        "InWh",
-        "Op",
-        "SuG",
-        "Zo"
-      ]
+      "children": ["DpG", "DpWh", "InG", "InWh", "Op", "SuG", "Zo"]
     },
     {
       "id": 659,
@@ -6299,10 +5704,7 @@
       "name": "Ventral tegmental area",
       "exists": 1,
       "color": "#fda081",
-      "children": [
-        "VTAC",
-        "VTAR"
-      ]
+      "children": ["VTAC", "VTAR"]
     },
     {
       "id": 670,
@@ -6324,15 +5726,7 @@
       "abb": "CvO",
       "name": "CIRCUMVENTRICULAR ORGAN",
       "exists": 1,
-      "children": [
-        "AP",
-        "ME",
-        "Nhyp",
-        "Pi",
-        "SCO",
-        "SFO",
-        "VOLT"
-      ]
+      "children": ["AP", "ME", "Nhyp", "Pi", "SCO", "SFO", "VOLT"]
     },
     {
       "id": 673,
@@ -7085,18 +6479,7 @@
       "name": "VENTRICLE",
       "exists": 1,
       "color": "#ebe7e1",
-      "children": [
-        "Mre",
-        "ReIC",
-        "3V",
-        "Aq",
-        "CC",
-        "D3V",
-        "4V",
-        "IVF",
-        "LR4V",
-        "LV"
-      ]
+      "children": ["Mre", "ReIC", "3V", "Aq", "CC", "D3V", "4V", "IVF", "LR4V", "LV"]
     },
     {
       "id": 762,
@@ -7179,11 +6562,7 @@
       "name": "CEREBELLUM (METENCEPHALON)",
       "exists": 1,
       "color": "#f09629",
-      "children": [
-        "Cb",
-        "SMV",
-        "Dc"
-      ]
+      "children": ["Cb", "SMV", "Dc"]
     },
     {
       "id": 773,
@@ -7355,14 +6734,7 @@
       "name": "Deep cerebellar nuclei",
       "exists": 1,
       "color": "#aa7a40",
-      "children": [
-        "IntA",
-        "Lat",
-        "LatPC",
-        "Med",
-        "IntP",
-        "VeCb"
-      ]
+      "children": ["IntA", "Lat", "LatPC", "Med", "IntP", "VeCb"]
     },
     {
       "id": 793,
@@ -7420,365 +6792,207 @@
         {
           "id": "FP",
           "name": "Frontal pole",
-          "members": [
-            "A10"
-          ]
+          "members": ["A10"]
         },
         {
           "id": "M_PFC",
           "name": "Medial Prefrontal Cortex",
-          "members": [
-            "A9",
-            "A8b"
-          ]
+          "members": ["A9", "A8b"]
         },
         {
           "id": "DL_PFC",
           "name": "Dorsalateral Prefrontal Cortex",
-          "members": [
-            "A46D",
-            "A46V",
-            "A8aD",
-            "A8aV"
-          ]
+          "members": ["A46D", "A46V", "A8aD", "A8aV"]
         },
         {
           "id": "VLPFC",
           "name": "Ventrolateral Prefrontal Cortex",
-          "members": [
-            "A47L",
-            "A47M",
-            "A45",
-            "A47O",
-            "ProM"
-          ]
+          "members": ["A47L", "A47M", "A45", "A47O", "ProM"]
         },
         {
           "id": "OF_C",
           "name": "Orbitofrontal Cortex",
-          "members": [
-            "A11",
-            "A13a",
-            "A13b",
-            "A13L",
-            "A13M",
-            "OPAl",
-            "OPro"
-          ]
+          "members": ["A11", "A13a", "A13b", "A13L", "A13M", "OPAl", "OPro"]
         },
         {
           "id": "GU",
           "name": "Gustatory Cortex",
-          "members": [
-            "Gu"
-          ]
+          "members": ["Gu"]
         },
         {
           "id": "MVPFC",
           "name": "Medial Ventral Prefrontal Cortex",
-          "members": [
-            "A14C",
-            "A14R",
-            "A25",
-            "A32V"
-          ]
+          "members": ["A14C", "A14R", "A25", "A32V"]
         },
         {
           "id": "ACC",
           "name": "Anterior Cingulate Cortex",
-          "members": [
-            "A32",
-            "A24a",
-            "A24b",
-            "A24c",
-            "A24d"
-          ]
+          "members": ["A32", "A24a", "A24b", "A24c", "A24d"]
         },
         {
           "id": "PM",
           "name": "Premotor",
-          "members": [
-            "A6DR",
-            "A6DC",
-            "A6Va",
-            "A6Vb",
-            "A6M",
-            "A8C"
-          ]
+          "members": ["A6DR", "A6DC", "A6Va", "A6Vb", "A6M", "A8C"]
         },
         {
           "id": "M1",
           "name": "Primary Motor",
-          "members": [
-            "A4ab",
-            "A4c"
-          ]
+          "members": ["A4ab", "A4c"]
         },
         {
           "id": "Ins_cx",
           "name": "Insular Cortex",
-          "members": [
-            "AI",
-            "DI",
-            "GI",
-            "ReI",
-            "IPro"
-          ]
+          "members": ["AI", "DI", "GI", "ReI", "IPro"]
         },
         {
           "id": "STR_LS",
           "name": "Superior Temporal Rostral Area",
-          "members": [
-            "PaIL",
-            "PaIM",
-            "TPro"
-          ]
+          "members": ["PaIL", "PaIM", "TPro"]
         },
         {
           "id": "S1",
           "name": "Primary Somatosensory",
-          "members": [
-            "A3a",
-            "A3b",
-            "A1/2"
-          ]
+          "members": ["A3a", "A3b", "A1/2"]
         },
         {
           "id": "S2",
           "name": "Secondary Somatosensory",
-          "members": [
-            "S2E",
-            "S2I",
-            "S2PR",
-            "S2PV"
-          ]
+          "members": ["S2E", "S2I", "S2PR", "S2PV"]
         },
         {
           "id": "AU_cx",
           "name": "Auditory Cortex",
-          "members": [
-            "AuRTL",
-            "AuRT",
-            "AuRPB",
-            "AuRTM",
-            "AuR",
-            "AuRM",
-            "AuAL",
-            "AuA1",
-            "AuCM",
-            "AuCPB",
-            "AuML",
-            "AuCL"
-          ]
+          "members": ["AuRTL", "AuRT", "AuRPB", "AuRTM", "AuR", "AuRM", "AuAL", "AuA1", "AuCM", "AuCPB", "AuML", "AuCL"]
         },
         {
           "id": "STR",
           "name": "Superior Temporal Rostral Area",
-          "members": [
-            "STR"
-          ]
+          "members": ["STR"]
         },
         {
           "id": "TPt",
           "name": "Temporoparietal Transitional Area",
-          "members": [
-            "TPt"
-          ]
+          "members": ["TPt"]
         },
         {
           "id": "LIT",
           "name": "Lateral and Inferior Temporal Cortex",
-          "members": [
-            "TE1",
-            "TE2",
-            "TE3",
-            "TEO"
-          ]
+          "members": ["TE1", "TE2", "TE3", "TEO"]
         },
         {
           "id": "PGa/IPa",
           "name": "Parietal Areas PGa and IPa (Fundus of Superior Temporal Ventral Area)",
-          "members": [
-            "PGa/IPa"
-          ]
+          "members": ["PGa/IPa"]
         },
         {
           "id": "TPO",
           "name": "Temporo-Parieto-Occipital Association Area (Superior Temporal Polysensory Cortex)",
-          "members": [
-            "TPO"
-          ]
+          "members": ["TPO"]
         },
         {
           "id": "TPPro",
           "name": "Temporopolar Area",
-          "members": [
-            "TPPro"
-          ]
+          "members": ["TPPro"]
         },
         {
           "id": "Ent",
           "name": "Entorhinal Cortex",
-          "members": [
-            "Ent"
-          ]
+          "members": ["Ent"]
         },
         {
           "id": "Prh",
           "name": "Perirhinal Cortex",
-          "members": [
-            "A36",
-            "A35"
-          ]
+          "members": ["A36", "A35"]
         },
         {
           "id": "Phg",
           "name": "Parahippocampal Gyrus",
-          "members": [
-            "TF",
-            "TL",
-            "TH",
-            "TLO",
-            "TFO"
-          ]
+          "members": ["TF", "TL", "TH", "TLO", "TFO"]
         },
         {
           "id": "PCC",
           "name": "Posterior Cingulate",
-          "members": [
-            "A23a",
-            "A23b",
-            "A23c",
-            "A23V"
-          ]
+          "members": ["A23a", "A23b", "A23c", "A23V"]
         },
         {
           "id": "RSC",
           "name": "Retrosplenial Cortex",
-          "members": [
-            "A29a-c",
-            "A29d",
-            "A30"
-          ]
+          "members": ["A29a-c", "A29d", "A30"]
         },
         {
           "id": "ProSt",
           "name": "Prostriate Area",
-          "members": [
-            "ProSt"
-          ]
+          "members": ["ProSt"]
         },
         {
           "id": "PCu",
           "name": "Precuneus",
-          "members": [
-            "PGM"
-          ]
+          "members": ["PGM"]
         },
         {
           "id": "PPA",
           "name": "Postal Pareital Area",
-          "members": [
-            "A31",
-            "PE",
-            "PEC",
-            "V6A"
-          ]
+          "members": ["A31", "PE", "PEC", "V6A"]
         },
         {
           "id": "V_PPA",
           "name": "Ventral Postal Parietal Area",
-          "members": [
-            "PF",
-            "PFG",
-            "OPt",
-            "PG"
-          ]
+          "members": ["PF", "PFG", "OPt", "PG"]
         },
         {
           "id": "IP",
           "name": "Intraparietal Sulcus",
-          "members": [
-            "VIP",
-            "MIP",
-            "AIP",
-            "LIP"
-          ]
+          "members": ["VIP", "MIP", "AIP", "LIP"]
         },
         {
           "id": "V1",
           "name": "Visual Area 1",
-          "members": [
-            "V1"
-          ]
+          "members": ["V1"]
         },
         {
           "id": "V2",
           "name": "Visual Area 2",
-          "members": [
-            "V2"
-          ]
+          "members": ["V2"]
         },
         {
           "id": "V3",
           "name": "Visual Area 3",
-          "members": [
-            "V3",
-            "V3A",
-            "A19DI"
-          ]
+          "members": ["V3", "V3A", "A19DI"]
         },
         {
           "id": "A19M",
           "name": "Area 19 of Cortex; Medial Part",
-          "members": [
-            "A19M"
-          ]
+          "members": ["A19M"]
         },
         {
           "id": "V4",
           "name": "Visual Area 4",
-          "members": [
-            "V4"
-          ]
+          "members": ["V4"]
         },
         {
           "id": "MT",
           "name": "Mid-temporal Area",
-          "members": [
-            "V4T",
-            "V5",
-            "MST",
-            "FST"
-          ]
+          "members": ["V4T", "V5", "MST", "FST"]
         },
         {
           "id": "V6",
           "name": "Visual Area 6",
-          "members": [
-            "V6"
-          ]
+          "members": ["V6"]
         },
         {
           "id": "Pir",
           "name": "Piriform Cortex",
-          "members": [
-            "Pir"
-          ]
+          "members": ["Pir"]
         },
         {
           "id": "APir",
           "name": "Amygdalopiriform Transition Area",
-          "members": [
-            "APir"
-          ]
+          "members": ["APir"]
         },
         {
           "id": "AON",
           "name": "Anterior Olfactory Nucleus",
-          "members": [
-            "AON"
-          ]
+          "members": ["AON"]
         }
       ]
     }

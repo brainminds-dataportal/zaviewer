@@ -51,7 +51,7 @@
 					if (tem != null) { return { name: 'Opera', version: tem[1] }; }
 				}
 				if (window.navigator.userAgent.indexOf("Edge") > -1) {
-					tem = ua.match(/\Edge\/(\d+)/);
+					tem = ua.match(/Edge\/(\d+)/);
 					if (tem != null) { return { name: 'Edge', version: tem[1] }; }
 				}
 				M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
@@ -83,7 +83,7 @@
 			}
 
 			if (!window.__ZAV_BROWSER_SUPPORTED__) {
-				document.addEventListener("DOMContentLoaded", function () {
+				document.addEventListener("DOMContentLoaded", () => {
 					var root = document.getElementById("root");
 					if (root) {
 						root.innerHTML = '<div class="nosupport"><h1>Sorry, your web browser doesn&apos;t seem to be supported...</h1><h3>You can contact us at <a href="https://dataportal.brainminds.jp/contact-us">dataportal.brainminds.jp</a></h3><code>' + navigator.userAgent + '</code></div>';

@@ -2,17 +2,17 @@
 import 'normalize.css';
 import 'react-split-pane/styles.css';
 
-import "@blueprintjs/core/lib/css/blueprint.css";
+import '@blueprintjs/core/lib/css/blueprint.css';
 
 import * as React from 'react';
-import { HotkeysProvider } from "@blueprintjs/core";
+import { HotkeysProvider } from '@blueprintjs/core';
 import { createRoot } from 'react-dom/client';
 
 import Utils from './Utils';
-import { setupLegacyVendors } from "./vendor/setupLegacyVendors";
+import { setupLegacyVendors } from './vendor/setupLegacyVendors';
 
 import App from './components/App';
-import { GuidedTour } from "./components/GuidedTour";
+import { GuidedTour } from './components/GuidedTour';
 
 await setupLegacyVendors();
 
@@ -24,10 +24,10 @@ declare global {
 
 const DataVersion_PropName = 'data-dataversion';
 
-/** retrieve configuration ID from url query param  
-*/
+/** retrieve configuration ID from url query param
+ */
 const getConfigParams = () => {
-  const params: { configId?: string, dataSrc?: string, initConfig?: {} } = {};
+  const params: { configId?: string; dataSrc?: string; initConfig?: {} } = {};
   const searchParams = new URLSearchParams(location.search);
 
   const configId = searchParams.get('id');
@@ -44,19 +44,15 @@ const getConfigParams = () => {
     params.initConfig = Utils.getConfigFromLocation(location);
   }
   return params;
-}
+};
 
 const parentContainer = document.getElementById('root');
 if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
-
   //version tag for cache busting
   const dataVersionTag = parentContainer.hasAttribute(DataVersion_PropName)
-    ?
-    '?ver=' + parentContainer.getAttribute(DataVersion_PropName)
-    :
-    //by default, no version tag
-    ''
-    ;
+    ? '?ver=' + parentContainer.getAttribute(DataVersion_PropName)
+    : //by default, no version tag
+      '';
 
   createRoot(parentContainer).render(
     <React.StrictMode>
@@ -69,6 +65,6 @@ if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
           />
         </GuidedTour>
       </HotkeysProvider>
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }

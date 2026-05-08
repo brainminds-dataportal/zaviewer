@@ -1,16 +1,14 @@
-import * as React from 'react';
-
-import { HexColorPicker } from 'react-colorful';
-
 import {
   Icon,
-  PopoverNext,
   PopoverInteractionKind,
+  PopoverNext,
   Position,
+  popoverPositionToNextPlacement,
   Slider,
   Switch,
-  popoverPositionToNextPlacement,
 } from '@blueprintjs/core';
+import * as React from 'react';
+import { HexColorPicker } from 'react-colorful';
 
 import ViewerManager from '../ViewerManager';
 
@@ -62,6 +60,7 @@ const BorderSettingsWrapper = (props: {
             >
               <div style={{ padding: 8, margin: 8, background: 'linear-gradient(90deg, #000 0 20%, #ddd)' }}>
                 <svg width="50" height="36" viewBox="0 0 13.229166 9.525">
+                  <title>Border preview</title>
                   <path
                     stroke={color}
                     strokeOpacity="0.5"

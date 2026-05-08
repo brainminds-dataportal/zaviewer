@@ -1,16 +1,42 @@
-// @ts-nocheck
-import React from 'react';
-
 import { AnchorButton, ProgressBar, Switch } from '@blueprintjs/core';
-
-import ParamAdjusterLabel from './ParamAdjusterLabel';
-
+import React from 'react';
 import ViewerManager from '../ViewerManager';
+import ParamAdjusterLabel from './ParamAdjusterLabel';
+import type { LayerDisplaySetting, LayerDisplaySettings } from './ViewerPanelTypes';
 
 import './SliderNavigatorPanel.scss';
 
-class LayerSlider extends React.Component {
-  constructor(props) {
+type LayerSliderProps = {
+  layerid: string;
+  name: string;
+  downloadUrl?: string;
+  chosenSlice?: number;
+  opacity?: number;
+  initOpacity?: number;
+  enabled?: boolean;
+  contrast?: number;
+  initContrast?: number;
+  contrastEnabled?: boolean;
+  gamma?: number;
+  initGamma?: number;
+  gammaEnabled?: boolean;
+  isTracer?: boolean;
+  enhanceSignal?: boolean;
+  manualEnhancing?: boolean;
+  dilation?: number;
+  loading?: boolean;
+};
+
+type SliderNavigatorPanelProps = {
+  displaySettings?: LayerDisplaySettings;
+  ginRepoBaseUrl?: string | null;
+  layerFolderMap?: Record<string, string> | null;
+  chosenSlice?: number;
+  hasDelineation?: boolean;
+};
+
+class LayerSlider extends React.Component<LayerSliderProps> {
+  constructor(props: LayerSliderProps) {
     super(props);
 
     this.handleOpacityChange = this.handleOpacityChange.bind(this);
@@ -63,7 +89,7 @@ class LayerSlider extends React.Component {
                 <AnchorButton
                   small
                   icon="download"
-                  href={downloadUrl + 'slice1' + String(safeChosenSlice).padStart(4, '0') + '.png'}
+                  href={`${downloadUrl}slice1${String(safeChosenSlice).padStart(4, '0')}.png`}
                   target="_blank"
                 />
               </span>
@@ -189,64 +215,86 @@ class LayerSlider extends React.Component {
     );
   }
 
-  handleOpacityChange(layerid, enabled, value) {
+  handleOpacityChange(layerid: string, enabled: boolean, value: number) {
     ViewerManager.changeLayerOpacity(layerid, enabled, value);
   }
-  handleCheckedChange(layerid, opacity, event) {
+  handleCheckedChange(layerid: string, opacity: number, event: React.ChangeEvent<HTMLInputElement>) {
     ViewerManager.changeLayerOpacity(layerid, event.target.checked, opacity);
   }
 
-  handleContrastChange(layerid, enabled, value) {
+  handleContrastChange(layerid: string, enabled: boolean, value: number) {
     ViewerManager.changeLayerContrast(layerid, enabled, Math.round(value * 100) / 100);
   }
-  handleContrastCheck(layerid, contrast, event) {
+  handleContrastCheck(layerid: string, contrast: number, event: React.ChangeEvent<HTMLInputElement>) {
     ViewerManager.changeLayerContrast(layerid, event.target.checked, contrast);
   }
 
-  handleGammaChange(layerid, enabled, value) {
+  handleGammaChange(layerid: string, enabled: boolean, value: number) {
     ViewerManager.changeLayerGamma(layerid, enabled, Math.round(value * 100) / 100);
   }
-  handleGammaCheck(layerid, gamma, event) {
+  handleGammaCheck(layerid: string, gamma: number, event: React.ChangeEvent<HTMLInputElement>) {
     ViewerManager.changeLayerGamma(layerid, event.target.checked, gamma);
   }
 
-  handleEnhanceCheck(layerid, manualEnhancing, dilation, event) {
+  handleEnhanceCheck(
+    layerid: string,
+    manualEnhancing: boolean,
+    dilation: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
     ViewerManager.changeLayerDilation(layerid, event.target.checked, manualEnhancing, dilation);
   }
-  handleManualEnhanceCheck(layerid, enabled, dilation, event) {
+  handleManualEnhanceCheck(
+    layerid: string,
+    enabled: boolean,
+    dilation: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
     ViewerManager.changeLayerDilation(layerid, enabled, event.target.checked, dilation);
   }
-  handleDilationChange(layerid, enabled, manualEnhancing, dilation) {
+  handleDilationChange(layerid: string, enabled: boolean, manualEnhancing: boolean, dilation: number) {
     ViewerManager.changeLayerDilation(layerid, enabled, manualEnhancing, dilation);
   }
 }
 
-class SliderNavigatorPanel extends React.Component {
-  constructor(props) {
-    super(props);
+class SliderNavigatorPanel extends React.Component<SliderNavigatorPanelProps> {
+  private buildLayerSliderProps(layerid: string, layerValue: LayerDisplaySetting): LayerSliderProps {
+    const downloadFolder = this.props.layerFolderMap?.[layerValue.name];
+    const downloadUrl =
+      this.props.ginRepoBaseUrl && downloadFolder
+        ? `${this.props.ginRepoBaseUrl}/raw/master/${downloadFolder}/`
+        : undefined;
+
+    return {
+      layerid,
+      name: layerValue.name,
+      chosenSlice: this.props.chosenSlice,
+      downloadUrl,
+      opacity: typeof layerValue.opacity === 'number' ? layerValue.opacity : undefined,
+      initOpacity: typeof layerValue.initOpacity === 'number' ? layerValue.initOpacity : undefined,
+      enabled: typeof layerValue.enabled === 'boolean' ? layerValue.enabled : undefined,
+      contrast: typeof layerValue.contrast === 'number' ? layerValue.contrast : undefined,
+      initContrast: typeof layerValue.initContrast === 'number' ? layerValue.initContrast : undefined,
+      contrastEnabled: typeof layerValue.contrastEnabled === 'boolean' ? layerValue.contrastEnabled : undefined,
+      gamma: typeof layerValue.gamma === 'number' ? layerValue.gamma : undefined,
+      initGamma: typeof layerValue.initGamma === 'number' ? layerValue.initGamma : undefined,
+      gammaEnabled: typeof layerValue.gammaEnabled === 'boolean' ? layerValue.gammaEnabled : undefined,
+      isTracer: typeof layerValue.isTracer === 'boolean' ? layerValue.isTracer : undefined,
+      enhanceSignal: typeof layerValue.enhanceSignal === 'boolean' ? layerValue.enhanceSignal : undefined,
+      manualEnhancing: typeof layerValue.manualEnhancing === 'boolean' ? layerValue.manualEnhancing : undefined,
+      dilation: typeof layerValue.dilation === 'number' ? layerValue.dilation : undefined,
+      loading: typeof layerValue.loading === 'boolean' ? layerValue.loading : undefined,
+    };
   }
 
   render() {
-    const layerSliders = [];
+    const layerSliders: React.ReactElement[] = [];
     if (this.props.displaySettings) {
       Object.entries(this.props.displaySettings).forEach(([layerid, value]) => {
-        const { key: _key, ...layerValue } = value;
-
-        const params = {
-          ...layerValue,
-          ...{ layerid: layerid },
-          //url to download slice's source image from GIN server
-          ...(this.props.ginRepoBaseUrl && this.props.layerFolderMap && this.props.layerFolderMap[layerValue.name]
-            ? {
-                downloadUrl:
-                  this.props.ginRepoBaseUrl + '/raw/master/' + this.props.layerFolderMap[layerValue.name] + '/',
-                chosenSlice: this.props.chosenSlice,
-              }
-            : {}),
-        };
-        layerSliders.push(<LayerSlider key={'slid_' + layerid} {...params} />);
+        const sliderProps = this.buildLayerSliderProps(layerid, value);
+        layerSliders.push(<LayerSlider key={`slid_${layerid}`} {...sliderProps} />);
         layerSliders.push(
-          <div key={'sepslid_' + layerid} style={{ borderBottom: 'dotted 1px #8a8a8a', margin: '3px 0' }} />,
+          <div key={`sepslid_${layerid}`} style={{ borderBottom: 'dotted 1px #8a8a8a', margin: '3px 0' }} />,
         );
       });
     }

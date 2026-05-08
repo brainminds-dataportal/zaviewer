@@ -1,13 +1,12 @@
-import React from 'react';
-
 import {
   Icon,
-  PopoverNext,
   PopoverInteractionKind,
+  PopoverNext,
   Position,
-  Slider,
   popoverPositionToNextPlacement,
+  Slider,
 } from '@blueprintjs/core';
+import React from 'react';
 
 import './ParamAdjusterLabel.scss';
 
@@ -64,7 +63,11 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
                       ...{ marginLeft: 10 },
                       ...(resetEnabled ? {} : { color: 'silver' }),
                     }}
-                    onClick={resetEnabled ? () => this.props.onChange(this.props.defaultValue!) : undefined}
+                    onClick={
+                      resetEnabled && typeof this.props.defaultValue !== 'undefined'
+                        ? () => this.props.onChange(this.props.defaultValue)
+                        : undefined
+                    }
                   />
                 </span>
               ) : null}
@@ -101,7 +104,7 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
         {adjLabel}
       </PopoverNext>
     ) : (
-      <React.Fragment>{adjLabel}</React.Fragment>
+      adjLabel
     );
   }
 

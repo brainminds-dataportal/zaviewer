@@ -1,3 +1,4 @@
+// biome-ignore lint/complexity/noStaticOnlyClass: UserSettings is intentionally exposed as a static utility API across the app.
 class UserSettings {
   static SettingsKeys = {
     ShowAtlasRegionArea: 'zav:global:atlasRegionsArea:show',

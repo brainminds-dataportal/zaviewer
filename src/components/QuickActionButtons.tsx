@@ -1,32 +1,39 @@
-// @ts-nocheck
-import React from 'react';
-
-import _ from 'underscore';
 import {
   AnchorButton,
   Icon,
-  PopoverNext,
   PopoverInteractionKind,
+  PopoverNext,
   Position,
+  popoverPositionToNextPlacement,
   Slider,
   Switch,
-  popoverPositionToNextPlacement,
 } from '@blueprintjs/core';
+import React from 'react';
 
 import ViewerManager from '../ViewerManager';
 
 import MetadataView from './MetadataView';
+import type { LayerDisplaySettings, ViewerConfigLike } from './ViewerPanelTypes';
 
 import './QuickActionButtons.scss';
 
-class ActionContainer extends React.Component {
-  render() {
-    return <div className="zav-ActionContainer">{this.props.children}</div>;
-  }
-}
+type QuickActionButtonsProps = {
+  hasDelineation?: boolean;
+  displaySettings?: LayerDisplaySettings;
+  showRegions?: boolean;
+  activePlane?: number;
+  chosenSlice?: number;
+  config?: ViewerConfigLike;
+  tourMenu?: React.ReactNode;
+};
 
-class QuickActionButtons extends React.Component {
-  constructor(props) {
+type QuickActionButtonsState = {
+  displayedSlice: number;
+  isDraggingSlice: boolean;
+};
+
+class QuickActionButtons extends React.Component<QuickActionButtonsProps, QuickActionButtonsState> {
+  constructor(props: QuickActionButtonsProps) {
     super(props);
     this.state = { displayedSlice: this.getCurrentSliceFromProps(props), isDraggingSlice: false };
     this.handleClickHideShow = this.handleClickHideShow.bind(this);
@@ -37,7 +44,7 @@ class QuickActionButtons extends React.Component {
     this.onGoToSlice = this.onGoToSlice.bind(this);
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: QuickActionButtonsProps) {
     const prevSlice = this.getCurrentSliceFromProps(prevProps);
     const nextSlice = this.getCurrentSliceFromProps(this.props);
     if (!this.state.isDraggingSlice && prevSlice !== nextSlice && this.state.displayedSlice !== nextSlice) {
@@ -49,7 +56,7 @@ class QuickActionButtons extends React.Component {
     this.endSliceSliderInteraction();
   }
 
-  shouldComponentUpdate(nextProps, nextState) {
+  shouldComponentUpdate(nextProps: QuickActionButtonsProps, nextState: QuickActionButtonsState) {
     return (
       nextProps.activePlane !== this.props.activePlane ||
       nextProps.chosenSlice !== this.props.chosenSlice ||
@@ -64,7 +71,7 @@ class QuickActionButtons extends React.Component {
   }
 
   render() {
-    const tracerLayer = _.findWhere(this.props.displaySettings, { isTracer: true });
+    const tracerLayer = Object.values(this.props.displaySettings ?? {}).find((layer) => layer.isTracer);
     const showRegions = Boolean(this.props.showRegions);
     const tracerLayerEnabled = Boolean(tracerLayer?.enabled);
     const tracerLayerOpacity = Number.isFinite(tracerLayer?.opacity) ? tracerLayer.opacity : 0;
@@ -95,7 +102,7 @@ class QuickActionButtons extends React.Component {
           </div>
         </PopoverNext>
 
-        {this.props.config && this.props.config.dataset_info ? (
+        {this.props.config?.dataset_info ? (
           <PopoverNext
             content={
               <div style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
@@ -152,7 +159,7 @@ class QuickActionButtons extends React.Component {
 
               <div
                 className="zav-ActionContainer"
-                title={'slice #' + currentSlice + ' of ' + maxSliceNum}
+                title={`slice #${currentSlice} of ${maxSliceNum}`}
                 style={{ paddingTop: 14 }}
               >
                 <PopoverNext
@@ -264,32 +271,32 @@ class QuickActionButtons extends React.Component {
     }
   }
 
-  handleLayerEnabledChange(layerid, opacity, event) {
+  handleLayerEnabledChange(layerid: string, opacity: number, event: React.ChangeEvent<HTMLInputElement>) {
     ViewerManager.changeLayerOpacity(layerid, event.target.checked, opacity);
   }
 
-  onShiftToSlice(increment) {
+  onShiftToSlice(increment: number) {
     ViewerManager.shiftToSlice(increment);
   }
 
-  onGoToSlice(sliceNum) {
+  onGoToSlice(sliceNum: number) {
     this.setState({ displayedSlice: sliceNum });
     ViewerManager.goToSlice(sliceNum);
   }
 
-  handleSliceChange(sliceNum) {
+  handleSliceChange(sliceNum: number) {
     this.setState({ displayedSlice: sliceNum, isDraggingSlice: true });
     ViewerManager.goToSlice(sliceNum);
   }
 
-  handleSliceRelease(sliceNum) {
+  handleSliceRelease(sliceNum: number) {
     this.setState({ displayedSlice: sliceNum, isDraggingSlice: false });
   }
 
-  getCurrentSliceFromProps(props) {
+  getCurrentSliceFromProps(props: QuickActionButtonsProps) {
     const planeSlideCount = props.config ? ViewerManager.getPlaneSlideCount(props.activePlane) : 1001;
     const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
-    const requestedSlice = Number.isFinite(props.chosenSlice) ? props.chosenSlice : 0;
+    const requestedSlice = typeof props.chosenSlice === 'number' ? props.chosenSlice : 0;
     return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
   }
 

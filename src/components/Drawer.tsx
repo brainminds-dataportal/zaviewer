@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { Icon } from '@blueprintjs/core';
+import * as React from 'react';
 
 import './Drawer.scss';
 
@@ -12,15 +11,15 @@ export enum CollapseDirection {
 type DrawerHandleProps = {
   collapseDirection: CollapseDirection;
   isExpanded: boolean;
-  onClick: React.MouseEventHandler | undefined;
+  onClick: React.MouseEventHandler<HTMLButtonElement> | undefined;
 };
 
 export const DrawerHandle = (props: DrawerHandleProps) => {
   const pointToRight = props.collapseDirection === CollapseDirection.RIGHT ? props.isExpanded : !props.isExpanded;
   return (
-    <div className="zav-Drawer_handle" onClick={props.onClick}>
+    <button type="button" className="zav-Drawer_handle" onClick={props.onClick} aria-label="Toggle drawer">
       <Icon icon={pointToRight ? 'caret-right' : 'caret-left'} iconSize={22} />
-    </div>
+    </button>
   );
 };
 
@@ -29,10 +28,10 @@ type DrawerProps = {
   collapseDirection: CollapseDirection;
   initExpanded: boolean;
   forceExpanded?: boolean;
-  onClick: React.MouseEventHandler | undefined;
+  onClick: React.MouseEventHandler<HTMLButtonElement> | undefined;
   onExpandCollapse: (isExpanded: boolean) => void;
-  quickactions: any;
-  children: any;
+  quickactions: React.ReactNode;
+  children: React.ReactNode;
 };
 
 export const Drawer = (props: DrawerProps) => {
@@ -60,7 +59,7 @@ export const Drawer = (props: DrawerProps) => {
         isExpanded={isExpanded}
         onClick={() => {
           setIsExpanded(!isExpanded);
-          props.onExpandCollapse && props.onExpandCollapse(!isExpanded);
+          props.onExpandCollapse?.(!isExpanded);
         }}
       />
       <div className="zav-Drawer_collapsedCont">{props.quickactions}</div>
@@ -70,7 +69,7 @@ export const Drawer = (props: DrawerProps) => {
           'zav-Drawer_expandedCont' +
           (moreUp && moreDown ? ' zav-moreBoth' : (moreUp ? ' zav-moreUp' : '') + (moreDown ? ' zav-moreDown' : ''))
         }
-        onScroll={(e) => setScrollTop(e.target.scrollTop)}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
       >
         <div className="zav-Drawer_expandedContWrapper">{props.children}</div>
       </div>

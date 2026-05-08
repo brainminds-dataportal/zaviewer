@@ -11,7 +11,7 @@ class LabelMapper {
       '#' +
       rgb
         .map((v) => v.toString(16))
-        .map((h) => (h.length == 1 ? '0' : '') + h)
+        .map((h) => (h.length === 1 ? '0' : '') + h)
         .join('')
     );
   }
@@ -28,8 +28,11 @@ class LabelMapper {
             return matches.groups;
           } else return undefined;
         })
-        .filter((ll) => typeof ll != 'undefined')
-        .map((ll) => [LabelMapper.rgbToHexColor([parseInt(ll!.r), parseInt(ll!.g), parseInt(ll!.b)]), ll!.label]),
+        .filter((ll) => typeof ll !== 'undefined')
+        .map((ll) => [
+          LabelMapper.rgbToHexColor([parseInt(ll?.r, 10), parseInt(ll?.g, 10), parseInt(ll?.b, 10)]),
+          ll?.label,
+        ]),
     );
   }
 
@@ -41,7 +44,7 @@ class LabelMapper {
   ) {
     const labelMapper = new LabelMapper(viewer, layerDisplaySettings, color2labelMap, onClassFocused);
 
-    return typeof labelMapper.mouseTracker != 'undefined';
+    return typeof labelMapper.mouseTracker !== 'undefined';
   }
 
   private previousClassColor: string;
@@ -75,7 +78,7 @@ class LabelMapper {
               if (rgb) {
                 const color = LabelMapper.rgbToHexColor(rgb);
 
-                if (color != this.previousClassColor) {
+                if (color !== this.previousClassColor) {
                   this.previousClassColor = color;
                   const label = color2labelMap.get(color);
                   if (label && onClassFocused) {
@@ -122,17 +125,17 @@ class LabelMapper {
         //get current title level from lastdrawn on any enabled layer (see https://github.com/openseadragon/openseadragon/issues/1888#issuecomment-1282423960 )
         const coordinates = viewer.world.getItemAt(anyVisibleLayer.index).lastDrawn.map((item) => {
           const container = [];
-          container.push(parseInt(item['level']));
+          container.push(parseInt(item.level, 10));
           return container;
         });
 
         const tileLevel = Math.max.apply(null, coordinates);
 
         // getTileAtPoint technique
-        var viewportPosRect = new OpenSeadragon.Rect(viewportPos.x, viewportPos.y, 0, 0);
-        var tileSourcePosRect = tiledImage._viewportToTiledImageRectangle(viewportPosRect);
-        var tileSourcePos = tileSourcePosRect.getTopLeft();
-        var source = tiledImage.source;
+        const viewportPosRect = new OpenSeadragon.Rect(viewportPos.x, viewportPos.y, 0, 0);
+        const tileSourcePosRect = tiledImage._viewportToTiledImageRectangle(viewportPosRect);
+        const tileSourcePos = tileSourcePosRect.getTopLeft();
+        const source = tiledImage.source;
         if (
           tileSourcePos.x >= 0 &&
           tileSourcePos.x <= 1 &&
@@ -144,7 +147,7 @@ class LabelMapper {
           //Since labelmap layers' tiles are always loaded, they can be retrieved from tileCache
           const cacheKey = tiledImage.source.getTileUrl(tileLevel, tileCoord.x, tileCoord.y);
           const imageRecord = tiledImage._tileCache.getImageRecord(cacheKey);
-          if (imageRecord && imageRecord._tiles && imageRecord._tiles.length > 0) {
+          if (imageRecord?._tiles && imageRecord._tiles.length > 0) {
             const labelMapTile = imageRecord._tiles[0];
             return labelMapTile;
           }

@@ -1,10 +1,11 @@
-import React from 'react';
+// biome-ignore-all lint/a11y/noStaticElementInteractions: The ROI list uses hover-only presentation wrappers and a legacy icon control that will be refactored separately from this lint cleanup.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard support for the legacy ROI hover controls requires a larger UX refactor than this lint-focused change.
+// biome-ignore-all lint/suspicious/noArrayIndexKey: ROI rows are ordered from stable viewer metadata and currently keyed by list position in legacy UI code.
 
 import { Icon, Switch } from '@blueprintjs/core';
-
-import ViewerManager from '../ViewerManager';
+import React from 'react';
 import RoiInfos from '../RoiInfo';
-import type { IRoi } from '../RoiInfo';
+import ViewerManager from '../ViewerManager';
 
 import './ROIOptions.scss';
 import { PLANE_ABBREVS } from '../ZAVConfig';
@@ -46,7 +47,7 @@ class ROIOptions extends React.Component<ROIOptionsProps, ROIOptionsState> {
               {RoiInfos.getRois().map((r, i) => (
                 <div
                   key={i}
-                  className={'zav-roi-list-line' + (this.state.hoveredLineNum === i ? ' zav-roi-line-active' : '')}
+                  className={`zav-roi-list-line${this.state.hoveredLineNum === i ? ' zav-roi-line-active' : ''}`}
                   onMouseEnter={() => this.activateROILine(i)}
                   onMouseLeave={() => this.activateROILine(null)}
                 >

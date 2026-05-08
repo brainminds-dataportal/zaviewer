@@ -10,7 +10,9 @@ const CustomFilters = {
       const v = (r + g + b) / 3;
       pixels[i + 3] = v;
 
-      clearChannel[hue % clearChannel.length].forEach((idx) => (pixels[i + idx] = 0));
+      clearChannel[hue % clearChannel.length].forEach((idx) => {
+        pixels[i + idx] = 0;
+      });
     }
     context.putImageData(imgData, 0, 0);
     callback();

@@ -18,7 +18,7 @@ function getUlList(target) {
     if (Array.isArray(this)) {
       tagStr += getUlList(this);
     } else {
-      tagStr += '<li><a href="./' + this + '.html">' + this + '</a></li>';
+      tagStr += `<li><a href="./${this}.html">${this}</a></li>`;
     }
   });
   tagStr += '</ul>';

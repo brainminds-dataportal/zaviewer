@@ -40,7 +40,7 @@ ZAVProcessings = () => {};
       },
 
       processImageData: function (imageData) {
-        return new Promise((resolve, reject) => resolve(this.processImageDataSync(imageData)));
+        return new Promise((resolve) => resolve(this.processImageDataSync(imageData)));
       },
     },
   );
@@ -179,7 +179,7 @@ ZAVProcessings = () => {};
             console.debug('Pix2pix: Transfer done!');
             // Create an image based on the result
             const imageObj = new Image();
-            const imgPromise = new Promise((resolve, reject) => {
+            const imgPromise = new Promise((resolve) => {
               imageObj.onload = () => {
                 console.debug('Pix2pix: Result exported!');
                 resolve(imageObj);
@@ -200,8 +200,8 @@ ZAVProcessings = () => {};
   modfn.imageDataToCanvas = (imageData, size) => {
     // create temp canvas
     const tmpCanvas = document.createElement('canvas');
-    const width = size && size.width ? size.width : imageData.width;
-    const height = size && size.height ? size.height : imageData.height;
+    const width = size?.width ?? imageData.width;
+    const height = size?.height ?? imageData.height;
     tmpCanvas.setAttribute('width', width);
     tmpCanvas.setAttribute('height', height);
     // put image data into canvas

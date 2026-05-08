@@ -1,13 +1,28 @@
-// @ts-nocheck
-
 import { HTMLSelect, Switch } from '@blueprintjs/core';
 import React from 'react';
 import ViewerManager from '../ViewerManager';
 import BorderSettings from './BorderSettings';
 import ParamAdjusterLabel from './ParamAdjusterLabel';
+import type { AtlasOption } from './ViewerPanelTypes';
 
-class RegionOptions extends React.Component {
-  constructor(props) {
+type RegionOptionsProps = {
+  currentAtlas?: number | null;
+  atlases: AtlasOption[];
+  resetRegionsTree?: () => void;
+  showRegions?: boolean;
+  regionsOpacity: number;
+  initRegionsOpacity: number;
+  displayAreas?: boolean;
+  displayBorders?: boolean;
+  hasRegionLabels?: boolean;
+  displayLabels?: boolean;
+  useCustomBorders: boolean;
+  customBorderColor: string;
+  customBorderWidth: number;
+};
+
+class RegionOptions extends React.Component<RegionOptionsProps> {
+  constructor(props: RegionOptionsProps) {
     super(props);
     this.handleClickHideShow = this.handleClickHideShow.bind(this);
     this.handleOpacityChange = this.handleOpacityChange.bind(this);
@@ -97,7 +112,7 @@ class RegionOptions extends React.Component {
     ViewerManager.toggleAreaDisplay();
   }
 
-  handleOpacityChange(opacity) {
+  handleOpacityChange(opacity: number) {
     ViewerManager.changeRegionsOpacity(opacity / 100);
   }
 
@@ -109,7 +124,7 @@ class RegionOptions extends React.Component {
     ViewerManager.toggleLabelDisplay();
   }
 
-  handleSelectAtlas(event) {
+  handleSelectAtlas(event: React.ChangeEvent<HTMLSelectElement>) {
     const selectedAtlasIndex = parseInt(event.currentTarget.value, 10);
     ViewerManager.setSelectedAtlasIndex(selectedAtlasIndex);
     if (this.props.resetRegionsTree) {

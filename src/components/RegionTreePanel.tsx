@@ -1,7 +1,9 @@
-// @ts-nocheck
-import React from 'react';
-
-import _ from 'underscore';
+// biome-ignore-all lint/a11y/noStaticElementInteractions: The legacy tree view relies on clickable structural elements and hover affordances that need a broader component redesign.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: Adding keyboard interaction to the legacy region tree requires coordinated UX changes beyond this lint pass.
+// biome-ignore-all lint/suspicious/useIterableCallbackReturn: Existing tree-building callbacks intentionally use concise return expressions in legacy code.
+// biome-ignore-all lint/correctness/noInnerDeclarations: This legacy tree module still uses function-scoped declarations inside callback-heavy logic.
+// biome-ignore-all lint/correctness/useJsxKeyInIterable: Legacy fragment assembly in the tree detail popover will be revisited in a dedicated React cleanup.
+// biome-ignore-all lint/suspicious/noArrayIndexKey: Branding and tree detail lists are stable presentation-only sequences in the current UI.
 
 import {
   AnchorButton,
@@ -9,13 +11,15 @@ import {
   FormGroup,
   Icon,
   InputGroup,
-  PopoverNext,
-  PopoverInteractionKind,
   OverlayToaster,
+  PopoverInteractionKind,
+  PopoverNext,
   Position,
-  Switch,
   popoverPositionToNextPlacement,
+  Switch,
 } from '@blueprintjs/core';
+import React from 'react';
+import _ from 'underscore';
 
 import RegionsManager from '../RegionsManager';
 import ViewerManager from '../ViewerManager';
@@ -40,7 +44,7 @@ class RegionItemLabel extends React.Component {
             backgroundColor: this.props.region.color
               ? region.exists
                 ? region.color
-                : region.color + '30'
+                : `${region.color}30`
               : 'transparent',
           }}
           onMouseEnter={this.props.onBulletMouseEnter ? this.props.onBulletMouseEnter : null}
@@ -72,16 +76,16 @@ class RegionItem extends React.Component {
   render() {
     const region = RegionsManager.getRegion(this.props.regionId);
 
-    const paddedLinks = [];
+    const _paddedLinks = [];
 
     // children regions
     var subregions = null;
     if (region.children) {
       const subItems = [];
-      region.children.forEach((childId, i) =>
+      region.children.forEach((childId, _i) =>
         subItems.push(
           <RegionItem
-            key={'ri-' + childId}
+            key={`ri-${childId}`}
             lastChild={RegionsManager.isLastVisibleChild(childId)}
             regionsStatus={this.props.regionsStatus}
             regionId={childId}
@@ -129,7 +133,7 @@ class RegionItem extends React.Component {
           <span
             className="zav-TreeItemHeader"
             //append low opacity to specified region color for border
-            style={{ borderColor: region.color ? region.color + '20' : '#80808024' }}
+            style={{ borderColor: region.color ? `${region.color}20` : '#80808024' }}
             onClick={region.exists ? this.selectRegionClick : null}
             onDoubleClick={this.expandCollapseDblClick}
           >
@@ -144,8 +148,8 @@ class RegionItem extends React.Component {
             <RegionItemLabel
               region={region}
               //to trigger visually highlighting of region and its descendants
-              onBulletMouseEnter={(e) => this.setState((state) => ({ isHovered: true }))}
-              onBulletMouseLeave={(e) => this.setState((state) => ({ isHovered: false }))}
+              onBulletMouseEnter={(_e) => this.setState((_state) => ({ isHovered: true }))}
+              onBulletMouseLeave={(_e) => this.setState((_state) => ({ isHovered: false }))}
             />
           </span>
         </div>
@@ -188,7 +192,7 @@ class RegionDetail extends React.Component {
   render() {
     const region = RegionsManager.getRegion(this.props.regionId);
 
-    let grouping = null;
+    let grouping: React.ReactNode = null;
     if (region) {
       if (region.groups) {
         const groupingInfo = [];
@@ -197,7 +201,7 @@ class RegionDetail extends React.Component {
           .pairs()
           .groupBy((sgPair) => sgPair[1])
           .each((sgPairs, groupid) => {
-            const partOf = sgPairs.map((sgPair) => RegionsManager.getGrouping(sgPair[0]).name).join(', ');
+            const _partOf = sgPairs.map((sgPair) => RegionsManager.getGrouping(sgPair[0]).name).join(', ');
             const firstGrouping = sgPairs[0][0];
             groupingInfo.push(
               <div key={groupid} className="zav-RegionDetailGroupings">
@@ -206,7 +210,7 @@ class RegionDetail extends React.Component {
                   <span style={{ fontStyle: 'italic', fontSize: 12, marginLeft: 16 }}>part of </span>
                   <b>{RegionsManager.getGroupName(firstGrouping, groupid)}</b>
                 </div>
-                {'in grouping' + (sgPairs.length > 1 ? 's' : '') + ' :'}
+                {`in grouping${sgPairs.length > 1 ? 's' : ''} :`}
                 <ul>
                   {sgPairs.map((sgPair) => (
                     <li>{RegionsManager.getGrouping(sgPair[0]).name}</li>
@@ -230,12 +234,12 @@ class RegionDetail extends React.Component {
         ) : null;
       }
 
-      const hasCenterSliceInfo = region?.centerSlices || typeof region?.centerSlice != 'undefined';
+      const hasCenterSliceInfo = region?.centerSlices || typeof region?.centerSlice !== 'undefined';
       const crumbs = [];
       region.trail.forEach((rId) => {
-        crumbs.push(<Icon key={'i-' + rId} style={{ color: 'white' }} icon="slash" />);
+        crumbs.push(<Icon key={`i-${rId}`} style={{ color: 'white' }} icon="slash" />);
         crumbs.push(
-          <span key={'s-' + rId} style={{ fontWeight: 'bold' }}>
+          <span key={`s-${rId}`} style={{ fontWeight: 'bold' }}>
             {rId}
           </span>,
         );
@@ -392,7 +396,7 @@ class RegionTreeSearch extends React.Component {
     this.regionActionner = RegionsManager.getActionner(TREE_ACTIONSOURCEID);
   }
 
-  static getDerivedStateFromProps(props, state) {
+  static getDerivedStateFromProps(_props, state) {
     if (
       state.pattern &&
       !RegionsManager.hasHighlighting() &&
@@ -415,13 +419,13 @@ class RegionTreeSearch extends React.Component {
                 List only the regions present in "<span style={{ fontStyle: 'italic' }}>{grouping.name}</span>"
               </span>
             }
-            key={'switch-' + groupingId}
+            key={`switch-${groupingId}`}
             onChange={this.onOnlyGroupingChange.bind(this, groupingId)}
             checked={RegionsManager.getHighlightingGrouping() === groupingId}
             disabled={
               RegionsManager.isAutoHighlightingOn() ||
               (RegionsManager.getHighlightingGrouping() != null &&
-                RegionsManager.getHighlightingGrouping() != groupingId)
+                RegionsManager.getHighlightingGrouping() !== groupingId)
             }
           />,
         );
@@ -483,7 +487,7 @@ class RegionTreeSearch extends React.Component {
     this.regionActionner.higlightByName(pattern);
   }
 
-  onOnlySlicesChange(event) {
+  onOnlySlicesChange(_event) {
     this.regionActionner.toggleAutoHighlighting();
     this.forceUpdate();
   }
@@ -495,16 +499,12 @@ class RegionTreeSearch extends React.Component {
 }
 
 class RegionTreeStatus extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
-    var content;
+    let content: React.ReactNode = null;
     if (RegionsManager.hasHighlighting()) {
       content = (
         <div style={{ color: '#8b0000', fontSize: 12 }} title="Number of highlighted regions">
-          {'(' + this.props.regionsStatus.highlighted.size + ')'}
+          {`(${this.props.regionsStatus.highlighted.size})`}
         </div>
       );
     }
@@ -517,14 +517,10 @@ class RegionTreeStatus extends React.Component {
 }
 
 class RegionDetailPane extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <div className="zav-RegionDetailPane">
-        {this.props.regionsStatus && this.props.regionsStatus.lastSelected ? (
+        {this.props.regionsStatus?.lastSelected ? (
           <RegionDetail regionId={this.props.regionsStatus.lastSelected} hasMultiPlanes={this.props.hasMultiPlanes} />
         ) : null}
       </div>
@@ -533,10 +529,6 @@ class RegionDetailPane extends React.Component {
 }
 
 class RegionTreePanel extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <div style={{ height: '100%', width: '100%' }}>

@@ -1,12 +1,12 @@
-import _ from 'underscore';
-
 import type { History, Location } from 'history';
 import { createPath } from 'history';
 import qs, { type ParsedQs } from 'qs';
+import _ from 'underscore';
 
 type HashLocation = Pick<Location, 'hash'>;
 type HistoryStepParams = Record<string, unknown>;
 
+// biome-ignore lint/complexity/noStaticOnlyClass: Utils is intentionally exposed as a static utility API across the app.
 class Utils {
   //Finds y value of given object
   static findPosY(obj: HTMLElement) {

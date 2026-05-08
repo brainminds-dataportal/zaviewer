@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { Menu, MenuDivider, MenuItem } from '@blueprintjs/core';
+import * as React from 'react';
 
 import { ACTIONS, EVENTS, Joyride, STATUS, type Step } from 'react-joyride';
 
@@ -554,8 +553,8 @@ export const TourOperator = (props: TourOperatorProps) => {
         tooltip: {},
       }}
       callback={(data) => {
-        const { action, index, status, type, step } = data;
-        //console.log('#', action, index, status, type, step);
+        const { action, index, status, type } = data;
+        //console.log('#', action, index, status, type);
 
         //update context with next to come step (works only from second steps onwards, since triggered on STEP_AFTER event)
         if (type === EVENTS.STEP_AFTER) {
@@ -587,7 +586,7 @@ export const TourOperator = (props: TourOperatorProps) => {
         // * And also when close button was click (to prevent restarting at next step)
         if (
           [STATUS.FINISHED, STATUS.SKIPPED].includes(status) ||
-          (type === EVENTS.STEP_AFTER && action == ACTIONS.CLOSE)
+          (type === EVENTS.STEP_AFTER && action === ACTIONS.CLOSE)
         ) {
           //reset from start for next run of the tour
           props.setTourStepIndex(0);
@@ -598,7 +597,7 @@ export const TourOperator = (props: TourOperatorProps) => {
   );
 };
 
-const deepCloneObject = (o: Object) => JSON.parse(JSON.stringify(o));
+const deepCloneObject = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
 
 const EmptyStepContext = Object.freeze({ currentStep: '' });
 const EmptyTourContext = Object.freeze({

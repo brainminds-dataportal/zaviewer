@@ -1,9 +1,9 @@
 var ERROR = -10; // Communication error
 var TIMEOUT = -11; // Communication timeout error
 var ABORT = -12; // Communication interrupted error
-var STATUS = -13; // Communication status error
+var _STATUS = -13; // Communication status error
 
-var ERROR_NORMAL = -100; // Unknown error
+var _ERROR_NORMAL = -100; // Unknown error
 var ERROR_PKEY_CHANGED = -102; // Deletion error(primary key changed)
 var ERROR_UNSELECTED = -103; // Not selected error
 
@@ -40,11 +40,11 @@ $(() => {
       this.value = '';
       if (this.name.lastIndexOf('f_', 0) === 0) {
         //f_...:fields
-        if ($('#columnName .t_' + this.name.substring(2)).length > 0) {
-          $(this).parent().prev()[0].innerHTML = $('#columnName .t_' + this.name.substring(2))[0].innerHTML;
-          if ($('#columnName .t_' + this.name.substring(2)).hasClass('keyColumn')) {
+        if ($(`#columnName .t_${this.name.substring(2)}`).length > 0) {
+          $(this).parent().prev()[0].innerHTML = $(`#columnName .t_${this.name.substring(2)}`)[0].innerHTML;
+          if ($(`#columnName .t_${this.name.substring(2)}`).hasClass('keyColumn')) {
             $(this).parent().prev().addClass('key');
-          } else if ($('#columnName .t_' + this.name.substring(2)).hasClass('uniqColumn')) {
+          } else if ($(`#columnName .t_${this.name.substring(2)}`).hasClass('uniqColumn')) {
             $(this).parent().prev().addClass('uniq');
           }
         }
@@ -84,7 +84,7 @@ $(() => {
   $('.findKey').click(showFindKeyDialog);
 
   // If table name defined
-  if (tableName != undefined) {
+  if (tableName !== undefined) {
     findTable();
   }
 });
@@ -102,26 +102,21 @@ function clickRow() {
   if ($('#editTable').length) {
     $('#btnArea').find('input:button').prop('disabled', false);
     $.each(this.children, function () {
-      var value = this.innerHTML;
+      let value = this.innerHTML;
       $.each(this.classList, function () {
         if (this.lastIndexOf('t_', 0) === 0) {
-          var key = this.substring(2);
-          var field = $('input[name="f_' + key + '"]');
+          const key = this.substring(2);
+          const field = $(`input[name="f_${key}"]`);
           // Convert to 0 or 1 if it is a checkbox
-          if (field.attr('type') == 'checkbox') {
-            if (value != 1) {
+          if (field.attr('type') === 'checkbox') {
+            if (value !== 1) {
               value = 0;
             }
-            field.prop('checked', value == 1);
+            field.prop('checked', value === 1);
           }
           // Set the value
           field.val(value);
-          if (
-            $('input[name="f_' + key + '"]')
-              .parent()
-              .prev()
-              .hasClass('key')
-          ) {
+          if ($(`input[name="f_${key}"]`).parent().prev().hasClass('key')) {
             pkeyList[key] = value; // Keep original values in an array
           }
         }
@@ -137,7 +132,7 @@ function animateLoader(jqObj) {
     {
       duration: 2500,
       step: function (now) {
-        $(this).css({ transform: 'rotate(' + now * 720 + 'deg)' });
+        $(this).css({ transform: `rotate(${now * 720}deg)` });
       },
       complete: function () {
         $(this).css({ zIndex: 0 });
@@ -162,7 +157,7 @@ function findTable() {
   // Disable button
   $('#btnArea').find('input:button').prop('disabled', true);
 
-  var json = { mode: 'findAll' };
+  const json = { mode: 'findAll' };
   send(tableName, json, onloadFindTable, errorFindTable);
 }
 
@@ -175,7 +170,7 @@ function onloadFindTable(xhr) {
   // Enable ADD button
   $('#addBtn').prop('disabled', false);
 
-  var dataList = JSON.parse(xhr.responseText);
+  const dataList = JSON.parse(xhr.responseText);
   showTable(dataList);
 }
 //Table searching error(callback)
@@ -193,13 +188,13 @@ function showTable(dataList) {
 
   $.each(dataList, function () {
     //Duplicate the table
-    var tr = $('#columnName').clone();
+    const tr = $('#columnName').clone();
     tr.attr('id', '');
     tr.addClass('row');
     tr.on('click', clickRow);
     // Write data
     $.each(this, (key, value) => {
-      var td = tr.children('.t_' + key);
+      const td = tr.children(`.t_${key}`);
       td.html(value);
     });
     tr.appendTo('#dataTable');
@@ -217,14 +212,14 @@ function clickAddButton() {
 
 // Insert a row
 function insertRow() {
-  var isError = false;
-  var rowData = {};
+  let isError = false;
+  const rowData = {};
   // Loop through the input values
   $.each($('#editTable').find('input').not(':button, :submit, :reset, :hidden'), function () {
-    var value = this.value;
+    let value = this.value;
     if (this.name.lastIndexOf('f_', 0) === 0) {
       // Convert to 0 or 1 if it is a checkbox
-      if ($(this).attr('type') == 'checkbox') {
+      if ($(this).attr('type') === 'checkbox') {
         if ($(this).prop('checked')) {
           value = 1;
         } else {
@@ -232,19 +227,19 @@ function insertRow() {
         }
       }
       // Error if is is a key but absent
-      if (value == '' && ($(this).parent().prev().hasClass('key') || $(this).parent().prev().hasClass('uniq'))) {
+      if (value === '' && ($(this).parent().prev().hasClass('key') || $(this).parent().prev().hasClass('uniq'))) {
         //$(this).after("<div class='error'>Required item.</div>");
-        var key = this.name.substring(2);
+        const key = this.name.substring(2);
         //$("#submitMessage").append("<div class='error'>"+ getErrorMessage(ERROR_REQUIRED, key) +"</div>");
         showErrorMessage(ERROR_REQUIRED, key);
         isError = true;
-      } else if ($(this).attr('type') == 'number' && !$(this).hasClass('nocheck')) {
+      } else if ($(this).attr('type') === 'number' && !$(this).hasClass('nocheck')) {
         if (
-          value == '' ||
-          ($(this)[0].min != '' && $(this)[0].min > Number(value)) ||
-          ($(this)[0].max != '' && $(this)[0].max < Number(value))
+          value === '' ||
+          ($(this)[0].min !== '' && $(this)[0].min > Number(value)) ||
+          ($(this)[0].max !== '' && $(this)[0].max < Number(value))
         ) {
-          var key = this.name.substring(2);
+          const key = this.name.substring(2);
           //$("#submitMessage").append("<div class='error'>"+ getErrorMessage(ERROR_NUMBER_FORMAT, key) +"</div>");
           showErrorMessage(ERROR_NUMBER_FORMAT, key);
           isError = true;
@@ -257,7 +252,7 @@ function insertRow() {
   });
 
   if (!isError) {
-    var jsonData = { mode: 'insert', data: rowData };
+    const jsonData = { mode: 'insert', data: rowData };
     send(tableName, jsonData, onloadInsertRow, errorInsertRow);
   }
 }
@@ -266,18 +261,18 @@ function insertRow() {
 function onloadInsertRow(xhr) {
   // console.log(xhr.responseText);
   try {
-    var dataList = JSON.parse(xhr.responseText);
+    const dataList = JSON.parse(xhr.responseText);
     // Error
-    if (dataList['error'] != null) {
-      showErrorMessageList(dataList['error']);
+    if (dataList.error != null) {
+      showErrorMessageList(dataList.error);
       //$("#submitMessage").append("<div class='error'>"+dataList["error"]+"</div>");
     } else {
       showTable(dataList);
       //Show the message
-      $('#submitMessage').append('<div>' + getMessage(MESSAGE_ADD) + '</div>');
+      $('#submitMessage').append(`<div>${getMessage(MESSAGE_ADD)}</div>`);
     }
   } catch (e) {
-    $('#submitMessage').append("<div class='error'>" + e + ':' + xhr.responseText + '</div>');
+    $('#submitMessage').append(`<div class='error'>${e}:${xhr.responseText}</div>`);
   }
 }
 // Row insertion error(callback)
@@ -288,7 +283,7 @@ function errorInsertRow(status) {
 
 // UPDATE button click
 function clickUpdateButton() {
-  if (Object.keys(pkeyList).length == 0) {
+  if (Object.keys(pkeyList).length === 0) {
     // Clear the message
     $('#submitMessage').empty();
     //$("#submitMessage").append("<div class='error'>"+ getErrorMessage(ERROR_UNSELECTED) +"</div>");
@@ -302,14 +297,14 @@ function clickUpdateButton() {
 function updateRow() {
   // Clear the message
   $('#submitMessage').empty();
-  var isError = false;
-  var rowData = {};
+  let isError = false;
+  const rowData = {};
   // Loop through the input values
   $.each($('#editTable').find('input').not(':button, :submit, :reset, :hidden'), function () {
-    var value = this.value;
+    let value = this.value;
     if (this.name.lastIndexOf('f_', 0) === 0) {
       // Convert to 0 or 1 if it is a checkbox
-      if ($(this).attr('type') == 'checkbox') {
+      if ($(this).attr('type') === 'checkbox') {
         if ($(this).prop('checked')) {
           value = 1;
         } else {
@@ -317,17 +312,17 @@ function updateRow() {
         }
       }
       // Error if it is a key but absent
-      if (value == '' && ($(this).parent().prev().hasClass('key') || $(this).parent().prev().hasClass('uniq'))) {
-        var key = this.name.substring(2);
+      if (value === '' && ($(this).parent().prev().hasClass('key') || $(this).parent().prev().hasClass('uniq'))) {
+        const key = this.name.substring(2);
         showErrorMessage(ERROR_REQUIRED, key);
         isError = true;
-      } else if ($(this)[0].type == 'number' && !$(this).hasClass('nocheck')) {
+      } else if ($(this)[0].type === 'number' && !$(this).hasClass('nocheck')) {
         if (
-          value == '' ||
-          ($(this)[0].min != '' && $(this)[0].min > Number(value)) ||
-          ($(this)[0].max != '' && $(this)[0].max < Number(value))
+          value === '' ||
+          ($(this)[0].min !== '' && $(this)[0].min > Number(value)) ||
+          ($(this)[0].max !== '' && $(this)[0].max < Number(value))
         ) {
-          var key = this.name.substring(2);
+          const key = this.name.substring(2);
           showErrorMessage(ERROR_NUMBER_FORMAT, key);
           isError = true;
         }
@@ -339,17 +334,17 @@ function updateRow() {
   });
 
   if (!isError) {
-    var jsonData = { mode: 'update', data: rowData, key: pkeyList };
+    const jsonData = { mode: 'update', data: rowData, key: pkeyList };
     send(tableName, jsonData, onloadUpdateRow, errorUpdateRow);
   }
 }
 //Row update succeeded(callback)
 function onloadUpdateRow(xhr) {
   try {
-    var dataList = JSON.parse(xhr.responseText);
-    if (dataList['error'] != null) {
+    const dataList = JSON.parse(xhr.responseText);
+    if (dataList.error != null) {
       // Error code
-      showErrorMessageList(dataList['error']);
+      showErrorMessageList(dataList.error);
     } else {
       // Initialize the primary key list
       pkeyList = {};
@@ -363,10 +358,10 @@ function onloadUpdateRow(xhr) {
 
       showTable(dataList);
       //Show the message
-      $('#submitMessage').append('<div>' + getMessage(MESSAGE_UPDATE) + '</div>');
+      $('#submitMessage').append(`<div>${getMessage(MESSAGE_UPDATE)}</div>`);
     }
   } catch (e) {
-    $('#submitMessage').append("<div class='error'>" + e + ':' + xhr.responseText + '</div>');
+    $('#submitMessage').append(`<div class='error'>${e}:${xhr.responseText}</div>`);
   }
 }
 //Row update error(callback)
@@ -378,7 +373,7 @@ function errorUpdateRow(status) {
 
 // DELETE button click
 function clickDeleteButton() {
-  if (Object.keys(pkeyList).length == 0) {
+  if (Object.keys(pkeyList).length === 0) {
     // Clear the message
     $('#submitMessage').empty();
     //$("#submitMessage").append("<div class='error'>"+ getErrorMessage(ERROR_UNSELECTED) +"</div>");
@@ -393,20 +388,16 @@ function deleteRow() {
   // Clear the message
   $('#submitMessage').empty();
 
-  var isError = false;
-
-  if (!isError) {
-    var jsonData = { mode: 'delete', key: pkeyList };
-    send(tableName, jsonData, onloadDeleteRow, errorDeleteRow);
-  }
+  const jsonData = { mode: 'delete', key: pkeyList };
+  send(tableName, jsonData, onloadDeleteRow, errorDeleteRow);
 }
 //Row deletion succeeded(callback)
 function onloadDeleteRow(xhr) {
   try {
-    var dataList = JSON.parse(xhr.responseText);
-    if (dataList['error'] != null) {
+    const dataList = JSON.parse(xhr.responseText);
+    if (dataList.error != null) {
       // Error code
-      showErrorMessageList(dataList['error']);
+      showErrorMessageList(dataList.error);
     } else {
       // Initialize the primary key list
       pkeyList = {};
@@ -420,10 +411,10 @@ function onloadDeleteRow(xhr) {
 
       showTable(dataList);
       //Show the message
-      $('#submitMessage').append('<div>' + getMessage(MESSAGE_DELETE) + '</div>');
+      $('#submitMessage').append(`<div>${getMessage(MESSAGE_DELETE)}</div>`);
     }
   } catch (e) {
-    $('#submitMessage').append("<div class='error'>" + e + ':' + xhr.responseText + '</div>');
+    $('#submitMessage').append(`<div class='error'>${e}:${xhr.responseText}</div>`);
   }
 }
 //Row deletion error(callback)
@@ -455,32 +446,30 @@ function showDialog(message, okCallback, cancelCallback) {
 
 // Show the dialog to acquire a key
 function showFindKeyDialog() {
-  var findTableName = $(this).attr('name');
-  var skeyList = {};
-  var dialogName = '#l_' + findTableName;
+  const findTableName = $(this).attr('name');
+  const skeyList = {};
+  const dialogName = `#l_${findTableName}`;
   $(dialogName).show();
 
   // Initialize the list box
-  $(dialogName + " input[type='text']")
-    .val('')
-    .addClass($(this).prev().attr('name'));
+  $(`${dialogName} input[type='text']`).val('').addClass($(this).prev().attr('name'));
 
   // OK button click event
-  $(dialogName + " input[name='okBtn']")
+  $(`${dialogName} input[name='okBtn']`)
     .unbind('click')
     .click(function () {
-      var fields = $(dialogName + " input[type='text']");
-      var fieldsNb = fields.length;
-      for (var i = 0; i < fields.length; i++) {
-        var field = $(fields[i]);
-        if (field.val() != '') {
-          if (fieldsNb == 1) {
+      const fields = $(`${dialogName} input[type='text']`);
+      const fieldsNb = fields.length;
+      for (let i = 0; i < fields.length; i++) {
+        const field = $(fields[i]);
+        if (field.val() !== '') {
+          if (fieldsNb === 1) {
             //legacy logic, affect value to field whose name was stored in class attribute (see above)
-            $("#editTable input[name='" + field.attr('class') + "']").val(field.val());
+            $(`#editTable input[name='${field.attr('class')}']`).val(field.val());
           } else {
             //use name of dialog box fields to populate main form fields
-            var fieldName = field.attr('name').substring(2);
-            $("#editTable input[name='" + 'f_' + fieldName + "']").val(field.val());
+            const fieldName = field.attr('name').substring(2);
+            $(`#editTable input[name='f_${fieldName}']`).val(field.val());
           }
         }
         field.removeClass();
@@ -488,56 +477,56 @@ function showFindKeyDialog() {
       $(this).parents('.dialogArea').hide();
     });
 
-  $(dialogName + ' .tableLoader').show();
-  animateLoader($(dialogName + ' .tableLoader').children('img'));
+  $(`${dialogName} .tableLoader`).show();
+  animateLoader($(`${dialogName} .tableLoader`).children('img'));
 
   //Searching condition
-  $.each($('.s_' + $(this).prev().attr('name').substring(2)), function () {
+  $.each($(`.s_${$(this).prev().attr('name').substring(2)}`), function () {
     skeyList[this.name] = this.value;
   });
 
-  var json = { mode: 'findAll', key: skeyList };
+  const json = { mode: 'findAll', key: skeyList };
   send(findTableName, json, onloadFindKeyDialog, errorFindKeyDialog);
 }
 // Table searching dialog succeeded(callback)
 function onloadFindKeyDialog(xhr, findTableName) {
-  var dialogName = '#l_' + findTableName;
+  const dialogName = `#l_${findTableName}`;
 
   // Hide loader
-  $(dialogName + ' .tableLoader').hide();
+  $(`${dialogName} .tableLoader`).hide();
 
-  var dataList = JSON.parse(xhr.responseText);
-  $(dialogName + ' tr.row').remove();
+  const dataList = JSON.parse(xhr.responseText);
+  $(`${dialogName} tr.row`).remove();
   $.each(dataList, function () {
     //Duplicate table
-    var tr = $(dialogName + ' .dataList tr:first').clone();
+    const tr = $(`${dialogName} .dataList tr:first`).clone();
     tr.attr('id', '');
     tr.addClass('row');
     tr.on('click', clickDialogRow);
     // Write data
     $.each(this, (key, value) => {
-      var td = tr.children('.t_' + key);
+      const td = tr.children(`.t_${key}`);
       td.html(value);
     });
-    tr.appendTo(dialogName + ' table.dataList');
+    tr.appendTo(`${dialogName} table.dataList`);
   });
 }
 // Table searching dialog error(callback)
 function errorFindKeyDialog(status, findTableName) {
   showErrorMessage(status);
   // Hide loader
-  $('#l_' + findTableName + ' .tableLoader').hide();
+  $(`#l_${findTableName} .tableLoader`).hide();
 }
 // Select row in the dialog
 function clickDialogRow() {
   // Change selection state
   $(this).siblings('.selected').removeClass('selected');
   $(this).addClass('selected');
-  var fields = $(this).parents('.dataListDialog').find("input[type='text']");
-  for (var i = 0; i < fields.length; i++) {
-    var field = $(fields[i]);
-    var fieldName = field.attr('name').substring(2);
-    field.val($(this).children('.t_' + fieldName)[0].innerHTML);
+  const fields = $(this).parents('.dataListDialog').find("input[type='text']");
+  for (let i = 0; i < fields.length; i++) {
+    const field = $(fields[i]);
+    const fieldName = field.attr('name').substring(2);
+    field.val($(this).children(`.t_${fieldName}`)[0].innerHTML);
   }
 }
 
@@ -546,19 +535,14 @@ function getMessage(msgId) {
   switch (msgId) {
     case MESSAGE_ADD:
       return 'Row added.';
-      break;
     case MESSAGE_UPDATE_CONFIRM:
       return 'Is it OK to update the row?';
-      break;
     case MESSAGE_UPDATE:
       return 'Row updated.';
-      break;
     case MESSAGE_DELETE_CONFIRM:
       return 'Is it OK to delete the row?';
-      break;
     case MESSAGE_DELETE:
       return 'Row deleted.';
-      break;
   }
 }
 
@@ -567,82 +551,72 @@ function getErrorMessage(errId, fieldId) {
   switch (errId) {
     case ERROR_PATH_FORMAT: // Foramt error(file path)
       return (
-        $('#columnName .t_' + fieldId)[0].innerHTML +
+        $(`#columnName .t_${fieldId}`)[0].innerHTML +
         ' should contain only half-width alphanumeric, hyphen or underscore.'
       );
-      break;
     case ERROR_NUMBER_FORMAT: // Format error(number)
-      if ($('input[name="f_' + fieldId + '"]')[0].max != '') {
+      if ($(`input[name="f_${fieldId}"]`)[0].max !== '') {
         return (
-          $('#columnName .t_' + fieldId)[0].innerHTML +
+          $(`#columnName .t_${fieldId}`)[0].innerHTML +
           ' should be a value between ' +
-          $('input[name="f_' + fieldId + '"]')[0].min +
+          $(`input[name="f_${fieldId}"]`)[0].min +
           ' and ' +
-          $('input[name="f_' + fieldId + '"]')[0].max +
+          $(`input[name="f_${fieldId}"]`)[0].max +
           '.'
         );
       } else {
         return (
-          $('#columnName .t_' + fieldId)[0].innerHTML +
+          $(`#columnName .t_${fieldId}`)[0].innerHTML +
           ' should be a value bigger than ' +
-          $('input[name="f_' + fieldId + '"]')[0].min +
+          $(`input[name="f_${fieldId}"]`)[0].min +
           '.'
         );
       }
-      break;
     case ERROR_ROW_EXISTS: // Key duplication error
-      if (fieldId && fieldId != 'null') {
-        return $('#columnName .t_' + fieldId)[0].innerHTML + ' has already been registered.';
+      if (fieldId && fieldId !== 'null') {
+        return `${$(`#columnName .t_${fieldId}`)[0].innerHTML} has already been registered.`;
       } else {
         return 'Already registered.';
       }
-      break;
     case ERROR_REQUIRED: // Required item absent
-      return $('#columnName .t_' + fieldId)[0].innerHTML + ' is required.';
-      break;
+      return `${$(`#columnName .t_${fieldId}`)[0].innerHTML} is required.`;
     case ERROR_PKEY_CHANGED:
       return 'The key has been changed. Please select again.';
-      break;
     case ERROR_ROW_NOT_EXISTS:
       return 'The specified row does not exist.';
-      break;
     case ERROR_KEY_NOT_EXISTS:
-      return $('#columnName .t_' + fieldId)[0].innerHTML + ' does not exist in the relevant table.';
-      break;
+      return `${$(`#columnName .t_${fieldId}`)[0].innerHTML} does not exist in the relevant table.`;
 
     case ERROR_UNKNOWN_PROTOCOL:
       // Unknow specified image retrieval protocol
-      return $('#columnName .t_' + fieldId)[0].innerHTML + " should be either 'IIP' or 'IIIF' (or null).";
-      break;
+      return `${$(`#columnName .t_${fieldId}`)[0].innerHTML} should be either 'IIP' or 'IIIF' (or null).`;
     case ERROR_UNSELECTED:
       return 'No row has been selected.';
-      break;
 
     case ERROR_OTHER: //Unknow, maybe DB related error
-      return 'Other server error: ' + errId;
-      break;
+      return `Other server error: ${errId}`;
     default:
-      return 'Other error: ' + errId;
+      return `Other error: ${errId}`;
   }
 }
 // Show error list in response
 function showErrorMessageList(errAry) {
   $.each(errAry, (key, value) => {
-    $('#submitMessage').append("<div class='error'>" + getErrorMessage(value, key) + '</div>');
+    $('#submitMessage').append(`<div class='error'>${getErrorMessage(value, key)}</div>`);
   });
 }
 // Show error message in response
 function showErrorMessage(errId, fieldId) {
-  $('#submitMessage').append("<div class='error'>" + getErrorMessage(errId, fieldId) + '</div>');
+  $('#submitMessage').append(`<div class='error'>${getErrorMessage(errId, fieldId)}</div>`);
 }
 
 //Send Json data asynchronously
 function send(table, json, callback, errorCallbck) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', './' + table + '.php');
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `./${table}.php`);
   try {
     xhr.overrideMimeType('text/plain; charset=UTF-8');
-  } catch (e) {
+  } catch (_e) {
     // IE10 and below not supported
     xhr.abort();
     return false;
@@ -660,11 +634,11 @@ function send(table, json, callback, errorCallbck) {
     errorCallbck(TIMEOUT, table);
   }; // Timeout
   xhr.onload = () => {
-    if (xhr.status == '200') {
+    if (xhr.status === '200') {
       // Callback
       callback(xhr, table);
     } else {
-      errorCallbck(xhr.status + ' ' + xhr.statusText, table);
+      errorCallbck(`${xhr.status} ${xhr.statusText}`, table);
     }
   };
 

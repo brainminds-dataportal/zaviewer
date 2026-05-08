@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/useIterableCallbackReturn: Existing collection traversal uses concise return expressions and is preserved during lint cleanup.
 export interface IRegionsPayload {
   regions: IRegion[];
   groupings: { g116: IGroupingDef };
@@ -28,7 +29,7 @@ interface IRegionData {
   regionById: Map<string, IRegion>;
   root: string;
   groupsById: Map<string, IIndexedGroups>;
-  lineage: {};
+  lineage: object;
 }
 
 export interface IRegion {
@@ -89,6 +90,7 @@ export interface IRegionsStatus {
 export type ICallbackWhenChanged = (status: IRegionsStatus) => void;
 
 /** Class in charge of managing regions */
+// biome-ignore lint/complexity/noStaticOnlyClass: RegionsManager is intentionally a static facade for shared atlas-region state.
 class RegionsManager {
   static status: IRegionsStatus;
   private static regionsData: IRegionData;
@@ -137,7 +139,7 @@ class RegionsManager {
       root: root?.abb,
 
       groupsById: new Map(
-        Object.entries(data.groupings).map(([k, v], i) => [
+        Object.entries(data.groupings).map(([k, v], _i) => [
           k,
           {
             name: v.name,
@@ -154,7 +156,7 @@ class RegionsManager {
       const currRegion = that.regionsData.regionById.get(regionId);
       if (currRegion) {
         currRegion.trail = Array.from(trail);
-        if (currRegion.children && currRegion.children.length) {
+        if (currRegion.children?.length) {
           trail.push(regionId);
           currRegion.children.forEach((childId) => addTrailToRegion(childId, trail));
           trail.pop();
@@ -178,7 +180,7 @@ class RegionsManager {
       const regionsAndLeaves = validRegions
         .flatMap((r) => {
           const region = RegionsManager.getRegion(r);
-          return [r, ...(region?.children && region?.children.length ? RegionsManager._getLeafChildrenRegions(r) : [])];
+          return [r, ...(region?.children?.length ? RegionsManager._getLeafChildrenRegions(r) : [])];
         })
         .reverse();
 
@@ -227,7 +229,7 @@ class RegionsManager {
     if (callbackWhenChanged && typeof callbackWhenChanged === 'function') {
       try {
         RegionsManager.listeners.push(callbackWhenChanged);
-      } catch (ex) {}
+      } catch (_ex) {}
     }
   }
 
@@ -248,7 +250,7 @@ class RegionsManager {
   }
 
   static lastActionInitiatedByOther(actionGroupId: string) {
-    return RegionsManager.getLastActionSource() && RegionsManager.getLastActionSource() != actionGroupId;
+    return RegionsManager.getLastActionSource() && RegionsManager.getLastActionSource() !== actionGroupId;
   }
 
   static getGroupings() {
@@ -256,7 +258,7 @@ class RegionsManager {
   }
 
   static getGrouping(groupingScheme: string) {
-    return RegionsManager.regionsData && RegionsManager.regionsData.groupsById.has(groupingScheme)
+    return RegionsManager.regionsData?.groupsById.has(groupingScheme)
       ? RegionsManager.regionsData.groupsById.get(groupingScheme)
       : null;
   }
@@ -285,16 +287,16 @@ class RegionsManager {
     const SAGITTAL = 3;
 
     const region = RegionsManager.getRegion(regionId);
-    let sliceNum;
+    let sliceNum: number | undefined;
     if (hasMultiPlanes) {
       if (activePlane) {
         if (region?.centerSlices) {
           sliceNum =
-            activePlane == AXIAL
+            activePlane === AXIAL
               ? region?.centerSlices?.a
-              : activePlane == CORONAL
+              : activePlane === CORONAL
                 ? region?.centerSlices?.c
-                : activePlane == SAGITTAL
+                : activePlane === SAGITTAL
                   ? region?.centerSlices?.s
                   : undefined;
         }
@@ -316,14 +318,14 @@ class RegionsManager {
   }
 
   static getSelectedRegions(): string[] {
-    if (RegionsManager.status && RegionsManager.status.selected) {
+    if (RegionsManager.status?.selected) {
       return Array.from(RegionsManager.status.selected.values());
     } else {
       return [];
     }
   }
 
-  static _replaceAllSelected(actionGroupId: string, regionIds: string[], includeChildren: boolean) {
+  static _replaceAllSelected(actionGroupId: string, regionIds: string[], _includeChildren: boolean) {
     RegionsManager.status.selected.clear();
     regionIds.forEach((regionId) => {
       RegionsManager.status.selected.add(regionId);
@@ -338,12 +340,12 @@ class RegionsManager {
     RegionsManager._addToSelection(actionGroupId, regionId, includeChildren);
   }
 
-  static _addToSelection(actionGroupId: string, regionId: string, includeChildren: boolean) {
+  static _addToSelection(actionGroupId: string, regionId: string, _includeChildren: boolean) {
     RegionsManager.status.selected.add(regionId);
     RegionsManager.status.lastSelected = regionId;
     //do not change expand/collapse state while an highlighting is locked
     if (!RegionsManager.isHighlightingLocked()) {
-      if (RegionsManager.getLastActionSource() != actionGroupId) {
+      if (RegionsManager.getLastActionSource() !== actionGroupId) {
         RegionsManager._clearHighlighting(actionGroupId);
         RegionsManager._collapseAll();
       }
@@ -353,7 +355,7 @@ class RegionsManager {
     RegionsManager.signalListeners();
   }
 
-  static _unSelect(actionGroupId: string, regionId: string, includeChildren: boolean) {
+  static _unSelect(actionGroupId: string, regionId: string, _includeChildren: boolean) {
     RegionsManager.status.selected.delete(regionId);
     RegionsManager.status.lastSelected = Array.from(RegionsManager.status.selected).pop();
     RegionsManager._setLastActionSource(actionGroupId);
@@ -385,7 +387,7 @@ class RegionsManager {
 
   static _expandFromRootTo(regionId: string) {
     const region = RegionsManager.getRegion(regionId);
-    if (region && region.trail) {
+    if (region?.trail) {
       region.trail.forEach((ancestorId) => RegionsManager.status.expanded.set(ancestorId, true));
     }
   }
@@ -406,7 +408,7 @@ class RegionsManager {
 
   static _collapseAll() {
     if (RegionsManager.regionsData) {
-      RegionsManager.regionsData.regionById.forEach((region, regionId) =>
+      RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
         RegionsManager.status.expanded.set(regionId, false),
       );
     }
@@ -429,7 +431,7 @@ class RegionsManager {
 
   static _getLeafChildrenRegions(regionId: string): string[] {
     const region = RegionsManager.getRegion(regionId);
-    if (region?.children && region?.children.length) {
+    if (region?.children?.length) {
       return region.children.flatMap((childId) => RegionsManager._getLeafChildrenRegions(childId));
     } else {
       return [regionId];
@@ -468,7 +470,7 @@ class RegionsManager {
     RegionsManager.highlightingLocked = false;
   }
 
-  static _clearHighlighting(actionGroupId: string) {
+  static _clearHighlighting(_actionGroupId: string) {
     if (!RegionsManager.isHighlightingLocked()) {
       RegionsManager.status.highlighted.clear();
       RegionsManager.status.filtered.clear();
@@ -491,18 +493,15 @@ class RegionsManager {
         const patternupper = pattern.toUpperCase();
 
         /** highlight regions that match the pattern */
-        RegionsManager.regionsData.regionById.forEach((region, regionId) => {
-          if (
-            (region.nameupper && region.nameupper.includes(patternupper)) ||
-            (region.abbupper && region.abbupper.includes(patternupper))
-          ) {
+        RegionsManager.regionsData.regionById.forEach((region, _regionId) => {
+          if (region.nameupper?.includes(patternupper) || region.abbupper?.includes(patternupper)) {
             RegionsManager.status.highlighted.add(region.abb);
           }
         });
         /** filtered region needed in the tree to display the highlighted ones */
         RegionsManager.status.highlighted.forEach((highId) => {
           //TODO optimize: iterate from leaf to root, stop as soon as a region is already filtered cos its ancestor are also
-          if (RegionsManager.regionsData && RegionsManager.regionsData.regionById.has(highId)) {
+          if (RegionsManager.regionsData?.regionById.has(highId)) {
             RegionsManager.regionsData?.regionById?.get(highId)?.trail?.forEach((regionId) => {
               if (!RegionsManager.status.highlighted.has(regionId)) {
                 RegionsManager.status.filtered.add(regionId);
@@ -512,7 +511,7 @@ class RegionsManager {
         });
 
         /** reset all node to expanded */
-        RegionsManager.regionsData.regionById.forEach((region, regionId) =>
+        RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
           RegionsManager.status.expanded.set(regionId, true),
         );
 
@@ -533,8 +532,8 @@ class RegionsManager {
       RegionsManager._unlockHighlighting();
       RegionsManager.status.highlightedGrouping = scheme;
       const regionInGrouping: string[] = [];
-      RegionsManager.regionsData.regionById.forEach((region, regionId) => {
-        if (region.groups && region.groups[scheme]) {
+      RegionsManager.regionsData.regionById.forEach((region, _regionId) => {
+        if (region.groups?.[scheme]) {
           regionInGrouping.push(region.abb);
         }
       });
@@ -548,7 +547,7 @@ class RegionsManager {
   }
 
   static isAutoHighlightingOn() {
-    return RegionsManager.status && RegionsManager.status.autoHighlightingOn;
+    return RegionsManager.status?.autoHighlightingOn;
   }
 
   static _toggleAutoHighlighting(actionGroupId: string) {
@@ -600,7 +599,7 @@ class RegionsManager {
         }, RegionsManager);
 
         /** reset all node to expanded */
-        RegionsManager.regionsData.regionById.forEach((region, regionId) =>
+        RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
           RegionsManager.status.expanded.set(regionId, true),
         );
 
@@ -736,18 +735,25 @@ export default RegionsManager;
 // be triggered. The function will be called after it stops being called for
 // N milliseconds. If `immediate` is passed, trigger the function on the
 // leading edge, instead of the trailing.
-function debounce(func: (...args: any[]) => any, wait: number, immediate: boolean) {
-  let timeout: NodeJS.Timeout;
-  return function () {
-    var args = arguments;
-    var later = () => {
+function debounce<TArgs extends unknown[], TResult>(
+  func: (...args: TArgs) => TResult,
+  wait: number,
+  immediate: boolean,
+) {
+  let timeout: NodeJS.Timeout | null = null;
+  return function (this: unknown, ...args: TArgs) {
+    const later = () => {
       timeout = null;
-      if (!immediate) func.apply(this, args);
+      if (!immediate) {
+        func.apply(this, args);
+      }
     };
-    var callNow = immediate && !timeout;
+    const callNow = immediate && !timeout;
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
-    if (callNow) func.apply(this, args);
+    if (callNow) {
+      func.apply(this, args);
+    }
   };
 }
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

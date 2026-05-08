@@ -1,13 +1,11 @@
-// @ts-nocheck
-import _ from 'underscore';
+// biome-ignore-all lint/suspicious/useIterableCallbackReturn: This legacy configuration loader intentionally uses concise callback returns in chained collection operations.
 
 import axios from 'axios';
-import LabelMapper from './LabelMapper';
-
+import _ from 'underscore';
 import { getJson, getOptionalJson, getText, postFormJson } from './common/http';
-import Utils from './Utils';
-
+import LabelMapper from './LabelMapper';
 import UserSettings from './UserSettings';
+import Utils from './Utils';
 
 import ExtraConfig from './ZAVConfig.json';
 
@@ -69,19 +67,19 @@ class ZAVConfig {
   }
 
   static getPlaneOrthoVertical(plane) {
-    return PLANE_ORTHOG[plane]['v'];
+    return PLANE_ORTHOG[plane].v;
   }
 
   static getPlaneOrthoHorizontal(plane) {
-    return PLANE_ORTHOG[plane]['h'];
+    return PLANE_ORTHOG[plane].h;
   }
 
   static getPlaneVerticalAxis(plane) {
-    return PLANE_AXIS[plane]['v'];
+    return PLANE_AXIS[plane].v;
   }
 
   static getPlaneHorizontalAxis(plane) {
-    return PLANE_AXIS[plane]['h'];
+    return PLANE_AXIS[plane].h;
   }
 
   static getPreferredSubviewForPlane(plane) {
@@ -206,9 +204,9 @@ class ZAVConfig {
             ? Utils.makePath(
                 this.PUBLISH_PATH,
                 this.treeUrlPath,
-                'regionTreeGroup_' + this.viewerId + '.json' + this.dataVersionTag,
+                `regionTreeGroup_${this.viewerId}.json${this.dataVersionTag}`,
               )
-            : this.resolveSimpleUrl(Utils.makePath(this.treeUrlPath, 'regionTree.json' + this.dataVersionTag))
+            : this.resolveSimpleUrl(Utils.makePath(this.treeUrlPath, `regionTree.json${this.dataVersionTag}`))
           : this.fallbackTreeUrl;
       },
 
@@ -373,7 +371,7 @@ class ZAVConfig {
             var datasetIndex = {}; // Save index of "key" in dataset
             */
 
-      this.config.hasCOSource = dataSrc ? true : false;
+      this.config.hasCOSource = !!dataSrc;
       this.config.baseConfigPath = this.config.hasCOSource ? dataSrc + (dataSrc.endsWith('/') ? '' : '/') : '';
 
       this.config.dataRootPath = this.config.resolveSimpleUrl('data');
@@ -385,7 +383,7 @@ class ZAVConfig {
       this.config.fallbackExtension = 'dzi';
 
       /** URL path to the default tree region */
-      this.config.fallbackTreeUrl = this.config.resolveSimpleUrl('regionTree.json' + (dataVersionTag || ''));
+      this.config.fallbackTreeUrl = this.config.resolveSimpleUrl(`regionTree.json${dataVersionTag || ''}`);
     }
 
     if (Object.keys(ExtraConfig).length) {
@@ -401,8 +399,8 @@ class ZAVConfig {
   }
 
   expandDatasetImagesUrl = (data, config) => {
-    data.thumbnailUrl = config.imageBaseUrl + '/' + config.thumbnailsFolder + '/' + data.thumbnail;
-    data.snapshotUrl = config.imageBaseUrl + '/' + config.snapshotsFolder + '/' + data.snapshot;
+    data.thumbnailUrl = `${config.imageBaseUrl}/${config.thumbnailsFolder}/${data.thumbnail}`;
+    data.snapshotUrl = `${config.imageBaseUrl}/${config.snapshotsFolder}/${data.snapshot}`;
     return data;
   };
 
@@ -433,7 +431,7 @@ class ZAVConfig {
         if (this.config.fmDatasetsInfoUrl) {
           void getJson(this.config.fmDatasetsInfoUrl)
             .then((datasetData) => {
-              if (datasetData.datasets && datasetData.datasets.length) {
+              if (datasetData.datasets?.length) {
                 const dataset_info = _.findWhere(datasetData.datasets, { marmosetID: this.config.datasetId });
                 if (dataset_info) {
                   this.config.dataset_info = this.expandDatasetImagesUrl(dataset_info, datasetData.config);
@@ -453,16 +451,16 @@ class ZAVConfig {
           id: this.config.viewerId,
         })
           .then((imageGroupListData) => {
-            if (!imageGroupListData['error']) {
+            if (!imageGroupListData.error) {
               this.config.imageGroupListData = imageGroupListData;
-              Object.entries(imageGroupListData).forEach(([key, value]) => {
-                this.config.editLayers[value['publish_id']] = {
-                  name: value['display_name'],
-                  ext: '.' + value['extension'],
+              Object.entries(imageGroupListData).forEach(([_key, value]) => {
+                this.config.editLayers[value.publish_id] = {
+                  name: value.display_name,
+                  ext: `.${value.extension}`,
                 };
               });
             } else {
-              this.config.imageGroupListError = imageGroupListData['error'];
+              this.config.imageGroupListError = imageGroupListData.error;
             }
           })
           .catch(() => {
@@ -546,7 +544,7 @@ class ZAVConfig {
     const nbDefinedPlanes = this.config.hasAxialPlane + this.config.hasCoronalPlane + this.config.hasSagittalPlane;
     this.config.hasMultiPlanes = nbDefinedPlanes > 1;
     //if no plane explicitely specified
-    if (nbDefinedPlanes == 0) {
+    if (nbDefinedPlanes === 0) {
       this.config.hasCoronalPlane = true;
     }
 
@@ -636,7 +634,7 @@ class ZAVConfig {
       }
     }
 
-    if (response.atlases && response.atlases.length) {
+    if (response.atlases?.length) {
       this.config.atlases = response.atlases;
       this.config.setSelectedAtlas(0);
       this.config.hasDelineation = true;
@@ -701,7 +699,7 @@ class ZAVConfig {
 
       Object.entries(response.data).forEach(([key, value], i) => {
         // only firstLayer when running with a backend
-        if (this.config.hasBackend && i == 0) {
+        if (this.config.hasBackend && i === 0) {
           //showInfoText(key);
           this.config.infoTextName = value.metadata;
 
@@ -731,7 +729,7 @@ class ZAVConfig {
 
         this.config.layers[key] = {
           name: value.metadata,
-          ext: '.' + (value.extension || this.config.fallbackExtension),
+          ext: `.${value.extension || this.config.fallbackExtension}`,
           index: i,
           key: key,
           protocol: value.protocol,
@@ -745,14 +743,11 @@ class ZAVConfig {
           case PLANE_NAMES[AXIAL]:
             this.config.firstActivePlane = AXIAL;
             break;
-
-          case PLANE_NAMES[CORONAL]:
-          default:
-            this.config.firstActivePlane = CORONAL;
-            break;
-
           case PLANE_NAMES[SAGITTAL]:
             this.config.firstActivePlane = SAGITTAL;
+            break;
+          default:
+            this.config.firstActivePlane = CORONAL;
             break;
         }
       } else {
@@ -904,7 +899,7 @@ class ZAVConfig {
     if (response.branding) {
       this.config.branding = response.branding;
     }
-    if (response.volume && response.volume.url) {
+    if (response.volume?.url) {
       this.config.volumeUrl = response.volume.url;
     }
 

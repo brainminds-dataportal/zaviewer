@@ -1,4 +1,6 @@
-// @ts-nocheck
+// biome-ignore-all lint/a11y/noStaticElementInteractions: The composed viewer shell still uses legacy clickable container elements that require a larger component refactor.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard support for those legacy container controls is deferred to a focused accessibility pass.
+// biome-ignore-all lint/suspicious/noArrayIndexKey: Stable viewer branding fragments are currently rendered from fixed-order text splits in legacy UI code.
 
 import {
   Classes,
@@ -39,7 +41,6 @@ class TitledCard extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      isOpen: true,
       isCollapsible: props.collapsed || Boolean(props.isCollapsible),
       isOpen: !props.collapsed,
     };
@@ -175,7 +176,7 @@ class ViewerComposed extends React.Component {
     ViewerManager.init(
       this.props.config,
       (osdstatus) => {
-        this.setState((state) => ({ ...osdstatus }));
+        this.setState((_state) => ({ ...osdstatus }));
       },
       this.props.history,
     );
@@ -199,33 +200,30 @@ class ViewerComposed extends React.Component {
   render() {
     const classes = classNames(Classes.CARD, Classes.ELEVATION_4);
 
-    const datasetDetails =
-      this.props.config && this.props.config.dataset_info ? (
-        <div className="zav-QuickDatasetInfoButton">
-          <PopoverNext
-            content={
-              <div style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
-                <MetadataView infoDataset={this.props.config.dataset_info} includeThumbnail={true} />
-              </div>
-            }
-            placement={popoverPositionToNextPlacement(Position.LEFT)}
-            interactionKind={PopoverInteractionKind.HOVER}
-          >
-            <div title="display dataset informations" className="zav-TitledCardButton">
-              <Icon icon="info-sign" color="#FFF" />
+    const datasetDetails = this.props.config?.dataset_info ? (
+      <div className="zav-QuickDatasetInfoButton">
+        <PopoverNext
+          content={
+            <div style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
+              <MetadataView infoDataset={this.props.config.dataset_info} includeThumbnail={true} />
             </div>
-          </PopoverNext>
-        </div>
-      ) : null;
+          }
+          placement={popoverPositionToNextPlacement(Position.LEFT)}
+          interactionKind={PopoverInteractionKind.HOVER}
+        >
+          <div title="display dataset informations" className="zav-TitledCardButton">
+            <Icon icon="info-sign" color="#FFF" />
+          </div>
+        </PopoverNext>
+      </div>
+    ) : null;
 
-    const globalHeaderText =
-      `${this.props.config && this.props.config.datasetId ? `${this.props.config.datasetId} — ` : ''}Global view`;
-    const globalDatasetVersion =
-      this.props.config && this.props.config.datasetVersion ? (
-        <a href={this.props.config.datasetVersion.uri} target="_blank" rel="noopener">
-          {this.props.config.datasetVersion.label}
-        </a>
-      ) : null;
+    const globalHeaderText = `${this.props.config?.datasetId ? `${this.props.config.datasetId} — ` : ''}Global view`;
+    const globalDatasetVersion = this.props.config?.datasetVersion ? (
+      <a href={this.props.config.datasetVersion.uri} target="_blank" rel="noopener">
+        {this.props.config.datasetVersion.label}
+      </a>
+    ) : null;
 
     const globalHeader = (
       <>
@@ -267,14 +265,13 @@ class ViewerComposed extends React.Component {
     }
 
     //url of repo from where source images can be retrieved
-    const ginRepoBaseUrl =
-      this.props.config && this.props.config.dataset_info ? this.props.config.dataset_info.ginRepoBaseUrl : null;
+    const ginRepoBaseUrl = this.props.config?.dataset_info ? this.props.config.dataset_info.ginRepoBaseUrl : null;
     const layerFolderMap = ginRepoBaseUrl ? this.props.config.dataset_info.layerFolderMap : null;
 
     return (
       <HotkeysTarget2 hotkeys={this.hotkeys}>
         <div style={{ height: '100%' }}>
-          <BrandingMark brandingInfo={this.props.config && this.props.config.branding} />
+          <BrandingMark brandingInfo={this.props.config?.branding} />
 
           <div className="zav-StatusBar">
             <div
@@ -319,7 +316,7 @@ class ViewerComposed extends React.Component {
             onExpandCollapse={this.onToolbarExpandCollapse.bind(this)}
             quickactions={
               <QuickActionButtons
-                hasDelineation={this.props.config && this.props.config.hasDelineation}
+                hasDelineation={this.props.config?.hasDelineation}
                 displaySettings={this.state.layerDisplaySettings}
                 showRegions={this.state.showRegions}
                 activePlane={this.state.activePlane}
@@ -378,7 +375,7 @@ class ViewerComposed extends React.Component {
 
             <TitledCard className="zav-controlPanel_Layers" header={'Layers control'} isCollapsible={true}>
               <SliderNavigatorPanel
-                hasDelineation={this.props.config && this.props.config.hasDelineation}
+                hasDelineation={this.props.config?.hasDelineation}
                 displaySettings={this.state.layerDisplaySettings}
                 ginRepoBaseUrl={ginRepoBaseUrl}
                 layerFolderMap={layerFolderMap}
@@ -392,7 +389,7 @@ class ViewerComposed extends React.Component {
               </TitledCard>
             ) : null}
 
-            {this.props.config && this.props.config.hasDelineation ? (
+            {this.props.config?.hasDelineation ? (
               <TitledCard className="zav-controlPanel_Regions" header={'Atlas regions'} isCollapsible={true}>
                 <RegionOptions
                   currentAtlas={this.props.config.currentAtlas}
@@ -432,7 +429,7 @@ class ViewerComposed extends React.Component {
               </TitledCard>
             ) : null}
 
-            {this.props.config && this.props.config.matrix ? (
+            {this.props.config?.matrix ? (
               <TitledCard
                 className="zav-controlPanel_Distance"
                 header={'Distance measurement'}
@@ -457,7 +454,7 @@ class ViewerComposed extends React.Component {
     if (isExpanded) {
       ViewerManager.refreshNavigator();
     }
-    this.setState((state) => ({ isToolbarExpanded: isExpanded }));
+    this.setState((_state) => ({ isToolbarExpanded: isExpanded }));
   }
 }
 

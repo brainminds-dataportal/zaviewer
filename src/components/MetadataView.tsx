@@ -1,6 +1,5 @@
-import * as React from 'react';
-
 import { Button } from '@blueprintjs/core';
+import * as React from 'react';
 
 import type * as TracInj from '../common/Types';
 
@@ -35,7 +34,7 @@ type MetadataViewProps = {
 };
 
 const MetadataView = (props: MetadataViewProps) => {
-  const downloadLink = React.useRef(null);
+  const downloadLink = React.useRef<HTMLAnchorElement>(null);
   const infoDataset = props.infoDataset;
   const { layers, thumbnail, thumbnailUrl, snapshot, snapshotUrl, zaviewerID, ...metadata } = infoDataset;
   return (
@@ -55,10 +54,12 @@ const MetadataView = (props: MetadataViewProps) => {
             {/* using hidden anchor here (instead of AnchorButton) just to avoid displaying data url on the status bar... */}
             <a
               ref={downloadLink}
-              style={{ display: 'hidden' }}
-              href={'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(metadata))}
-              download={metadata.marmosetID + '_metadata.json'}
-            />
+              style={{ display: 'none' }}
+              href={`data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(metadata))}`}
+              download={`${metadata.marmosetID}_metadata.json`}
+            >
+              Download metadata
+            </a>
             <Button
               icon="import"
               title="Download metadata"
@@ -79,6 +80,7 @@ const MetadataView = (props: MetadataViewProps) => {
                   <img
                     src={infoDataset.thumbnailUrl}
                     width={250}
+                    alt="Tracer signal thumbnail"
                     onLoad={(event) => console.info('loaded ', event)}
                     style={{
                       justifySelf: 'right',
@@ -111,7 +113,7 @@ const MetadataView = (props: MetadataViewProps) => {
             <PropLabel label={'Dissected brain snapshot'} />
           </span>
           <div style={{ padding: 1, gridColumn: '1 / span 2' }}>
-            <img style={{ width: '100%' }} src={infoDataset.snapshotUrl} />
+            <img style={{ width: '100%' }} src={infoDataset.snapshotUrl} alt="Dissected brain snapshot" />
           </div>
           <PropSpacer />
           <span className="tiv_proplabelcell">
@@ -120,13 +122,13 @@ const MetadataView = (props: MetadataViewProps) => {
           {infoDataset.tracers.map((tracerInfo) => (
             <React.Fragment key={tracerInfo.tracerNum}>
               {/*<PropRenderer key={tracerInfo.tracerNum+"num"} label="#" value={tracerInfo.tracerNum} />*/}
-              <PropRenderer key={tracerInfo.tracerNum + 'tracer'} label="Tracer" value={tracerInfo.tracer} />
-              <PropRenderer key={tracerInfo.tracerNum + 'site'} label="Injection Site" value={tracerInfo.injSite} />
-              <PropRenderer key={tracerInfo.tracerNum + 'dir'} label="Direction" value={tracerInfo.direction} />
-              <PropRenderer key={tracerInfo.tracerNum + 'meth'} label="Method" value={tracerInfo.method} />
-              <PropRenderer key={tracerInfo.tracerNum + 'fluo'} label="Fluorescense" value={tracerInfo.fluorescense} />
-              <PropRenderer key={tracerInfo.tracerNum + 'com'} label="Comment" value={tracerInfo.comment} />
-              <PropSpacer key={tracerInfo.tracerNum + 'spacer'} />
+              <PropRenderer key={`${tracerInfo.tracerNum}tracer`} label="Tracer" value={tracerInfo.tracer} />
+              <PropRenderer key={`${tracerInfo.tracerNum}site`} label="Injection Site" value={tracerInfo.injSite} />
+              <PropRenderer key={`${tracerInfo.tracerNum}dir`} label="Direction" value={tracerInfo.direction} />
+              <PropRenderer key={`${tracerInfo.tracerNum}meth`} label="Method" value={tracerInfo.method} />
+              <PropRenderer key={`${tracerInfo.tracerNum}fluo`} label="Fluorescense" value={tracerInfo.fluorescense} />
+              <PropRenderer key={`${tracerInfo.tracerNum}com`} label="Comment" value={tracerInfo.comment} />
+              <PropSpacer key={`${tracerInfo.tracerNum}spacer`} />
             </React.Fragment>
           ))}
         </>

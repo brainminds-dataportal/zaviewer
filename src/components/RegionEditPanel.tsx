@@ -1,5 +1,5 @@
-// @ts-nocheck
-import React from 'react';
+// biome-ignore-all lint/a11y/noStaticElementInteractions: This legacy region-editing panel uses clickable layout elements that need a broader component refactor to replace safely.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard equivalents for the legacy region-editing controls are deferred to a dedicated accessibility pass.
 
 import {
   Alignment,
@@ -9,11 +9,12 @@ import {
   Menu,
   MenuDivider,
   MenuItem,
-  PopoverNext,
   PopoverInteractionKind,
+  PopoverNext,
   Slider,
   Switch,
 } from '@blueprintjs/core';
+import React from 'react';
 
 import { HexColorPicker } from 'react-colorful';
 
@@ -55,9 +56,9 @@ class RegionGrid extends React.Component {
           }}
         >
           {regionsInfo.map((ri) => (
-            <React.Fragment key={'frg-' + ri.pathId}>
+            <React.Fragment key={`frg-${ri.pathId}`}>
               <div
-                key={'lbl-' + ri.pathId}
+                key={`lbl-${ri.pathId}`}
                 className="zav-regiongrid-item zav-regiongrid-label"
                 onClick={this.onSelectClick.bind(this, ri)}
                 onDoubleClick={this.onCenterClick.bind(this, ri)}
@@ -65,7 +66,7 @@ class RegionGrid extends React.Component {
                 {ri.pathId}
               </div>
               <div
-                key={'clr-' + ri.pathId}
+                key={`clr-${ri.pathId}`}
                 className="zav-regiongrid-item zav-regiongrid-color"
                 onClick={this.onStartEditClick.bind(this, ri)}
               >
@@ -84,7 +85,7 @@ class RegionGrid extends React.Component {
             padding: '2px 6px',
           }}
         >
-          {'Nb regions: ' + regionsInfo.length}
+          {`Nb regions: ${regionsInfo.length}`}
         </div>
       </div>
     );
@@ -106,10 +107,6 @@ class RegionGrid extends React.Component {
 }
 
 class RegionEditPanel extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     const editingTools = {
       pen: { toolid: 'pen', icon: 'draw', title: 'tool to extend region' },
@@ -170,7 +167,7 @@ class RegionEditPanel extends React.Component {
               checked={isEditing}
               alignIndicator={Alignment.RIGHT}
               disabled={!isEditing && !displayedPathId}
-              onChange={(e) => {
+              onChange={(_e) => {
                 if (isEditing) {
                   ViewerManager.stopEditingRegion();
                 } else {
@@ -251,13 +248,13 @@ class RegionEditPanel extends React.Component {
                   <MenuItem
                     icon="document"
                     text="Create an empty region container"
-                    onClick={(e) => ViewerManager.createSVGForRegions()}
+                    onClick={(_e) => ViewerManager.createSVGForRegions()}
                   />
                   <MenuDivider />
                   <MenuItem
                     icon="new-drawing"
                     text="Create a new region"
-                    onClick={(e) => ViewerManager.createPathForRegion('NEW_REGION', '#F00', '#0F0')}
+                    onClick={(_e) => ViewerManager.createPathForRegion('NEW_REGION', '#F00', '#0F0')}
                   />
                 </Menu>
               }
@@ -279,7 +276,7 @@ class RegionEditPanel extends React.Component {
                       key={tool.toolid}
                       icon={tool.icon}
                       text={tool.title}
-                      onClick={(e) => ViewerManager.changeEditingTool(tool.toolid)}
+                      onClick={(_e) => ViewerManager.changeEditingTool(tool.toolid)}
                     />
                   ))}
                 </Menu>
@@ -318,7 +315,7 @@ class RegionEditPanel extends React.Component {
             disabled={!isEditing}
             title="Simplify current region"
             outlined={true}
-            onClick={(e) => ViewerManager.simplifyEditedRegion()}
+            onClick={(_e) => ViewerManager.simplifyEditedRegion()}
           />
         </div>
       </div>

@@ -95,10 +95,12 @@ table.dataList {
 table.dataList hr {
   margin: 0;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: This legacy stylesheet keeps edit-table rules earlier for readability across the admin screens. */
 table.dataList tr:first-child td {
   padding: 3px 3px 0 3px;
   min-width: 100px;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: This legacy stylesheet keeps edit-table rules earlier for readability across the admin screens. */
 table.dataList tr:nth-child(n + 3) td {
   padding: 4px;
 }
@@ -211,12 +213,14 @@ div.dataListDialog {
   height: 100%;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: Dialog layout rules intentionally stay grouped below message styles in this shared legacy stylesheet. */
 div.dataListDialog > div {
   text-align: center;
   vertical-align: middle;
   display: table-cell;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: Dialog layout rules intentionally stay grouped below message styles in this shared legacy stylesheet. */
 div.dataListDialog > div > div {
   display: inline-block;
   background-color: #fff;
@@ -234,11 +238,9 @@ div.dataListDialog table.dataList {
   display: block;
   padding-bottom: 10px;
   background-color: #eee;
-  max-width: -webkit-calc(100vw - 40px);
   max-width: calc(100vw - 40px);
   overflow-x: auto;
   -ms-overflow-x: scroll;
-  max-height: -webkit-calc(100vh - 80px);
   max-height: calc(100vh - 80px);
   overflow-y: scroll;
   -ms-overflow-y: scroll;

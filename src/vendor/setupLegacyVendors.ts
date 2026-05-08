@@ -1,5 +1,5 @@
 import OpenSeadragon from "openseadragon";
-import "openseadragon-filtering";
+import "./openseadragon-filtering-compat";
 import "@openseadragon-imaging/openseadragon-viewerinputhook";
 
 type LegacyWindow = Window &

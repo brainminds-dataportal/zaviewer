@@ -1,5 +1,9 @@
 import axios from "axios";
 
+export function isNotFoundError(error: unknown) {
+  return axios.isAxiosError(error) && error.response?.status === 404;
+}
+
 export async function getJson(url: string) {
   const response = await axios.get(url);
   return response.data;

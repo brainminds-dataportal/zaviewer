@@ -5,15 +5,13 @@ import { HexColorPicker } from "react-colorful";
 
 import {
     Icon,
+    PopoverNext,
+    PopoverInteractionKind,
     Position,
     Slider,
     Switch,
+    popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
-
-import {
-    Popover2InteractionKind,
-    Popover2
-} from "@blueprintjs/popover2";
 
 import ViewerManager from '../ViewerManager'
 
@@ -30,10 +28,11 @@ const BorderSettingsWrapper = (props: {
 
     const disabled = !props.useCustomBorders;
     return (
-        <Popover2
-            interactionKind={Popover2InteractionKind.CLICK}
-            position={Position.BOTTOM_RIGHT}
+        <PopoverNext
+            interactionKind={PopoverInteractionKind.CLICK}
+            placement={popoverPositionToNextPlacement(Position.BOTTOM_RIGHT)}
             hasBackdrop={true}
+            shouldReturnFocusOnClose={false}
 
             onClosed={() => {
                 ViewerManager.changeCustomBorderColor(color);
@@ -129,7 +128,7 @@ const BorderSettingsWrapper = (props: {
             }
         >
             {props.children}
-        </Popover2>
+        </PopoverNext>
 
     );
 };

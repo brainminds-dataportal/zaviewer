@@ -6,15 +6,13 @@ import _ from 'underscore';
 import {
     AnchorButton,
     Icon,
+    PopoverNext,
+    PopoverInteractionKind,
     Position,
     Slider,
-    Switch
+    Switch,
+    popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
-
-import {
-    Popover2InteractionKind,
-    Popover2
-} from "@blueprintjs/popover2";
 
 
 import ViewerManager from '../ViewerManager'
@@ -41,25 +39,57 @@ class QuickActionButtons extends React.Component {
 
     constructor(props) {
         super(props);
+        this.state = { displayedSlice: this.getCurrentSliceFromProps(props), isDraggingSlice: false };
         this.handleClickHideShow = this.handleClickHideShow.bind(this);
+        this.handleSliceChange = this.handleSliceChange.bind(this);
+        this.handleSliceRelease = this.handleSliceRelease.bind(this);
+        this.endSliceSliderInteraction = this.endSliceSliderInteraction.bind(this);
         this.onShiftToSlice = this.onShiftToSlice.bind(this);
         this.onGoToSlice = this.onGoToSlice.bind(this);
+    }
+
+    componentDidUpdate(prevProps) {
+        const prevSlice = this.getCurrentSliceFromProps(prevProps);
+        const nextSlice = this.getCurrentSliceFromProps(this.props);
+        if (!this.state.isDraggingSlice && prevSlice !== nextSlice && this.state.displayedSlice !== nextSlice) {
+            this.setState({ displayedSlice: nextSlice });
+        }
+    }
+
+    componentWillUnmount() {
+        this.endSliceSliderInteraction();
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return nextProps.activePlane !== this.props.activePlane
+            || nextProps.chosenSlice !== this.props.chosenSlice
+            || nextProps.config !== this.props.config
+            || nextProps.showRegions !== this.props.showRegions
+            || nextProps.hasDelineation !== this.props.hasDelineation
+            || nextProps.displaySettings !== this.props.displaySettings
+            || nextProps.tourMenu !== this.props.tourMenu
+            || nextState.displayedSlice !== this.state.displayedSlice
+            || nextState.isDraggingSlice !== this.state.isDraggingSlice;
     }
 
     render() {
 
         const tracerLayer = _.findWhere(this.props.displaySettings, { isTracer: true });
+        const showRegions = Boolean(this.props.showRegions);
+        const tracerLayerEnabled = Boolean(tracerLayer?.enabled);
+        const tracerLayerOpacity = Number.isFinite(tracerLayer?.opacity) ? tracerLayer.opacity : 0;
 
-        const currentSlice = this.props.chosenSlice;
-        const maxSliceNum = this.props.config ? ViewerManager.getPlaneSlideCount(this.props.activePlane) - 1 : 1000;
-        const sliceStep = this.props.config ? ViewerManager.getPlaneSliceStep(this.props.activePlane) : 1;
-
+        const rawCurrentSlice = this.getCurrentSliceFromProps(this.props);
+        const planeSlideCount = this.props.config ? ViewerManager.getPlaneSlideCount(this.props.activePlane) : 1001;
+        const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+        const currentSlice = Math.min(Math.max(rawCurrentSlice, 0), maxSliceNum);
+        const displayedSlice = Math.min(Math.max(Number.isFinite(this.state.displayedSlice) ? this.state.displayedSlice : currentSlice, 0), maxSliceNum);
         return (
             <>
-                <Popover2
-                    interactionKind={Popover2InteractionKind.HOVER}
+                <PopoverNext
+                    interactionKind={PopoverInteractionKind.HOVER}
                     content={this.props.tourMenu}
-                    position={Position.LEFT_BOTTOM}
+                    placement={popoverPositionToNextPlacement(Position.LEFT_BOTTOM)}
                 >
                     <div
                         title="Help and guided tours!"
@@ -72,12 +102,12 @@ class QuickActionButtons extends React.Component {
                             }}
                         />
                     </div>
-                </Popover2>
+                </PopoverNext>
 
                 {
                     this.props.config && this.props.config.dataset_info
                         ?
-                        <Popover2
+                        <PopoverNext
                             content={
                                 <div
                                     style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
@@ -87,8 +117,8 @@ class QuickActionButtons extends React.Component {
                                     />
                                 </div>
                             }
-                            position={Position.LEFT}
-                            interactionKind={Popover2InteractionKind.HOVER}
+                            placement={popoverPositionToNextPlacement(Position.LEFT)}
+                            interactionKind={PopoverInteractionKind.HOVER}
                         >
                             <div
                                 title="display dataset informations"
@@ -101,7 +131,7 @@ class QuickActionButtons extends React.Component {
                                     }}
                                 />
                             </div>
-                        </Popover2>
+                        </PopoverNext>
                         :
                         null
                 }
@@ -122,7 +152,7 @@ class QuickActionButtons extends React.Component {
                             title="toggle display of regions"
                         >
                             <Switch
-                                checked={this.props.showRegions}
+                                checked={showRegions}
                                 onChange={this.handleClickHideShow} />
                         </div>
                         :
@@ -154,10 +184,10 @@ class QuickActionButtons extends React.Component {
                                 style={{ paddingTop: 14 }}
                             >
 
-                                <Popover2
-                                    interactionKind={Popover2InteractionKind.HOVER}
-                                    position={Position.LEFT}
-                                    boundary="window"
+                                <PopoverNext
+                                    interactionKind={PopoverInteractionKind.HOVER}
+                                    placement={popoverPositionToNextPlacement(Position.LEFT)}
+                                    rootBoundary="viewport"
                                     lazy
                                     content={
                                         <div
@@ -169,17 +199,24 @@ class QuickActionButtons extends React.Component {
                                                 style={{ paddingRight: 10, verticalAlign: "top" }}
                                                 onClick={this.onShiftToSlice.bind(this, -1)}
                                             />
-                                            <Slider
-                                                className="zav-Slider zav-QActSliceSlider"
-                                                min={0}
-                                                max={maxSliceNum}
-                                                stepSize={1}
-                                                onChange={this.onGoToSlice}
-                                                value={currentSlice}
-                                                showTrackFill={false}
-                                                labelStepSize={maxSliceNum}
-                                                labelRenderer={(value) => value}
-                                            />
+                                            <div
+                                                onPointerDownCapture={this.startSliceSliderInteraction.bind(this)}
+                                                onPointerUpCapture={this.endSliceSliderInteraction}
+                                                onPointerCancelCapture={this.endSliceSliderInteraction}
+                                            >
+                                                <Slider
+                                                    className="zav-Slider zav-QActSliceSlider"
+                                                    min={0}
+                                                    max={maxSliceNum}
+                                                    stepSize={1}
+                                                    onChange={this.handleSliceChange}
+                                                    onRelease={this.handleSliceRelease}
+                                                    value={displayedSlice}
+                                                    showTrackFill={false}
+                                                    labelStepSize={maxSliceNum}
+                                                    labelRenderer={(value) => value}
+                                                />
+                                            </div>
                                             <Icon
                                                 icon="chevron-right"
                                                 title="go to next slice"
@@ -191,7 +228,7 @@ class QuickActionButtons extends React.Component {
                                 >
                                     <AnchorButton icon="multi-select" small />
 
-                                </Popover2>
+                                </PopoverNext>
                                 <div
                                     style={{
                                         color: '#FFF', fontSize: '12px', lineHeight: '13px',
@@ -239,8 +276,8 @@ class QuickActionButtons extends React.Component {
                                 style={{ margin: "20px 0 10px 0" }}
                             >
                                 <Switch
-                                    checked={tracerLayer.enabled}
-                                    onChange={this.handleLayerEnabledChange.bind(this, tracerLayer.key, tracerLayer.opacity)}
+                                    checked={tracerLayerEnabled}
+                                    onChange={this.handleLayerEnabledChange.bind(this, tracerLayer.key, tracerLayerOpacity)}
                                 />
                             </div>
                             :
@@ -269,7 +306,37 @@ class QuickActionButtons extends React.Component {
     }
 
     onGoToSlice(sliceNum) {
+        this.setState({ displayedSlice: sliceNum });
         ViewerManager.goToSlice(sliceNum);
+    }
+
+    handleSliceChange(sliceNum) {
+        this.setState({ displayedSlice: sliceNum, isDraggingSlice: true });
+        ViewerManager.goToSlice(sliceNum);
+    }
+
+    handleSliceRelease(sliceNum) {
+        this.setState({ displayedSlice: sliceNum, isDraggingSlice: false });
+    }
+
+    getCurrentSliceFromProps(props) {
+        const planeSlideCount = props.config ? ViewerManager.getPlaneSlideCount(props.activePlane) : 1001;
+        const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+        const requestedSlice = Number.isFinite(props.chosenSlice) ? props.chosenSlice : 0;
+        return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
+    }
+
+    startSliceSliderInteraction() {
+        ViewerManager.setMouseNavigationEnabled(false);
+        window.addEventListener('pointerup', this.endSliceSliderInteraction, true);
+        window.addEventListener('pointercancel', this.endSliceSliderInteraction, true);
+    }
+
+    endSliceSliderInteraction() {
+        ViewerManager.setMouseNavigationEnabled(true);
+        this.setState({ isDraggingSlice: false });
+        window.removeEventListener('pointerup', this.endSliceSliderInteraction, true);
+        window.removeEventListener('pointercancel', this.endSliceSliderInteraction, true);
     }
 
 }

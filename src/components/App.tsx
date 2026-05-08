@@ -1,13 +1,11 @@
 import * as React from "react";
 
 import {
+  PopoverNext,
+  PopoverInteractionKind,
   Position,
+  popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
-
-import {
-  Popover2InteractionKind,
-  Popover2
-} from "@blueprintjs/popover2";
 
 import { createBrowserHistory } from 'history';
 
@@ -27,6 +25,7 @@ import Utils from '../Utils';
 import UserSettings from '../UserSettings';
 
 import axios from 'axios';
+import { isNotFoundError } from '../common/http';
 
 import "./App.scss";
 import "./Themes.scss";
@@ -125,6 +124,26 @@ const App = (props: AppProps) => {
 
     //retrieve config asynchronously...
     ZAVConfig.getConfig(props.configId, props.dataSrc, props.dataVersionTag, (newConfig) => {
+      console.info("[ZAV debug] Config loaded", {
+        configId: props.configId,
+        dataSrc: props.dataSrc,
+        dataVersionTag: props.dataVersionTag,
+        hasBackend: newConfig?.hasBackend,
+        hasCOSource: newConfig?.hasCOSource,
+        hasMultiPlanes: newConfig?.hasMultiPlanes,
+        firstActivePlane: newConfig?.firstActivePlane,
+        slideCounts: {
+          axial: newConfig?.axialSlideCount,
+          coronal: newConfig?.coronalSlideCount,
+          sagittal: newConfig?.sagittalSlideCount,
+          total: newConfig?.getTotalSlidesCount?.(),
+        },
+        publishPath: newConfig?.PUBLISH_PATH,
+        iipServerPath: newConfig?.IIPSERVER_PATH,
+        volumeUrl: newConfig?.volumeUrl,
+        layers: Object.keys(newConfig?.layers || {}),
+      });
+
       setConfig(newConfig);
 
       //preselected regions (specified on opening URL)
@@ -147,8 +166,9 @@ const App = (props: AppProps) => {
           }
         })
         .catch(error => {
-          // handle error
-          console.error(error);
+          if (!isNotFoundError(error)) {
+            console.error(error);
+          }
         });
 
 
@@ -204,10 +224,11 @@ const App = (props: AppProps) => {
                 :
                 null
               }
-              <Popover2
-                interactionKind={Popover2InteractionKind.CLICK}
+              <PopoverNext
+                interactionKind={PopoverInteractionKind.CLICK}
                 hasBackdrop={true}
-                position={'bottom-right'}
+                placement={popoverPositionToNextPlacement(Position.BOTTOM_RIGHT)}
+                shouldReturnFocusOnClose={false}
                 content={
                   <div style={{ width: '40vw', padding: 20, }}>
                     <h2>Licenses</h2>
@@ -229,7 +250,7 @@ const App = (props: AppProps) => {
                 }
               >
                 <div><span className="zav_miscLinks">licenses</span></div>
-              </Popover2>
+              </PopoverNext>
             </div>
 
             {

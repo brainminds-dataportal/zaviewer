@@ -2,14 +2,12 @@ import React from 'react';
 
 import {
     Icon,
+    PopoverNext,
+    PopoverInteractionKind,
     Position,
     Slider,
+    popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
-
-import {
-    Popover2InteractionKind,
-    Popover2
-} from "@blueprintjs/popover2";
 
 
 import "./ParamAdjusterLabel.scss";
@@ -55,10 +53,10 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
         return (
             this.props.enabled && !this.props.noAdjust
                 ?
-                <Popover2
-                    interactionKind={Popover2InteractionKind.HOVER}
-                    position={Position.BOTTOM_RIGHT}
-                    boundary="window"
+                <PopoverNext
+                    interactionKind={PopoverInteractionKind.HOVER}
+                    placement={popoverPositionToNextPlacement(Position.BOTTOM_RIGHT)}
+                    rootBoundary="viewport"
                     content={
                         <div style={{ padding: "12px 6px 0 6px" }}>
                             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -118,7 +116,7 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
 
                         </div>
                     }
-                >{adjLabel}</Popover2>
+                >{adjLabel}</PopoverNext>
                 :
                 <React.Fragment>
                     {adjLabel}

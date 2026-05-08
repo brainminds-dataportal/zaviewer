@@ -5,14 +5,16 @@ import _ from 'underscore';
 
 import {
     AnchorButton,
+    Classes,
     FormGroup,
     Icon,
     InputGroup,
-    Popover,
+    PopoverNext,
     PopoverInteractionKind,
     OverlayToaster,
     Position,
-    Switch
+    Switch,
+    popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
 
 import RegionsManager from '../RegionsManager'
@@ -204,15 +206,17 @@ class RegionDetail extends React.Component {
                     })
                 grouping = groupingInfo.length
                     ?
-                    <Popover
+                    <PopoverNext
                         interactionKind={PopoverInteractionKind.HOVER}
-                        popoverClassName="bp3-popover-content-sizing"
-                        position={Position.RIGHT}
-                        boundary="window"
+                        popoverClassName={Classes.POPOVER_CONTENT_SIZING}
+                        placement={popoverPositionToNextPlacement(Position.RIGHT)}
+                        rootBoundary="viewport"
                     >
-                        <Icon icon="search-around" iconSize={12} className="zav-RegionGrpngsTarget" />
+                        <span>
+                            <Icon icon="search-around" iconSize={12} className="zav-RegionGrpngsTarget" />
+                        </span>
                         <div>{groupingInfo}</div>
-                    </Popover>
+                    </PopoverNext>
                     :
                     null
                     ;
@@ -438,25 +442,26 @@ class RegionTreeSearch extends React.Component {
                         />
                     </FormGroup>
                 </div>
-                <Popover
+                <PopoverNext
                     interactionKind={PopoverInteractionKind.HOVER}
-                    popoverClassName="bp3-popover-content-sizing"
-                    position={Position.BOTTOM}
+                    popoverClassName={Classes.POPOVER_CONTENT_SIZING}
+                    placement={popoverPositionToNextPlacement(Position.BOTTOM)}
+                    content={
+                        <div>
+                            <Switch
+                                label="List only the regions present in current slice"
+                                onChange={this.onOnlySlicesChange}
+                                checked={RegionsManager.isAutoHighlightingOn()}
+                                disabled={RegionsManager.getHighlightingGrouping()}
+                            />
+                            {groupingSwitches}
+                        </div>
+                    }
                 >
                     <div style={{ marginLeft: 10, marginRight: 5 }}>
                         <AnchorButton icon="cog" />
                     </div>
-                    <div>
-                        <Switch
-                            label="List only the regions present in current slice"
-                            onChange={this.onOnlySlicesChange}
-                            checked={RegionsManager.isAutoHighlightingOn()}
-                            disabled={RegionsManager.getHighlightingGrouping()}
-                        />
-                        {groupingSwitches}
-                    </div>
-
-                </Popover>
+                </PopoverNext>
             </div>
         );
     }

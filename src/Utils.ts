@@ -53,7 +53,9 @@ class Utils {
 
 	static pushHistoryStep(history: History, newParams: HistoryStepParams, omitedParams?: string[]) {
 		const currentParams = this.getConfigFromLocation(history.location);
-		const updStrParams = qs.stringify(_.omit(_.extend(currentParams, newParams), omitedParams));
+		const mergedParams = _.omit(_.extend(currentParams, newParams), ...(omitedParams ?? []));
+		const cleanedParams = _.omit(mergedParams, (_value, key) => typeof mergedParams[key] === "undefined");
+		const updStrParams = qs.stringify(cleanedParams);
 		const updatedPath = createPath(_.extend(_.clone(history.location), { hash: updStrParams }));
 		if (updStrParams !== this.getCleanHash(history.location.hash)) {
 			history.push(updatedPath);

@@ -9,13 +9,11 @@ import {
     HotkeysTarget2,
     Icon,
     Overlay,
+    PopoverNext,
+    PopoverInteractionKind,
     Position,
+    popoverPositionToNextPlacement,
 } from "@blueprintjs/core";
-
-import {
-    Popover2InteractionKind,
-    Popover2,
-} from "@blueprintjs/popover2";
 
 
 import Drawer from './Drawer';
@@ -103,21 +101,21 @@ class BrandingMark extends React.Component {
                         {this.props.brandingInfo && this.props.brandingInfo.short && <span>{this.props.brandingInfo.short}{' '}</span>}
                         {this.props.brandingInfo && this.props.brandingInfo.descr &&
 
-                            <Popover2
+                            <PopoverNext
                                 content={
                                     <div
                                         style={{ maxWidth: '50vw', maxHeight: '50vh', overflowY: 'auto', padding: 10, fontSize: '12px' }}>
                                         <p><br />{this.props.brandingInfo.descr.split('\n').map((l, i) => <p key={i}>{l}</p>)}</p>
                                     </div>
                                 }
-                                position={Position.RIGHT_BOTTOM}
-                                interactionKind={Popover2InteractionKind.HOVER}
+                                placement={popoverPositionToNextPlacement(Position.RIGHT_BOTTOM)}
+                                interactionKind={PopoverInteractionKind.HOVER}
                             >
                                 <span
                                     style={{ color: '#E1E1E1', backgroundColor: '#515151', borderRadius: 2, padding: '0 2px', }}
                                 //title="more info here!"
                                 ><Icon icon='more' size={12} /></span>
-                            </Popover2>
+                            </PopoverNext>
 
 
                         }
@@ -169,7 +167,33 @@ class ViewerComposed extends React.Component {
     constructor(props) {
         super(props);
         this.initialized = false;
-        this.state = { showRegions: undefined, pos: undefined, initExpanded: false, isToolbarExpanded: false };
+        this.state = { showRegions: false, pos: undefined, initExpanded: false, isToolbarExpanded: false };
+    }
+
+    initializeViewerIfNeeded() {
+        if (!this.props.config || this.initialized) {
+            return;
+        }
+
+        ViewerManager.init(
+            this.props.config,
+            (osdstatus) => { this.setState(state => ({ ...osdstatus })); },
+            this.props.history
+        );
+        this.initialized = true;
+
+        if (this.props.config.branding?.theme) {
+            const App = document.getElementsByClassName('App');
+            App.item(0).className = App.item(0).className + (this.props.config.branding.theme === 'light' ? ' theme-light' : '');
+        }
+    }
+
+    componentDidMount() {
+        this.initializeViewerIfNeeded();
+    }
+
+    componentDidUpdate() {
+        this.initializeViewerIfNeeded();
     }
 
     render() {
@@ -179,28 +203,13 @@ class ViewerComposed extends React.Component {
             Classes.ELEVATION_4
         );
 
-        if (this.props.config && !this.initialized) {
-            ViewerManager.init(
-                this.props.config,
-                (osdstatus) => { this.setState(state => ({ ...osdstatus })); },
-                this.props.history
-            );
-            this.initialized = true;
-
-            //Apply simple theming according to config
-            if (this.props.config && this.props.config.branding && this.props.config.branding.theme) {
-                const App = document.getElementsByClassName('App');
-                App.item(0).className = App.item(0).className + (this.props.config.branding.theme === 'light' ? ' theme-light' : '');
-            }
-        }
-
         const datasetDetails =
             this.props.config && this.props.config.dataset_info
                 ?
                 <div
                     className="zav-QuickDatasetInfoButton"
                 >
-                    <Popover2
+                    <PopoverNext
                         content={
                             <div
                                 style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
@@ -210,8 +219,8 @@ class ViewerComposed extends React.Component {
                                 />
                             </div>
                         }
-                        position={Position.LEFT}
-                        interactionKind={Popover2InteractionKind.HOVER}
+                        placement={popoverPositionToNextPlacement(Position.LEFT)}
+                        interactionKind={PopoverInteractionKind.HOVER}
                     >
                         <div
                             title="display dataset informations"
@@ -222,7 +231,7 @@ class ViewerComposed extends React.Component {
                                 color='#FFF'
                             />
                         </div>
-                    </Popover2>
+                    </PopoverNext>
                 </div>
                 :
                 null
@@ -232,10 +241,10 @@ class ViewerComposed extends React.Component {
         const globalDatasetVersion = (this.props.config && this.props.config.datasetVersion) ? <a href={this.props.config.datasetVersion.uri} target="_blank">{this.props.config.datasetVersion.label}</a> : null;
 
         const globalHeader = <>
-            <Popover2
-                interactionKind={Popover2InteractionKind.HOVER}
+            <PopoverNext
+                interactionKind={PopoverInteractionKind.HOVER}
                 content={this.context.tourMenu}
-                position={Position.LEFT}
+                placement={popoverPositionToNextPlacement(Position.LEFT)}
             >
                 <div
                     title="Help and guided tours!"
@@ -246,7 +255,7 @@ class ViewerComposed extends React.Component {
                         color='#FFF'
                     />
                 </div>
-            </Popover2>
+            </PopoverNext>
 
             {globalHeaderText}
             {datasetDetails}
@@ -354,8 +363,8 @@ class ViewerComposed extends React.Component {
                                     this.props.config.volumeUrl ?
 
                                     <div style={{width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                        <Popover2
-                                            interactionKind={Popover2InteractionKind.CLICK}
+                                        <PopoverNext
+                                            interactionKind={PopoverInteractionKind.CLICK}
                                             content={
                                                 <div
                                                     style={{ width: '70vw', maxWidth: 850, height: '90vh', overflowY: 'auto' }}>
@@ -365,7 +374,8 @@ class ViewerComposed extends React.Component {
                                                         />
                                                     </React.Suspense>
                                                 </div>}
-                                            position={Position.LEFT}
+                                            placement={popoverPositionToNextPlacement(Position.LEFT)}
+                                            shouldReturnFocusOnClose={false}
                                         >
                                             <div
                                                 title="display 3D volume"
@@ -376,7 +386,7 @@ class ViewerComposed extends React.Component {
                                                     color='#FFF'
                                                 />
                                             </div>
-                                        </Popover2>
+                                        </PopoverNext>
                                         <span>{"Slices navigation" + subviewTitleSuffix}</span>
                                     </div>
                                     :
@@ -502,6 +512,9 @@ class ViewerComposed extends React.Component {
     }
 
     onToolbarExpandCollapse(isExpanded) {
+        if (isExpanded) {
+            ViewerManager.refreshNavigator();
+        }
         this.setState(state => ({ isToolbarExpanded: isExpanded }));
     }
 

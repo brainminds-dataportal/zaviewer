@@ -4,7 +4,7 @@ import _ from 'underscore';
 import axios from 'axios';
 import LabelMapper from './LabelMapper';
 
-import { getJson, getText, postFormJson } from './common/http';
+import { getJson, getText, isNotFoundError, postFormJson } from './common/http';
 import Utils from './Utils';
 
 import UserSettings from './UserSettings';
@@ -162,11 +162,18 @@ class ZAVConfig {
             /** URL path to the folder holding the current tree region data */
             treeUrlPath: undefined,
 
+            resolveSimpleUrl: function(path) {
+                if (!path || !this.baseConfigPath) {
+                    return path;
+                }
+                return new URL(path, new URL(this.baseConfigPath, window.location.href)).toString();
+            },
+
             getTreeDataUrl: function() {
                 return (this.treeUrlPath
                     ? (this.hasBackend
                         ? Utils.makePath(this.PUBLISH_PATH, this.treeUrlPath, "regionTreeGroup_" + this.viewerId + ".json" + this.dataVersionTag)
-                        : Utils.makePath(this.treeUrlPath, this.fallbackTreeUrl))
+                        : this.resolveSimpleUrl(Utils.makePath(this.treeUrlPath, "regionTree.json" + this.dataVersionTag)))
                     : this.fallbackTreeUrl)
             },
 
@@ -340,7 +347,7 @@ class ZAVConfig {
             this.config.hasCOSource = dataSrc ? true : false;
             this.config.baseConfigPath = this.config.hasCOSource ? (dataSrc + (dataSrc.endsWith('/') ? '' : '/')) : '';
 
-            this.config.dataRootPath = this.config.baseConfigPath ? Utils.makePath(this.config.baseConfigPath, 'data') : undefined;
+            this.config.dataRootPath = this.config.resolveSimpleUrl('data');
             /** base URL for region infos, region SVGs, ... */
             this.config.PUBLISH_PATH = undefined;
             /** base URL for SVG edit webservice ... */
@@ -349,7 +356,7 @@ class ZAVConfig {
             this.config.fallbackExtension = 'dzi';
 
             /** URL path to the default tree region */
-            this.config.fallbackTreeUrl = Utils.makePath(this.config.baseConfigPath, "regionTree.json" + (dataVersionTag || ''));
+            this.config.fallbackTreeUrl = this.config.resolveSimpleUrl("regionTree.json" + (dataVersionTag || ''));
 
         }
 
@@ -446,12 +453,12 @@ class ZAVConfig {
     * @private
     */
     retrieveSimpleConfig(callbackWhenReady) {
-        const configUrl = Utils.makePath(this.config.baseConfigPath, "viewer.json");
+        const configUrl = this.config.resolveSimpleUrl("viewer.json");
 
         void (async () => {
             try {
                 const data = await getJson(configUrl);
-                const datasetInfoUrl = data.data_root_path + '/datasetInfo.json';
+                const datasetInfoUrl = this.config.resolveSimpleUrl(Utils.makePath(data.data_root_path, 'datasetInfo.json'));
 
                 void getJson(datasetInfoUrl)
                     .then((datasetInfo) => {
@@ -460,7 +467,9 @@ class ZAVConfig {
                         }
                     })
                     .catch((error) => {
-                        console.info("Error while retrieving info for current dataset: ", error);
+                        if (!isNotFoundError(error)) {
+                            console.info("Error while retrieving info for current dataset: ", error);
+                        }
                     });
 
                 this.parseLayersConfig(callbackWhenReady, data);
@@ -474,6 +483,18 @@ class ZAVConfig {
 
 
     parseLayersConfig(callbackWhenReady, response) {
+
+        const parseIntOr = (value, fallback) => {
+            const parsedValue = Number.parseInt(value, 10);
+            return Number.isFinite(parsedValue) ? parsedValue : fallback;
+        };
+
+        const parseCountOrZero = (value) => Math.max(parseIntOr(value, 0), 0);
+
+        const clampSlice = (value, sliceCount) => {
+            const maxSliceIndex = Math.max(sliceCount - 1, 0);
+            return Math.min(Math.max(parseIntOr(value, 0), 0), maxSliceIndex);
+        };
 
 
         if (response.error) {
@@ -494,24 +515,19 @@ class ZAVConfig {
         }
 
         if (!this.config.hasBackend) {
-            if (this.config.hasCOSource) {
-                // set according to server config, converting server relative url to absolute one
-                this.config.PUBLISH_PATH = this.config.dataRootPath = new URL(response.data_root_path, this.config.baseConfigPath).toString();
-            } else {
-                this.config.PUBLISH_PATH = this.config.dataRootPath = response.data_root_path;
-            }
+            this.config.PUBLISH_PATH = this.config.dataRootPath = this.config.resolveSimpleUrl(response.data_root_path);
         }
 
         this.config.subviewFolderName = response.subview.foldername;
 
         if (this.config.hasMultiPlanes) {
 
-            this.config.axialSlideCount = this.config.hasAxialPlane ? parseInt(response.subview.axial_slide) : 0;
-            this.config.coronalSlideCount = this.config.hasCoronalPlane ? parseInt(response.subview.coronal_slide) : 0;
-            this.config.sagittalSlideCount = this.config.hasSagittalPlane ? parseInt(response.subview.sagittal_slide) : 0;
+            this.config.axialSlideCount = this.config.hasAxialPlane ? parseCountOrZero(response.subview.axial_slide) : 0;
+            this.config.coronalSlideCount = this.config.hasCoronalPlane ? parseCountOrZero(response.subview.coronal_slide) : 0;
+            this.config.sagittalSlideCount = this.config.hasSagittalPlane ? parseCountOrZero(response.subview.sagittal_slide) : 0;
 
         } else {
-            const sliceCount = parseInt(response.slide_count);
+            const sliceCount = parseCountOrZero(response.slide_count);
 
             this.config.axialSlideCount = this.config.hasAxialPlane ? sliceCount : 0;
             this.config.coronalSlideCount = this.config.hasCoronalPlane ? sliceCount : 0;
@@ -528,7 +544,9 @@ class ZAVConfig {
         this.config.sagittalFirstIndex = this.config.coronalFirstIndex + this.config.coronalSlideCount;
 
         //size of subview images
-        const subviewOrgSize = (response.subview && response.subview.size) ? response.subview.size : this.config.subviewSize;
+        const subviewOrgSize = response.subview?.size
+            ? parseIntOr(response.subview.size, this.config.subviewSize)
+            : this.config.subviewSize;
 
         this.config.subviewZoomRatio = subviewOrgSize / this.config.subviewSize;
         if (this.config.hasMultiPlanes) {
@@ -594,22 +612,22 @@ class ZAVConfig {
         }
 
         if (this.config.hasMultiPlanes) {
-            this.config.axialSliceStep = response.axial_slice_step ? parseInt(response.axial_slice_step) : 0;
-            this.config.coronalSliceStep = response.coronal_slice_step ? parseInt(response.coronal_slice_step) : 0;
-            this.config.sagittalSliceStep = response.sagittal_slice_step ? parseInt(response.sagittal_slice_step) : 0;
+            this.config.axialSliceStep = this.config.hasAxialPlane ? parseIntOr(response.axial_slice_step, 1) : 0;
+            this.config.coronalSliceStep = this.config.hasCoronalPlane ? parseIntOr(response.coronal_slice_step, 1) : 0;
+            this.config.sagittalSliceStep = this.config.hasSagittalPlane ? parseIntOr(response.sagittal_slice_step, 1) : 0;
         } else {
-            const sliceStep = parseInt(response.slice_step);
+            const sliceStep = parseIntOr(response.slice_step, 1);
             this.config.axialSliceStep = this.config.hasAxialPlane ? sliceStep : 0;
             this.config.coronalSliceStep = this.config.hasCoronalPlane ? sliceStep : 0;
             this.config.sagittalSliceStep = this.config.hasSagittalPlane ? sliceStep : 0;
         }
 
-        this.config.anyImageSize = response.image_size ? parseInt(response.image_size) : this.config.anyImageSize;
+        this.config.anyImageSize = response.image_size ? parseIntOr(response.image_size, this.config.anyImageSize) : this.config.anyImageSize;
         //handle different sizes for each planes
         if (this.config.hasMultiPlanes) {
-            this.config.axial_size = response.axial_size ? parseInt(response.axial_size) : this.config.anyImageSize;
-            this.config.coronal_size = response.coronal_size ? parseInt(response.coronal_size) : this.config.anyImageSize;
-            this.config.sagittal_size = response.sagittal_size ? parseInt(response.sagittal_size) : this.config.anyImageSize;
+            this.config.axial_size = response.axial_size ? parseIntOr(response.axial_size, this.config.anyImageSize) : this.config.anyImageSize;
+            this.config.coronal_size = response.coronal_size ? parseIntOr(response.coronal_size, this.config.anyImageSize) : this.config.anyImageSize;
+            this.config.sagittal_size = response.sagittal_size ? parseIntOr(response.sagittal_size, this.config.anyImageSize) : this.config.anyImageSize;
         } else {
             this.config.axial_size = this.config.hasAxialPlane ? this.config.anyImageSize : this.config.axial_size;
             this.config.coronal_size = this.config.hasCoronalPlane ? this.config.anyImageSize : this.config.coronal_size;
@@ -744,33 +762,48 @@ class ZAVConfig {
             this.config.sagittalChosenSlice = Math.floor(this.config.sagittalSlideCount / 2);
 
             //FIXME magic value!!
-            const initialSlice = (typeof response.first_access.slide !== "undefined") ? parseInt(response.first_access.slide) : 30;
+            const defaultInitialSlice = 30;
             switch (this.config.firstActivePlane) {
                 case AXIAL:
-                    this.config.axialChosenSlice = initialSlice;
+                    this.config.axialChosenSlice = clampSlice(
+                        typeof response.first_access.slide !== "undefined" ? response.first_access.slide : defaultInitialSlice,
+                        this.config.axialSlideCount
+                    );
                     this.config.initialPage = this.config.axialChosenSlice + this.config.axialFirstIndex;
                     //FIXME magic value!!
-                    this.config.global_X = 10 + (this.config.axialSlideCount - response.first_access.slide) * (this.config.zMaxGlobal - this.config.zMinGlobal) / this.config.axialSlideCount + this.config.zMinGlobal;
+                    this.config.global_X = this.config.axialSlideCount > 0
+                        ? 10 + (this.config.axialSlideCount - this.config.axialChosenSlice) * (this.config.zMaxGlobal - this.config.zMinGlobal) / this.config.axialSlideCount + this.config.zMinGlobal
+                        : 10 + this.config.zMinGlobal;
                     this.config.global_Y = 10 + this.config.yMinGlobal;
                     this.config.global_Z = 10 + this.config.xMinGlobal;
 
                     break;
                 case CORONAL:
-                    this.config.coronalChosenSlice = initialSlice;
+                    this.config.coronalChosenSlice = clampSlice(
+                        typeof response.first_access.slide !== "undefined" ? response.first_access.slide : defaultInitialSlice,
+                        this.config.coronalSlideCount
+                    );
                     this.config.initialPage = this.config.coronalChosenSlice + this.config.coronalFirstIndex;
                     //FIXME magic value!!
                     this.config.global_X = 10 + this.config.zMaxGlobal;
-                    this.config.global_Y = 10 + (this.config.coronalSlideCount - response.first_access.slide) * (this.config.yMaxGlobal - this.config.yMinGlobal) / this.config.coronalSlideCount + this.config.yMinGlobal;
+                    this.config.global_Y = this.config.coronalSlideCount > 0
+                        ? 10 + (this.config.coronalSlideCount - this.config.coronalChosenSlice) * (this.config.yMaxGlobal - this.config.yMinGlobal) / this.config.coronalSlideCount + this.config.yMinGlobal
+                        : 10 + this.config.yMinGlobal;
                     this.config.global_Z = 10 + this.config.xMinGlobal;
 
                     break;
                 case SAGITTAL:
-                    this.config.sagittalChosenSlice = initialSlice;
+                    this.config.sagittalChosenSlice = clampSlice(
+                        typeof response.first_access.slide !== "undefined" ? response.first_access.slide : defaultInitialSlice,
+                        this.config.sagittalSlideCount
+                    );
                     this.config.initialPage = this.config.sagittalChosenSlice + this.config.sagittalFirstIndex;
                     //FIXME magic value!!
                     this.config.global_X = 10 + this.config.zMaxGlobal;
                     this.config.global_Y = 10 + this.config.yMinGlobal;
-                    this.config.global_Z = 10 + (this.config.sagittalSlideCount - response.first_access.slide) * (this.config.xMaxGlobal - this.config.xMinGlobal) / this.config.sagittalSlideCount + this.config.xMinGlobal;
+                    this.config.global_Z = this.config.sagittalSlideCount > 0
+                        ? 10 + (this.config.sagittalSlideCount - this.config.sagittalChosenSlice) * (this.config.xMaxGlobal - this.config.xMinGlobal) / this.config.sagittalSlideCount + this.config.xMinGlobal
+                        : 10 + this.config.xMinGlobal;
 
                     break;
             }

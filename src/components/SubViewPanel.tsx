@@ -106,7 +106,13 @@ class SubViewOrthoPlanBar extends React.Component {
     }
 
     getPlaneSlicePercentOffset(plane) {
-        return ViewerManager.getPlaneChosenSlice(plane) / (ViewerManager.getPlaneSlideCount(plane) - 1);
+        const planeSlideCount = ViewerManager.getPlaneSlideCount(plane);
+        if (!Number.isFinite(planeSlideCount) || planeSlideCount <= 1) {
+            return 0;
+        }
+        const chosenSlice = ViewerManager.getPlaneChosenSlice(plane);
+        const safeChosenSlice = Number.isFinite(chosenSlice) ? chosenSlice : 0;
+        return safeChosenSlice / (planeSlideCount - 1);
     }
 
 }
@@ -209,7 +215,7 @@ class SubView extends React.Component {
                         cursor: 'crosshair',
                     }}
                     height={size}
-                    viewBox={"0 0 " + size + "" + size}
+                    viewBox={"0 0 " + size + " " + size}
                     xmlns="http://www.w3.org/2000/svg"
                     xmlnsXlink="http://www.w3.org/1999/xlink"
                     onPointerDown={this.onDragStart.bind(this)}
@@ -301,10 +307,41 @@ class SubView extends React.Component {
 
 class SubViewPanel extends React.Component {
 
+    constructor(props) {
+        super(props);
+        this.state = { displayedSlice: this.getCurrentSliceFromProps(props), isDraggingSlice: false };
+        this.handleSliceChange = this.handleSliceChange.bind(this);
+        this.handleSliceRelease = this.handleSliceRelease.bind(this);
+        this.endSliceSliderInteraction = this.endSliceSliderInteraction.bind(this);
+    }
+
+    componentDidUpdate(prevProps) {
+        const prevSlice = this.getCurrentSliceFromProps(prevProps);
+        const nextSlice = this.getCurrentSliceFromProps(this.props);
+        if (!this.state.isDraggingSlice && prevSlice !== nextSlice && this.state.displayedSlice !== nextSlice) {
+            this.setState({ displayedSlice: nextSlice });
+        }
+    }
+
+    componentWillUnmount() {
+        this.endSliceSliderInteraction();
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return nextProps.activePlane !== this.props.activePlane
+            || nextProps.chosenSlice !== this.props.chosenSlice
+            || nextProps.config !== this.props.config
+            || nextState.displayedSlice !== this.state.displayedSlice
+            || nextState.isDraggingSlice !== this.state.isDraggingSlice;
+    }
+
     render() {
-        const currentSlice = this.props.chosenSlice || 0;
-        const maxSliceNum = this.props.config ? ViewerManager.getPlaneSlideCount(this.props.activePlane) - 1 : 1000;
-        const sliceStep = this.props.config ? ViewerManager.getPlaneSliceStep(this.props.activePlane) : 1;
+        const currentSlice = this.getCurrentSliceFromProps(this.props);
+        const planeSlideCount = this.props.config ? ViewerManager.getPlaneSlideCount(this.props.activePlane) : 1001;
+        const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+        const displayedSlice = Math.min(Math.max(Number.isFinite(this.state.displayedSlice) ? this.state.displayedSlice : currentSlice, 0), maxSliceNum);
+        const rawSliceStep = this.props.config ? ViewerManager.getPlaneSliceStep(this.props.activePlane) : 1;
+        const sliceStep = Number.isFinite(rawSliceStep) ? rawSliceStep : 1;
 
         const subviews = [];
         let justifyMode;
@@ -398,27 +435,35 @@ class SubViewPanel extends React.Component {
                     <div className="zav-SubViewSlider">
 
                         <Icon
+                            className="zav-SubViewSliderChevron"
                             icon="chevron-left"
                             title="go to previous slice"
-                            style={{ marginLeft: -16, verticalAlign: "top" }}
                             onClick={this.onGoToSlice.bind(this, currentSlice - 1)}
                         />
 
-                        <Slider
-                            className="zav-Slider zav-SubVSliceSlider"
-                            min={0}
-                            max={maxSliceNum}
-                            stepSize={1}
-                            labelStepSize={maxSliceNum}
-                            onChange={this.onGoToSlice.bind(this)}
-                            value={currentSlice}
-                            showTrackFill={false}
-                            labelRenderer={(value) => value * sliceStep}
-                        />
+                        <div
+                            className="zav-SubViewSliderTrack"
+                            onPointerDownCapture={this.startSliceSliderInteraction.bind(this)}
+                            onPointerUpCapture={this.endSliceSliderInteraction}
+                            onPointerCancelCapture={this.endSliceSliderInteraction}
+                        >
+                            <Slider
+                                className="zav-Slider zav-SubVSliceSlider"
+                                min={0}
+                                max={maxSliceNum}
+                                stepSize={1}
+                                labelStepSize={Math.max(maxSliceNum, 1)}
+                                onChange={this.handleSliceChange}
+                                onRelease={this.handleSliceRelease}
+                                value={displayedSlice}
+                                showTrackFill={false}
+                                labelRenderer={(value) => value * sliceStep}
+                            />
+                        </div>
                         <Icon
+                            className="zav-SubViewSliderChevron"
                             icon="chevron-right"
                             title="go to next slice"
-                            style={{ marginRight: -16, verticalAlign: "top" }}
                             onClick={this.onGoToSlice.bind(this, currentSlice + 1)}
                         />
 
@@ -434,7 +479,37 @@ class SubViewPanel extends React.Component {
     }
 
     onGoToSlice(sliceNum) {
+        this.setState({ displayedSlice: sliceNum });
         ViewerManager.goToSlice(sliceNum);
+    }
+
+    handleSliceChange(sliceNum) {
+        this.setState({ displayedSlice: sliceNum, isDraggingSlice: true });
+        ViewerManager.goToSlice(sliceNum);
+    }
+
+    handleSliceRelease(sliceNum) {
+        this.setState({ displayedSlice: sliceNum, isDraggingSlice: false });
+    }
+
+    getCurrentSliceFromProps(props) {
+        const planeSlideCount = props.config ? ViewerManager.getPlaneSlideCount(props.activePlane) : 1001;
+        const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+        const requestedSlice = Number.isFinite(props.chosenSlice) ? props.chosenSlice : 0;
+        return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
+    }
+
+    startSliceSliderInteraction() {
+        ViewerManager.setMouseNavigationEnabled(false);
+        window.addEventListener('pointerup', this.endSliceSliderInteraction, true);
+        window.addEventListener('pointercancel', this.endSliceSliderInteraction, true);
+    }
+
+    endSliceSliderInteraction() {
+        ViewerManager.setMouseNavigationEnabled(true);
+        this.setState({ isDraggingSlice: false });
+        window.removeEventListener('pointerup', this.endSliceSliderInteraction, true);
+        window.removeEventListener('pointercancel', this.endSliceSliderInteraction, true);
     }
 
     onChangePlane(plane) {

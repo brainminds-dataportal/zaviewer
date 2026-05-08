@@ -35,6 +35,28 @@ class ViewerManager {
         return NAVIGATOR_ID;
     }
 
+    static refreshNavigator() {
+        if (!this.viewer?.navigator || !this.viewer?.viewport) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this.viewer.navigator.updateSize();
+                this.viewer.navigator.update(this.viewer.viewport);
+                this.viewer.forceRedraw();
+            });
+        });
+    }
+
+    static setMouseNavigationEnabled(enabled) {
+        if (!this.viewer) {
+            return;
+        }
+
+        this.viewer.setMouseNavEnabled(enabled);
+    }
+
 
     /**
      * Create ViewManager from the specified config and setup underlying OpenSeaDragon and related components
@@ -129,6 +151,7 @@ class ViewerManager {
 
         //params retrieved from initial location
         const overridingConf = this.getParamsFromCurrLocation();
+        this.pendingInitialAtlasFit = !overridingConf.center;
         // should use overrinf configuration only if it make sens with current data
         const overridingPlane = this.config.hasPlane(overridingConf.activePlane) ? overridingConf.activePlane : null;
 
@@ -365,6 +388,33 @@ class ViewerManager {
         const layerEntries = Object.values(this.config.layers);
         const firstLayer = layerEntries.length > 0 ? layerEntries[0] : undefined;
 
+        console.info('[ZAV debug] setupTileSources', {
+            hasBackend: this.config?.hasBackend,
+            hasCOSource: this.config?.hasCOSource,
+            activePlane: this.status?.activePlane,
+            chosenSlice: this.status?.chosenSlice,
+            slideCounts: {
+                axial: this.config?.axialSlideCount,
+                coronal: this.config?.coronalSlideCount,
+                sagittal: this.config?.sagittalSlideCount,
+            },
+            firstLayer: firstLayer
+                ? {
+                    key: firstLayer.key,
+                    ext: firstLayer.ext,
+                    protocol: firstLayer.protocol,
+                }
+                : null,
+        });
+
+        if (!firstLayer) {
+            console.error('[ZAV debug] setupTileSources aborted: no first layer found', {
+                layers: this.config?.layers,
+                data: this.config?.data,
+            });
+            return;
+        }
+
         if (this.config.hasBackend) {
             if (this.config.data) {
 
@@ -372,9 +422,13 @@ class ViewerManager {
                     //Internet Imaging Protocol (IIP)
 
                     const that = this;
+                    const iiifInfoUrl = this.getIIIFTileSourceUrl(this.status.coronalChosenSlice, firstLayer.key, firstLayer.ext);
+                    console.info('[ZAV debug] Fetching IIP pyramidal info', {
+                        url: iiifInfoUrl,
+                    });
 
                     //Prerequisite: All pages have same image size and tile composition, so pyramidal infos for first image is reused for all
-                    void getJson(this.getIIIFTileSourceUrl(this.status.coronalChosenSlice, firstLayer.key, firstLayer.ext))
+                    void getJson(iiifInfoUrl)
                         .then((pyramidalImgInfo) => {
                             const tileSources = [];
 
@@ -424,8 +478,19 @@ class ViewerManager {
                             }
                             that.status.tileSources = tileSources;
 
+                                                        console.info('[ZAV debug] IIP tileSources prepared', {
+                                                            count: tileSources.length,
+                                                            sample: tileSources[0],
+                                                        });
+
                             that.init2ndStage(overridingConf);
-                        });
+                                                    })
+                                                    .catch((error) => {
+                                                        console.error('[ZAV debug] Failed to fetch IIP pyramidal info', {
+                                                            url: iiifInfoUrl,
+                                                            error,
+                                                        });
+                                                    });
 
                 } else {
                     //International Image Interoperability Framework (IIIF) protocol (default)
@@ -438,6 +503,12 @@ class ViewerManager {
                             tileSources.push(this.getIIIFTileSourceUrl(j, firstLayer.key, firstLayer.ext));
                         }
                         this.status.tileSources = tileSources;
+
+                                                    console.info('[ZAV debug] IIIF tileSources prepared', {
+                                                        count: tileSources.length,
+                                                        firstUrl: tileSources[0],
+                                                        lastUrl: tileSources[tileSources.length - 1],
+                                                    });
 
                         this.init2ndStage(overridingConf);
                     }
@@ -467,6 +538,11 @@ class ViewerManager {
                 }
 
                 this.status.tileSources = tileSources;
+
+                console.info('[ZAV debug] Local DZI tileSources prepared', {
+                    count: tileSources.length,
+                    firstUrl: tileSources[0],
+                });
 
                 //prerequisite: all page have same image size and tile composition, so pyramidal infos for first image is reused for all
                 const that = this;
@@ -500,7 +576,20 @@ class ViewerManager {
                                 }
                             }
                         }
+                        console.info('[ZAV debug] DZI metadata parsed', {
+                            tileSize: that.status.tileSize,
+                            tileOverlap: that.status.tileOverlap,
+                            tileFormat: that.status.tileFormat,
+                            imageWidth: that.status.imageWidth,
+                            imageHeight: that.status.imageHeight,
+                        });
                         that.init2ndStage(overridingConf);
+                    })
+                    .catch((error) => {
+                        console.error('[ZAV debug] Failed to load DZI metadata', {
+                            url: tileSources[0],
+                            error,
+                        });
                     });
 
             }
@@ -515,6 +604,15 @@ class ViewerManager {
         const that = this;
 
         const initialPage = this.config.initialPage;
+
+        console.info('[ZAV debug] init2ndStage', {
+            viewerId: VIEWER_ID,
+            initialPage: initialPage,
+            tileSourceCount: this.status?.tileSources?.length,
+            firstTileSource: this.status?.tileSources?.[0],
+            navigatorId: NAVIGATOR_ID,
+            overridingConf,
+        });
 
         this.viewer = OpenSeadragon(Object.assign({
             id: VIEWER_ID,
@@ -539,6 +637,11 @@ class ViewerManager {
             //necessary for filtering when images are loaded from different origin (using datasrcurl param)
             (this.config.hasCOSource ? {crossOriginPolicy: 'Anonymous'} : {})
         ));
+
+        console.info('[ZAV debug] OpenSeadragon viewer created', {
+            elementFound: Boolean(document.getElementById(VIEWER_ID)),
+            crossOriginPolicy: this.config.hasCOSource ? 'Anonymous' : undefined,
+        });
 
 
         //Initialize labelMap handler
@@ -649,7 +752,15 @@ class ViewerManager {
             that.viewer.viewport.fitBounds(uncoveredBounds);
 
             //restore state according to history provided at init
-            that.applyChangeFromHistory(overridingConf);
+            const initHistoryParams = { ...overridingConf };
+            if (!initHistoryParams.center && initHistoryParams.imageZoom) {
+                console.info('[ZAV debug] Ignoring initial zoom without valid center', {
+                    imageZoom: initHistoryParams.imageZoom,
+                    overridingConf,
+                });
+                delete initHistoryParams.imageZoom;
+            }
+            that.applyChangeFromHistory(initHistoryParams);
         });
 
         //--------------------------------------------------
@@ -1636,6 +1747,35 @@ class ViewerManager {
                     regionsGroup.appendChild(labelsg);
                     that.applyLabelPresentation();
 
+                    if (that.pendingInitialAtlasFit && that.viewer && regionsGroup) {
+                        const atlasBounds = regionsGroup.getBBox();
+                        if (atlasBounds.width > 0 && atlasBounds.height > 0) {
+                            const containerSize = that.viewer.viewport.getContainerSize();
+                            const rightPanelWidth = document.getElementById("ZAV-rightPanel")?.getBoundingClientRect().width || 0;
+                            const coveredPart = containerSize.x > 0 ? rightPanelWidth / containerSize.x : 0;
+                            const marginRatio = 0.08;
+                            const extraRightWidth = atlasBounds.width * coveredPart / Math.max(1 - coveredPart, 0.1);
+                            const imageRect = new OpenSeadragon.Rect(
+                                atlasBounds.x - atlasBounds.width * marginRatio / 2,
+                                this.config.dzDiff + atlasBounds.y - atlasBounds.height * marginRatio / 2,
+                                atlasBounds.width * (1 + marginRatio) + extraRightWidth,
+                                atlasBounds.height * (1 + marginRatio)
+                            );
+
+                            that.viewer.viewport.fitBounds(
+                                that.viewer.viewport.imageToViewportRectangle(imageRect),
+                                true
+                            );
+                            that.pendingInitialAtlasFit = false;
+
+                            console.info('[ZAV debug] Applied initial atlas fit', {
+                                atlasBounds,
+                                imageRect,
+                                coveredPart,
+                            });
+                        }
+                    }
+
 
                     that.eventSource.raiseEvent('zav-regions-created', { svgUrl: svgName })
 
@@ -2217,7 +2357,7 @@ class ViewerManager {
     static goToPlaneSlice(plane, chosenSlice, regionsToCenterOn, force) {
         //TODO use plane 
 
-        const focusRoi = (typeof regionsToCenterOn == "object") && regionsToCenterOn.roiId;
+        const focusRoi = regionsToCenterOn && (typeof regionsToCenterOn == "object") && regionsToCenterOn.roiId;
         if (force || plane != this.status.activePlane || chosenSlice != this.getCurrentPlaneChosenSlice() || focusRoi) {
             this.status.activePlane = plane;
             chosenSlice = this.checkNSetChosenSlice(plane, chosenSlice);
@@ -3543,12 +3683,30 @@ class ViewerManager {
             const imageZoom = this.viewer.viewport.viewportToImageZoom(this.viewer.viewport.getZoom());
             const center = this.viewer.viewport.viewportToImageCoordinates(this.viewer.viewport.getCenter());
             const sliceNum = this.getCurrentPlaneChosenSlice();
+            const planeImageSize = this.status.activePlane === ZAVConfig.AXIAL
+                ? this.config?.axial_size
+                : this.status.activePlane === ZAVConfig.CORONAL
+                    ? this.config?.coronal_size
+                    : this.status.activePlane === ZAVConfig.SAGITTAL
+                        ? this.config?.sagittal_size
+                        : this.config?.imageSize;
+            const hasValidCenter = !planeImageSize
+                || (center.x >= 0 && center.y >= 0 && center.x <= planeImageSize && center.y <= planeImageSize);
 
             stepParams = {
-                z: imageZoom.toFixed(3),
-                x: Math.round(center.x), y: Math.round(center.y),
+                z: hasValidCenter ? imageZoom.toFixed(3) : undefined,
+                x: hasValidCenter ? Math.round(center.x) : undefined,
+                y: hasValidCenter ? Math.round(center.y) : undefined,
                 s: sliceNum, a: this.status.activePlane
             };
+
+            if (!hasValidCenter) {
+                console.info('[ZAV debug] Omitting out-of-bounds history viewport', {
+                    center,
+                    planeImageSize,
+                    activePlane: this.status.activePlane,
+                });
+            }
         }
         //omitted param: expanded right panel, region selection 
         Utils.pushHistoryStep(this.history, stepParams, ['px', 'rs']);
@@ -3590,8 +3748,25 @@ class ViewerManager {
             const x = parseInt(confFromPath.x, 10);
             const y = parseInt(confFromPath.y, 10);
             if (!isNaN(x) && !isNaN(y) && isFinite(x) && isFinite(y)) {
-                if (x >= 0 && y >= 0) {
+                const plane = confParams.activePlane || this.status?.activePlane || this.config?.firstActivePlane;
+                const planeImageSize = plane === ZAVConfig.AXIAL
+                    ? this.config?.axial_size
+                    : plane === ZAVConfig.CORONAL
+                        ? this.config?.coronal_size
+                        : plane === ZAVConfig.SAGITTAL
+                            ? this.config?.sagittal_size
+                            : this.config?.imageSize;
+
+                if (x >= 0 && y >= 0 && (!planeImageSize || (x <= planeImageSize && y <= planeImageSize))) {
                     confParams.center = new OpenSeadragon.Point(x, y);
+                } else {
+                    console.warn('[ZAV debug] Ignoring out-of-bounds history center', {
+                        x,
+                        y,
+                        plane,
+                        planeImageSize,
+                        location: location?.href || location,
+                    });
                 }
             }
         }

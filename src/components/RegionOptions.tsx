@@ -36,11 +36,11 @@ class RegionOptions extends React.Component {
 
                                 <HTMLSelect
                                     fill={true}
-                                    defaultValue={this.props.currentAtlas}
+                                    value={String(this.props.currentAtlas ?? 0)}
                                     onChange={this.handleSelectAtlas}
                                 >
                                     {this.props.atlases.map(
-                                        (a, index) => <option key={'atlas-' + index} value={index}>{a.label}</option>
+                                        (a, index) => <option key={'atlas-' + index} value={String(index)}>{a.label}</option>
                                     )}
                                 </HTMLSelect>
                             </div>

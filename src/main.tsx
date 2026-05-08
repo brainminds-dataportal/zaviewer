@@ -3,9 +3,9 @@ import 'normalize.css';
 import 'react-split-pane/styles.css';
 
 import "@blueprintjs/core/lib/css/blueprint.css";
-import "@blueprintjs/popover2/lib/css/blueprint-popover2.css";
 
 import * as React from 'react';
+import { HotkeysProvider } from "@blueprintjs/core";
 import { createRoot } from 'react-dom/client';
 
 import Utils from './Utils';
@@ -28,16 +28,18 @@ const DataVersion_PropName = 'data-dataversion';
 */
 const getConfigParams = () => {
   const params: { configId?: string, dataSrc?: string, initConfig?: {} } = {};
-  const url = location.search.substring(1).split('&');
+  const searchParams = new URLSearchParams(location.search);
 
-  for (var i = 0; url[i]; i++) {
-    const k = url[i].split('=');
-    if (k[0] == "id") {
-      params.configId = k[1];
-    } else if (k[0] == "datasrc") {
-      params.dataSrc = k[1];
-    }
+  const configId = searchParams.get('id');
+  if (configId) {
+    params.configId = configId;
   }
+
+  const dataSrc = searchParams.get('datasrc');
+  if (dataSrc) {
+    params.dataSrc = dataSrc;
+  }
+
   if (location.hash) {
     params.initConfig = Utils.getConfigFromLocation(location);
   }
@@ -58,13 +60,15 @@ if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
 
   createRoot(parentContainer).render(
     <React.StrictMode>
-      <GuidedTour>
-        <App
-          //configID is undefined when the viewer is used without backend (i.e. shipped within its dataset)
-          {...getConfigParams()}
-          dataVersionTag={dataVersionTag}
-        />
-      </GuidedTour>
+      <HotkeysProvider>
+        <GuidedTour>
+          <App
+            //configID is undefined when the viewer is used without backend (i.e. shipped within its dataset)
+            {...getConfigParams()}
+            dataVersionTag={dataVersionTag}
+          />
+        </GuidedTour>
+      </HotkeysProvider>
     </React.StrictMode>
   );
 }

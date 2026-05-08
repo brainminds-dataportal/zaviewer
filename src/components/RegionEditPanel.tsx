@@ -5,18 +5,15 @@ import {
     Alignment,
     Button,
     ButtonGroup,
+    Classes,
     Menu,
     MenuDivider,
     MenuItem,
+    PopoverNext,
+    PopoverInteractionKind,
     Slider,
     Switch,
 } from "@blueprintjs/core";
-
-import {
-    Classes,
-    Popover2,
-    Popover2InteractionKind,
-} from "@blueprintjs/popover2";
 
 import { HexColorPicker } from "react-colorful";
 
@@ -182,10 +179,10 @@ class RegionEditPanel extends React.Component {
                             disabled={true}
                             value={pathIdSuffix}
                         />
-                        <Popover2
-                            interactionKind={Popover2InteractionKind.HOVER}
+                        <PopoverNext
+                            interactionKind={PopoverInteractionKind.HOVER}
                             placement={"left"}
-                            popoverClassName={Classes.POPOVER2_CONTENT_SIZING}
+                            popoverClassName={Classes.POPOVER_CONTENT_SIZING}
                             disabled={!isEditing}
                             content={
                                 <div style={{ padding: 10 }}>
@@ -210,17 +207,17 @@ class RegionEditPanel extends React.Component {
                             <ColorBullet
                                 color={color}
                             />
-                        </Popover2>
+                        </PopoverNext>
                     </div>
                 </div>
 
                 <div style={{ margin: 3, height: 30, display: 'flex', flexDirection: 'row', justifyContent: "space-between" }}>
                     <ButtonGroup>
 
-                        <Popover2
-                            interactionKind={Popover2InteractionKind.HOVER}
+                        <PopoverNext
+                            interactionKind={PopoverInteractionKind.HOVER}
                             placement={"left"}
-                            popoverClassName={Classes.POPOVER2_CONTENT_SIZING}
+                            popoverClassName={Classes.POPOVER_CONTENT_SIZING}
                             lazy
                             content={<RegionGrid />}
                         >
@@ -229,10 +226,10 @@ class RegionEditPanel extends React.Component {
                                 title="view list of regions"
                                 outlined={true}
                             />
-                        </Popover2>
+                        </PopoverNext>
 
-                        <Popover2
-                            interactionKind={Popover2InteractionKind.HOVER}
+                        <PopoverNext
+                            interactionKind={PopoverInteractionKind.HOVER}
                             placement={"bottom-start"}
                             content={
                                 <Menu>
@@ -251,7 +248,7 @@ class RegionEditPanel extends React.Component {
                             }
                         >
                             <Button icon="caret-down" />
-                        </Popover2>
+                        </PopoverNext>
                     </ButtonGroup>
 
                     <ButtonGroup>
@@ -263,8 +260,8 @@ class RegionEditPanel extends React.Component {
                             active={isEditing}
                         />
 
-                        <Popover2
-                            interactionKind={Popover2InteractionKind.HOVER}
+                        <PopoverNext
+                            interactionKind={PopoverInteractionKind.HOVER}
                             placement={"bottom-start"}
                             content={
                                 <Menu>
@@ -280,13 +277,13 @@ class RegionEditPanel extends React.Component {
                             }
                         >
                             <Button icon="caret-down" />
-                        </Popover2>
+                        </PopoverNext>
                     </ButtonGroup>
 
-                    <Popover2
-                        interactionKind={Popover2InteractionKind.HOVER}
+                    <PopoverNext
+                        interactionKind={PopoverInteractionKind.HOVER}
                         placement={"left"}
-                        popoverClassName={Classes.POPOVER2_CONTENT_SIZING}
+                        popoverClassName={Classes.POPOVER_CONTENT_SIZING}
                         lazy
                         content={
                             <div>
@@ -305,7 +302,7 @@ class RegionEditPanel extends React.Component {
                         }
                     >
                         <Button icon="ring" title="Change tool's width" outlined={true} />
-                    </Popover2>
+                    </PopoverNext>
 
                     <Button
                         icon="clean"

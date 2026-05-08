@@ -1,4 +1,4 @@
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -10,5 +10,14 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+  },
+  server: {
+    proxy: {
+      '^/dataportal/': {
+        target: 'https://dataportal.brainminds.jp/',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/dataportal/, ''),
+      },
+    },
   },
 });

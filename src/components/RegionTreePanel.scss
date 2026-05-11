@@ -2,6 +2,9 @@
 
 $region-bullet-size: 13px;
 $region-expand-handle-size: $region-bullet-size;
+$region-tree-indent: 24px;
+$region-root-tree-indent: 16px;
+$region-tree-line-color: grey;
 $region-searchbox-height: 34px;
 $region-treestatus-height: 20px;
 $region-detailpane-height: 150px;
@@ -34,7 +37,7 @@ $region-detailpane-height: 150px;
 .zav-TreeSubItems {
 	display: block;
 	padding-left: 0;
-	margin-left: 16px;
+	margin-left: $region-tree-indent;
 	margin-top: 0;
 	list-style-type: none;
 }
@@ -52,17 +55,32 @@ $region-detailpane-height: 150px;
 	font-size: 13px;
 	line-height: 24px;
 	margin-top: 0;
-	border-left: dotted 1px grey;
 	position: relative;
 }
 
-.zav-TreeItemCont[data-islastchild="true"] {
-	border-left-color: transparent;
+.zav-TreeItemCont::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	border-left: dotted 1px $region-tree-line-color;
+}
+
+.zav-TreeItemCont[data-islastchild="true"]::before {
+	bottom: calc(50% - 1px);
 }
 
 .zav-TreeItemCont[data-isroot="true"] {
-	border-left-color: transparent;
 	margin-left: -10px;
+}
+
+.zav-TreeItemCont[data-isroot="true"]::before {
+	display: none;
+}
+
+.zav-TreeItemCont[data-isroot="true"] > .zav-TreeSubItems {
+	margin-left: $region-root-tree-indent;
 }
 
 .zav-TreeItemCont[data-isexpanded="false"] > ul {
@@ -83,23 +101,14 @@ $region-detailpane-height: 150px;
 .zav-TreeItemLink::after {
 	content: "";
 	position: absolute;
-	left: 1px;
+	left: 0;
 	right: -6px;
 	top: calc(50% + 0.5px);
-	border-bottom: dotted 1px grey;
+	border-bottom: dotted 1px $region-tree-line-color;
 }
 
 .zav-TreeItemLink[data-islastchild="true"]::after {
 	right: 0;
-}
-
-.zav-TreeItemLink[data-islastchild="true"]::before {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 0;
-	height: calc(50% + 1px);
-	border-left: dotted 1px grey;
 }
 
 .zav-TreeItemCont[data-isroot="true"] > .zav-TreeItem > .zav-TreeItemLink {

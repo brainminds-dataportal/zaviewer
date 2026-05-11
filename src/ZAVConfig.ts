@@ -1,5 +1,6 @@
 import axios from 'axios';
 import _ from 'underscore';
+import { debugInfo, debugLog, debugWarn } from './common/debugLog';
 import { getJson, getOptionalJson, getText, postFormJson } from './common/http';
 import type { ConfigNDatasetPayload, ImageConfig } from './common/Types';
 import type {
@@ -672,11 +673,11 @@ class ZAVConfig {
                   this.config.dataset_info = this.expandDatasetImagesUrl(dataset_info, datasetData.config ?? {});
                 }
               } else {
-                console.info('Missing info for dataset: ', this.config.datasetId);
+                debugInfo('Missing info for dataset:', this.config.datasetId);
               }
             })
             .catch((error) => {
-              console.info('Error while retrieving datasets info: ', error);
+              debugWarn('Error while retrieving datasets info:', error);
             });
         }
 
@@ -746,7 +747,7 @@ class ZAVConfig {
               }
             })
             .catch((error) => {
-              console.info('Error while retrieving info for current dataset: ', error);
+              debugWarn('Error while retrieving info for current dataset:', error);
             });
         }
 
@@ -776,7 +777,7 @@ class ZAVConfig {
     };
 
     if (response.error) {
-      console.log(response.error);
+      debugLog(response.error);
 
       //FIXME display explicit message to user
     }
@@ -969,7 +970,7 @@ class ZAVConfig {
               this.config.color2labelMap = LabelMapper.parseColorTable(response.data);
             })
             .catch((error) => {
-              console.warn('Could not load ColorTable', error);
+              debugWarn('Could not load ColorTable', error);
               this.config.color2labelMap = undefined;
             });
         }

@@ -7,6 +7,7 @@ import { Pane, SplitPane } from 'react-split-pane';
 const RegionTreePanel = React.lazy(() => import('./RegionTreePanel'));
 
 import axios from 'axios';
+import { debugInfo } from '../common/debugLog';
 import RegionsManager, { type IRegionsPayload, type IRegionsStatus } from '../RegionsManager';
 import { RoiInfos } from '../RoiInfo';
 import ViewerManager from '../ViewerManager';
@@ -123,7 +124,7 @@ const App = (props: AppProps) => {
       return;
     }
 
-    console.info('[ZAV debug] Config loaded', {
+    debugInfo('Config loaded', {
       configId: props.configId,
       dataSrc: props.dataSrc,
       dataVersionTag: props.dataVersionTag,

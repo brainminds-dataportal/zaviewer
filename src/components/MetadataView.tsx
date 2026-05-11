@@ -1,6 +1,7 @@
 import { Button } from '@blueprintjs/core';
 import * as React from 'react';
 
+import { debugInfo } from '../common/debugLog';
 import type * as TracInj from '../common/Types';
 
 import './MetadataView.scss';
@@ -81,7 +82,7 @@ const MetadataView = (props: MetadataViewProps) => {
                     src={infoDataset.thumbnailUrl}
                     width={250}
                     alt="Tracer signal thumbnail"
-                    onLoad={(event) => console.info('loaded ', event)}
+                    onLoad={(event) => debugInfo('Metadata thumbnail loaded', event)}
                     style={{
                       justifySelf: 'right',
                     }}

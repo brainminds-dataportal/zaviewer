@@ -5,6 +5,7 @@ import OpenSeadragon from 'openseadragon';
 import paper from 'paper';
 import _ from 'underscore';
 import CustomFilters from './CustomFilters';
+import { debugDebug, debugError, debugInfo, debugWarn } from './common/debugLog';
 import { getJson, getOptionalJson, getXmlDocument } from './common/http';
 import type {
   LayerDisplaySetting,
@@ -772,7 +773,7 @@ class ViewerManager {
     const layerEntries = Object.values(ViewerManager.config.layers as Record<string, LegacyLayerConfig>);
     const firstLayer = layerEntries.length > 0 ? layerEntries[0] : undefined;
 
-    console.info('[ZAV debug] setupTileSources', {
+    debugInfo('setupTileSources', {
       hasBackend: ViewerManager.config?.hasBackend,
       hasCOSource: ViewerManager.config?.hasCOSource,
       activePlane: ViewerManager.status?.activePlane,
@@ -792,7 +793,7 @@ class ViewerManager {
     });
 
     if (!firstLayer) {
-      console.error('[ZAV debug] setupTileSources aborted: no first layer found', {
+      debugError('setupTileSources aborted: no first layer found', {
         layers: ViewerManager.config?.layers,
         data: ViewerManager.config?.data,
       });
@@ -813,7 +814,7 @@ class ViewerManager {
             firstLayerKey,
             firstLayerExt,
           );
-          console.info('[ZAV debug] Fetching IIP pyramidal info', {
+          debugInfo('Fetching IIP pyramidal info', {
             url: iiifInfoUrl,
           });
 
@@ -877,7 +878,7 @@ class ViewerManager {
               }
               that.status.tileSources = tileSources;
 
-              console.info('[ZAV debug] IIP tileSources prepared', {
+              debugInfo('IIP tileSources prepared', {
                 count: tileSources.length,
                 sample: tileSources[0],
               });
@@ -885,7 +886,7 @@ class ViewerManager {
               that.init2ndStage(overridingConf);
             })
             .catch((error) => {
-              console.error('[ZAV debug] Failed to fetch IIP pyramidal info', {
+              debugError('Failed to fetch IIP pyramidal info', {
                 url: iiifInfoUrl,
                 error,
               });
@@ -900,7 +901,7 @@ class ViewerManager {
             }
             ViewerManager.status.tileSources = tileSources;
 
-            console.info('[ZAV debug] IIIF tileSources prepared', {
+            debugInfo('IIIF tileSources prepared', {
               count: tileSources.length,
               firstUrl: tileSources[0],
               lastUrl: tileSources[tileSources.length - 1],
@@ -955,7 +956,7 @@ class ViewerManager {
 
         ViewerManager.status.tileSources = tileSources;
 
-        console.info('[ZAV debug] Local DZI tileSources prepared', {
+        debugInfo('Local DZI tileSources prepared', {
           count: tileSources.length,
           firstUrl: tileSources[0],
         });
@@ -996,7 +997,7 @@ class ViewerManager {
                 }
               }
             }
-            console.info('[ZAV debug] DZI metadata parsed', {
+            debugInfo('DZI metadata parsed', {
               tileSize: that.status.tileSize,
               tileOverlap: that.status.tileOverlap,
               tileFormat: that.status.tileFormat,
@@ -1006,7 +1007,7 @@ class ViewerManager {
             that.init2ndStage(overridingConf);
           })
           .catch((error) => {
-            console.error('[ZAV debug] Failed to load DZI metadata', {
+            debugError('Failed to load DZI metadata', {
               url: tileSources[0],
               error,
             });
@@ -1020,7 +1021,7 @@ class ViewerManager {
 
     const initialPage = ViewerManager.config.initialPage;
 
-    console.info('[ZAV debug] init2ndStage', {
+    debugInfo('init2ndStage', {
       viewerId: VIEWER_ID,
       initialPage: initialPage,
       tileSourceCount: ViewerManager.status?.tileSources?.length,
@@ -1061,7 +1062,7 @@ class ViewerManager {
       ) as OpenSeadragon.Options,
     );
 
-    console.info('[ZAV debug] OpenSeadragon viewer created', {
+    debugInfo('OpenSeadragon viewer created', {
       elementFound: Boolean(document.getElementById(VIEWER_ID)),
       crossOriginPolicy: ViewerManager.config.hasCOSource ? 'Anonymous' : undefined,
     });
@@ -1179,7 +1180,7 @@ class ViewerManager {
       //restore state according to history provided at init
       const initHistoryParams = { ...overridingConf };
       if (!initHistoryParams.center && initHistoryParams.imageZoom) {
-        console.info('[ZAV debug] Ignoring initial zoom without valid center', {
+        debugInfo('Ignoring initial zoom without valid center', {
           imageZoom: initHistoryParams.imageZoom,
           overridingConf,
         });
@@ -1804,9 +1805,6 @@ class ViewerManager {
           throw new Error(`${response.status} - ${response.statusText}`);
         }
       })
-      .then((_data) => {
-        //console.debug((create ? 'New' : 'Modified') + ' region path ' + pathId + ' successfully saved!', data);
-      })
       .catch((_error) => {
         //FIXME alert user
         console.error(`Error when saving region path ${pathId}`);
@@ -1886,8 +1884,6 @@ class ViewerManager {
         }
       })
       .then((_data) => {
-        //console.debug('New SVG successfully created!');
-
         //Reload (newly created) SVG
         ViewerManager.shiftToSlice(0, true);
       })
@@ -2044,7 +2040,6 @@ class ViewerManager {
     ViewerManager.status.set.remove();
 
     ViewerManager.status.currentSVGName = svgName;
-    //console.log("svg " + svgName);
 
     //Create SVG element dedicated to edition
     ViewerManager.createEditSVGElement();
@@ -2281,7 +2276,7 @@ class ViewerManager {
             that.viewer.viewport.fitBounds(that.viewer.viewport.imageToViewportRectangle(imageRect), true);
             that.pendingInitialAtlasFit = false;
 
-            console.info('[ZAV debug] Applied initial atlas fit', {
+            debugInfo('Applied initial atlas fit', {
               atlasBounds,
               imageRect,
               coveredPart,
@@ -2472,7 +2467,6 @@ class ViewerManager {
       if (ViewerManager.status.paper) {
         ViewerManager.status.paper.setTransform(` scale(${zoom},${zoom}) translate(0,${ViewerManager.config.dzDiff})`);
       }
-      //console.log('S' + zoom + ',' + zoom + ',0,0');
 
       ViewerManager.refreshCanvasContent();
 
@@ -2641,7 +2635,7 @@ class ViewerManager {
       const bbox = el.getBBox();
       const newX = (bbox.x - bbox.width / 2) / ViewerManager.config.dzWidth;
       const newY = (ViewerManager.config.dzDiff + bbox.y - bbox.height / 2) / ViewerManager.config.dzHeight;
-      console.log(newX, newY);
+      debugInfo('Centering on ROI', { x: newX, y: newY });
       const windowPoint = new OpenSeadragon.Point(newX, newY);
       ViewerManager.viewer.viewport.panTo(windowPoint);
       ViewerManager.viewer.viewport.zoomTo(1.1);
@@ -4182,7 +4176,7 @@ class ViewerManager {
       ViewerManager.getProcessors();
       const proc = ViewerManager.getProcessor(procIndex);
       if (proc) {
-        console.debug(`Computing "${proc.name}"`);
+        debugDebug(`Computing "${proc.name}"`);
 
         //store zoom factor of the image about to be processed
         ViewerManager.status.processedZoom = ViewerManager.getZoomFactor();
@@ -4196,7 +4190,7 @@ class ViewerManager {
 
         //routine to perform processing on specified imageData
         const startProcessor = (imageData: ImageData) => {
-          console.debug(`start processor "${proc.name}" on ${imageData.width} x ${imageData.height} pixels`);
+          debugDebug(`start processor "${proc.name}" on ${imageData.width} x ${imageData.height} pixels`);
 
           //perform actual computation
           ViewerManager.status.processingActive = true;
@@ -4225,7 +4219,7 @@ class ViewerManager {
                 ViewerManager.displayClipBox();
               })
               .catch((error: unknown) => {
-                console.error(error);
+                debugError(error);
                 alert(`An error occured:\n${error}`);
                 ViewerManager.signalStatusChanged(ViewerManager.status);
               })
@@ -4379,7 +4373,6 @@ class ViewerManager {
                   // trigger next Panning
                   ViewerManager.viewer.viewport.panTo(panMove.point, true);
                 } else {
-                  //console.debug("Resolving Last PanPromise");
                   resolve(imageDataArray);
                 }
               });
@@ -4395,7 +4388,7 @@ class ViewerManager {
                   ViewerManager.status.longRunningMessage = 'Aggregating data...';
 
                   const fullImgDataSizeByte = w * h * 4;
-                  console.debug(`allocating ${fullImgDataSizeByte} bytes`);
+                  debugDebug(`allocating ${fullImgDataSizeByte} bytes`);
                   const joinedImgDataPx = new Uint8ClampedArray(fullImgDataSizeByte);
                   imageDataArray.forEach((imageDataInfo, _index: number) => {
                     const partImgData = imageDataInfo.data;
@@ -4434,7 +4427,7 @@ class ViewerManager {
                 (joinedImageData: ImageData) => startProcessor(joinedImageData),
               )
               .catch((error: unknown) => {
-                console.error('Error while processing:', error);
+                debugError('Error while processing:', error);
 
                 ViewerManager.status.longRunningMessage = String(error);
                 ViewerManager.signalStatusChanged(ViewerManager.status);
@@ -4489,7 +4482,7 @@ class ViewerManager {
       };
 
       if (!hasValidCenter) {
-        console.info('[ZAV debug] Omitting out-of-bounds history viewport', {
+        debugInfo('Omitting out-of-bounds history viewport', {
           center,
           planeImageSize,
           activePlane: ViewerManager.status.activePlane,
@@ -4559,7 +4552,7 @@ class ViewerManager {
         if (x >= 0 && y >= 0 && (!planeImageSize || (x <= planeImageSize && y <= planeImageSize))) {
           confParams.center = new OpenSeadragon.Point(x, y);
         } else {
-          console.warn('[ZAV debug] Ignoring out-of-bounds history center', {
+          debugWarn('Ignoring out-of-bounds history center', {
             x,
             y,
             plane,

@@ -534,7 +534,6 @@ export const TourOperator = (props: TourOperatorProps) => {
       continuous={true}
       onEvent={(data: EventData, _controls) => {
         const { action, index, status, type } = data;
-        //console.log('#', action, index, status, type);
 
         //update context with next to come step (works only from second steps onwards, since triggered on STEP_AFTER event)
         if (type === EVENTS.STEP_AFTER) {

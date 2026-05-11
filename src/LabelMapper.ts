@@ -1,5 +1,6 @@
 import OpenSeadragon from 'openseadragon';
 
+import { debugInfo } from './common/debugLog';
 import type { LayerDisplaySetting, LayerDisplaySettings } from './components/ViewerPanelTypes';
 
 type HexColor = string;
@@ -121,7 +122,7 @@ class LabelMapper {
                     onClassFocused(color, label);
                   } else {
                     onClassFocused(undefined, undefined);
-                    console.log('No label for Color:', color);
+                    debugInfo('No label for Color:', color);
                   }
                 }
               }

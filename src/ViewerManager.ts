@@ -70,7 +70,7 @@ type OSDFilterFactory = {
   GAMMA: (gamma: number) => unknown;
 };
 type OSDWithFilters = typeof OpenSeadragon & {
-  Filters: OSDFilterFactory;
+  Filters?: OSDFilterFactory;
 };
 type ViewerTileCacheEntry = {
   url?: string;
@@ -3407,19 +3407,23 @@ class ViewerManager {
   static setAllFilters() {
     const filters: Array<{ items: OpenSeadragon.TiledImage; processors: unknown[] }> = [];
     const osdFilters = (OpenSeadragon as OSDWithFilters).Filters;
+    const canUseOSDFilters =
+      typeof osdFilters?.MORPHOLOGICAL_OPERATION === 'function' &&
+      typeof osdFilters?.CONTRAST === 'function' &&
+      typeof osdFilters?.GAMMA === 'function';
     let tracerNum = 0;
     Object.values(ViewerManager.status.layerDisplaySettings).forEach((layer) => {
       const processors: unknown[] = [];
 
       if (layer.isTracer) {
         //change filters only if dilation kernel size changed
-        if (layer.enhanceSignal && (layer.dilation ?? 0) > 0) {
+        if (canUseOSDFilters && layer.enhanceSignal && (layer.dilation ?? 0) > 0) {
           processors.push(osdFilters.MORPHOLOGICAL_OPERATION(layer.dilation ?? 0, Math.max));
         }
         processors.push(CustomFilters.INTENSITYALPHA(tracerNum));
         tracerNum++;
       } else {
-        if (!layer.useIIProtocol) {
+        if (canUseOSDFilters && !layer.useIIProtocol) {
           if (layer.contrastEnabled) {
             processors.push(osdFilters.CONTRAST(layer.contrast ?? 1));
           }
@@ -3437,6 +3441,19 @@ class ViewerManager {
         });
       }
     });
+
+    if (!canUseOSDFilters) {
+      const requiresOSDFilters = Object.values(ViewerManager.status.layerDisplaySettings).some((layer) =>
+        Boolean(
+          (layer.isTracer && layer.enhanceSignal && (layer.dilation ?? 0) > 0) ||
+            (!layer.useIIProtocol && (layer.contrastEnabled || layer.gammaEnabled)),
+        ),
+      );
+      if (requiresOSDFilters) {
+        console.error('OpenSeadragon.Filters is unavailable; skipping contrast, gamma, and morphology filters.');
+      }
+    }
+
     ViewerManager.viewer.setFilterOptions({
       filters: filters as unknown as NonNullable<Parameters<OpenSeadragon.Viewer['setFilterOptions']>[0]>['filters'],
     });

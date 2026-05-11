@@ -4,6 +4,12 @@ type FilterProcessor = (context: CanvasRenderingContext2D, callback: () => void)
 
 type FilterTarget = OpenSeadragon.TiledImage | OpenSeadragon.TiledImage[];
 
+type FilterFactory = {
+  CONTRAST: (adjustment: number) => FilterProcessor;
+  GAMMA: (adjustment: number) => FilterProcessor;
+  MORPHOLOGICAL_OPERATION: (kernelSize: number, comparator: (left: number, right: number) => number) => FilterProcessor;
+};
+
 interface FilterDefinition {
   items?: FilterTarget;
   processors: FilterProcessor | FilterProcessor[];
@@ -93,6 +99,101 @@ class FilterPluginCompat {
     }
 
     await event.setData(context, 'context2d');
+  };
+}
+
+function createPixelMapper(mapper: (value: number) => number): FilterProcessor {
+  return (context, callback) => {
+    const imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+    const pixels = imageData.data;
+    for (let index = 0; index < pixels.length; index += 4) {
+      pixels[index] = mapper(pixels[index]);
+      pixels[index + 1] = mapper(pixels[index + 1]);
+      pixels[index + 2] = mapper(pixels[index + 2]);
+    }
+    context.putImageData(imageData, 0, 0);
+    callback();
+  };
+}
+
+function createContrastProcessor(adjustment: number): FilterProcessor {
+  if (adjustment < 0) {
+    throw new Error('Contrast adjustment must be positive.');
+  }
+
+  const precomputedContrast = Array.from({ length: 256 }, (_, value) => value * adjustment);
+  return createPixelMapper((value) => precomputedContrast[value] ?? value);
+}
+
+function createGammaProcessor(adjustment: number): FilterProcessor {
+  if (adjustment < 0) {
+    throw new Error('Gamma adjustment must be positive.');
+  }
+
+  const precomputedGamma = Array.from({ length: 256 }, (_, value) => (value / 255) ** adjustment * 255);
+  return createPixelMapper((value) => precomputedGamma[value] ?? value);
+}
+
+function createMorphologicalOperationProcessor(
+  kernelSize: number,
+  comparator: (left: number, right: number) => number,
+): FilterProcessor {
+  if (kernelSize % 2 === 0) {
+    throw new Error('The kernel size must be an odd number.');
+  }
+  if (!comparator) {
+    throw new Error('A comparator must be defined.');
+  }
+
+  const kernelHalfSize = Math.floor(kernelSize / 2);
+
+  return (context, callback) => {
+    const width = context.canvas.width;
+    const height = context.canvas.height;
+    const imageData = context.getImageData(0, 0, width, height);
+    const originalPixels = context.getImageData(0, 0, width, height).data;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const pixelOffset = (y * width + x) * 4;
+        let red = originalPixels[pixelOffset] ?? 0;
+        let green = originalPixels[pixelOffset + 1] ?? 0;
+        let blue = originalPixels[pixelOffset + 2] ?? 0;
+
+        for (let kernelY = 0; kernelY < kernelSize; kernelY += 1) {
+          for (let kernelX = 0; kernelX < kernelSize; kernelX += 1) {
+            const sourceX = x + kernelX - kernelHalfSize;
+            const sourceY = y + kernelY - kernelHalfSize;
+            if (sourceX >= 0 && sourceX < width && sourceY >= 0 && sourceY < height) {
+              const sourceOffset = (sourceY * width + sourceX) * 4;
+              red = comparator(originalPixels[sourceOffset] ?? 0, red);
+              green = comparator(originalPixels[sourceOffset + 1] ?? 0, green);
+              blue = comparator(originalPixels[sourceOffset + 2] ?? 0, blue);
+            }
+          }
+        }
+
+        imageData.data[pixelOffset] = red;
+        imageData.data[pixelOffset + 1] = green;
+        imageData.data[pixelOffset + 2] = blue;
+      }
+    }
+
+    context.putImageData(imageData, 0, 0);
+    callback();
+  };
+}
+
+function registerFilterFactories() {
+  const osdWithFilters = OpenSeadragon as typeof OpenSeadragon & { Filters?: FilterFactory };
+  if (osdWithFilters.Filters) {
+    return;
+  }
+
+  osdWithFilters.Filters = {
+    CONTRAST: createContrastProcessor,
+    GAMMA: createGammaProcessor,
+    MORPHOLOGICAL_OPERATION: createMorphologicalOperationProcessor,
   };
 }
 
@@ -217,3 +318,5 @@ if (!OpenSeadragon.Viewer.prototype.setFilterOptions) {
     this.filterPluginInstance.setOptions(options);
   };
 }
+
+registerFilterFactories();

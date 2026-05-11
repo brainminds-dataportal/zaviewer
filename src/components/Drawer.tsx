@@ -1,4 +1,3 @@
-import { Icon } from '@blueprintjs/core';
 import * as React from 'react';
 
 import './Drawer.scss';
@@ -18,7 +17,7 @@ export const DrawerHandle = (props: DrawerHandleProps) => {
   const pointToRight = props.collapseDirection === CollapseDirection.RIGHT ? props.isExpanded : !props.isExpanded;
   return (
     <button type="button" className="zav-Drawer_handle" onClick={props.onClick} aria-label="Toggle drawer">
-      <Icon icon={pointToRight ? 'caret-right' : 'caret-left'} iconSize={22} />
+      <span aria-hidden="true">{pointToRight ? '>' : '<'}</span>
     </button>
   );
 };

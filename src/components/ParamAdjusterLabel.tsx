@@ -11,7 +11,7 @@ import React from 'react';
 import './ParamAdjusterLabel.scss';
 
 type ParamAdjusterLabelProps = {
-  icon?: string | React.ReactNode;
+  icon?: React.ComponentProps<typeof Icon>['icon'] | React.ReactNode;
   label: React.ReactNode;
   min: number;
   max: number;
@@ -19,7 +19,7 @@ type ParamAdjusterLabelProps = {
   onChange: (value: number) => void;
   value: number;
   defaultValue?: number;
-  labelRenderer?: (value: number) => React.ReactNode;
+  labelRenderer?: (value: number) => string | JSX.Element;
   enabled?: boolean;
   noAdjust?: boolean;
 };
@@ -28,12 +28,14 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
   render() {
     const icon =
       typeof this.props.icon === 'string' ? (
-        <Icon icon={this.props.icon} style={{ marginRight: 10 }} />
+        <Icon icon={this.props.icon as React.ComponentProps<typeof Icon>['icon']} style={{ marginRight: 10 }} />
       ) : (
         this.props.icon
       );
 
-    const renderedValue = this.props.labelRenderer ? this.props.labelRenderer(this.props.value) : this.props.value;
+    const renderedValue: React.ReactNode = this.props.labelRenderer
+      ? this.props.labelRenderer(this.props.value)
+      : this.props.value;
     const adjLabel = (
       <span className="zav-AdjusterLabel" data-disabled={!this.props.enabled}>
         {icon}
@@ -41,7 +43,8 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
       </span>
     );
 
-    const resetEnabled = typeof this.props.defaultValue !== 'undefined' && this.props.defaultValue !== this.props.value;
+    const defaultValue = this.props.defaultValue;
+    const resetEnabled = typeof defaultValue !== 'undefined' && defaultValue !== this.props.value;
     return this.props.enabled && !this.props.noAdjust ? (
       <PopoverNext
         interactionKind={PopoverInteractionKind.HOVER}
@@ -56,19 +59,24 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
               </span>
               {typeof this.props.defaultValue !== 'undefined' ? (
                 <span title={'click to reset to default value'}>
-                  <Icon
-                    icon={'undo'}
-                    size={12}
+                  <button
+                    type="button"
                     style={{
-                      ...{ marginLeft: 10 },
-                      ...(resetEnabled ? {} : { color: 'silver' }),
+                      marginLeft: 10,
+                      color: resetEnabled ? undefined : 'silver',
+                      cursor: resetEnabled ? 'pointer' : 'default',
+                      background: 'transparent',
+                      border: 0,
+                      padding: 0,
                     }}
                     onClick={
-                      resetEnabled && typeof this.props.defaultValue !== 'undefined'
-                        ? () => this.props.onChange(this.props.defaultValue)
+                      resetEnabled && typeof defaultValue !== 'undefined'
+                        ? () => this.props.onChange(defaultValue)
                         : undefined
                     }
-                  />
+                  >
+                    ↺
+                  </button>
                 </span>
               ) : null}
             </div>
@@ -88,7 +96,9 @@ class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
                 onChange={this.props.onChange}
                 value={this.props.value}
                 showTrackFill={false}
-                labelRenderer={this.props.labelRenderer}
+                labelRenderer={
+                  this.props.labelRenderer ? (value) => this.props.labelRenderer?.(value) ?? String(value) : undefined
+                }
                 disabled={!this.props.enabled}
               />
               <Icon

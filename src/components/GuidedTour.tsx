@@ -1,7 +1,7 @@
 import { Menu, MenuDivider, MenuItem } from '@blueprintjs/core';
 import * as React from 'react';
 
-import { ACTIONS, EVENTS, Joyride, STATUS, type Step } from 'react-joyride';
+import { ACTIONS, EVENTS, type EventData, Joyride, STATUS, type Step } from 'react-joyride';
 
 import './GuidedTour.scss';
 
@@ -9,7 +9,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: '_init_',
     target: '.App',
-    disableBeacon: true,
+    skipBeacon: true,
     offset: 50,
     title: 'ZAViewer - Zooming Atlas Viewer',
     content: (
@@ -45,7 +45,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'mainImagePanel',
     target: '#svgDelineationOverlay',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Deeply zoomable high resolution images',
     content: (
       <div className="zav_guideContent">
@@ -66,7 +66,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'collapsedControlPanel',
     target: '#ZAV-rightPanel>.zav-Drawer_collapsedCont',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Quick navigation buttons',
     content: (
       <div className="zav_guideContent">
@@ -87,7 +87,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'collapsedControlPanel',
     target: '#ZAV-rightPanel>.zav-Drawer_handle',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Collapsible main control panel',
     content: (
       <div className="zav_guideContent">
@@ -105,7 +105,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-Drawer_expandedContWrapper',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Main control panel',
     content: (
       <div className="zav_guideContent">
@@ -126,7 +126,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'collapsedRegionPanel',
     target: '.primaryViewerPane>.zav-Drawer_handle',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Collapsible region panel',
     content: (
       <div className="zav_guideContent">
@@ -144,7 +144,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedRegionPanel',
     target: '.secondaryRegionTreePane',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Region panel',
     content: (
       <div className="zav_guideContent">
@@ -167,7 +167,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'mainImagePanel',
     target: '#svgDelineationOverlay',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Deeply zoomable high resolution image',
     content: (
       <div className="zav_guideContent">
@@ -210,7 +210,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'collapsedControlPanel',
     target: '.zav-QuickActionPanel .zav-QuickNavButtons',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Quick navigation buttons',
     content: (
       <div className="zav_guideContent">
@@ -229,7 +229,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'collapsedControlPanel',
     target: '.zav-QuickActionPanel .zav-QuickToogleDelineationButton',
-    disableBeacon: true,
+    skipBeacon: true,
     content: (
       <div className="zav_guideContent">
         <p>This switch allows to toggle Atlas region overlay visibility.</p>
@@ -241,7 +241,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-controlPanel_Layers',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Layers control',
     content: (
       <div className="zav_guideContent">
@@ -265,7 +265,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-controlPanel_Regions',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Atlas regions control',
     content: (
       <div className="zav_guideContent">
@@ -291,7 +291,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'navigatorPanel',
     target: '#ZAV-rightPanel .zav-controlPanel_Navigator',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Global view',
     content: (
       <div className="zav_guideContent">
@@ -316,7 +316,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-QuickDatasetInfoButton',
-    disableBeacon: true,
+    skipBeacon: true,
     content: (
       <div className="zav_guideContent">
         <p>Clicking on this icon will display the detailed dataset's information.</p>
@@ -328,7 +328,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-controlPanel_SliceNav',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Slice navigation',
     content: (
       <div className="zav_guideContent">
@@ -362,7 +362,7 @@ const NavigationTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedControlPanel',
     target: '#ZAV-rightPanel .zav-controlPanel_Distance',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Distance measurement',
     content: (
       <div className="zav_guideContent">
@@ -393,7 +393,7 @@ const RegionsTourSteps: ExtendedStep[] = [
   {
     stepContext: 'mainImagePanel',
     target: '#svgDelineationOverlay',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Atlas regions',
     content: (
       <div className="zav_guideContent">
@@ -419,7 +419,7 @@ const RegionsTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedRegionPanel',
     target: '.secondaryRegionTreePane .zav-Tree',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Region panel',
     content: (
       <div className="zav_guideContent">
@@ -449,7 +449,7 @@ const RegionsTourSteps: ExtendedStep[] = [
   {
     stepContext: 'expandedRegionPanel',
     target: '.secondaryRegionTreePane .zav-regions_searchinput ',
-    disableBeacon: true,
+    skipBeacon: true,
     title: 'Region search',
     content: (
       <div className="zav_guideContent">
@@ -531,28 +531,8 @@ export const TourOperator = (props: TourOperatorProps) => {
       steps={props.tourSteps}
       stepIndex={props.tourStepIndex}
       run={props.guidedTourOn}
-      showProgress={true}
-      showSkipButton={true}
       continuous={true}
-      spotlightPadding={5}
-      styles={{
-        options: {},
-        //change default blend mode since ZAViewer is dark mode themed
-        overlay: {
-          backgroundColor: '#1f3fee',
-          mixBlendMode: 'screen',
-        },
-        spotlight: {
-          //backgroundColor: '#ffffff75',
-          backgroundColor: '#2f2f2f',
-          borderRadius: 0,
-          boxShadow: '#42424296 0px 0px 0px 9999px',
-          mixBlendMode: 'unset',
-          //border: '4px solid rgba(76, 121, 255, 0.94)',
-        },
-        tooltip: {},
-      }}
-      callback={(data) => {
+      onEvent={(data: EventData, _controls) => {
         const { action, index, status, type } = data;
         //console.log('#', action, index, status, type);
 
@@ -575,7 +555,7 @@ export const TourOperator = (props: TourOperatorProps) => {
           }
         }
 
-        if ([EVENTS.STEP_AFTER, EVENTS.TARGET_NOT_FOUND].includes(type)) {
+        if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
           // Update state to advance the tour
           props.setTourStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
         }
@@ -585,7 +565,8 @@ export const TourOperator = (props: TourOperatorProps) => {
         // * skip button was clicked
         // * And also when close button was click (to prevent restarting at next step)
         if (
-          [STATUS.FINISHED, STATUS.SKIPPED].includes(status) ||
+          status === STATUS.FINISHED ||
+          status === STATUS.SKIPPED ||
           (type === EVENTS.STEP_AFTER && action === ACTIONS.CLOSE)
         ) {
           //reset from start for next run of the tour
@@ -599,12 +580,21 @@ export const TourOperator = (props: TourOperatorProps) => {
 
 const deepCloneObject = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
 
-const EmptyStepContext = Object.freeze({ currentStep: '' });
+type StepContextValue = {
+  currentStep?: string;
+};
+
+type TourContextValue = {
+  tourMenu?: JSX.Element;
+  stepContext: StepContextValue;
+};
+
+const EmptyStepContext: StepContextValue = Object.freeze({ currentStep: undefined });
 const EmptyTourContext = Object.freeze({
-  tourMenu: undefined as unknown as JSX.Element,
+  tourMenu: undefined,
   stepContext: EmptyStepContext,
 });
-export const TourContext = React.createContext(deepCloneObject(EmptyTourContext));
+export const TourContext = React.createContext<TourContextValue>(deepCloneObject(EmptyTourContext));
 
 type GuidedTourProps = {
   children?: React.ReactNode;

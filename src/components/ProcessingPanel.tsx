@@ -60,7 +60,7 @@ class ProcessingPanel extends React.Component<ProcessingPanelProps> {
             title={'perform processing on selected clip'}
             small
             icon="derive-column"
-            disabled={!ViewerManager.isClipSelected() && ViewerManager.isProcessingActive()}
+            disabled={!ViewerManager.isClipSelected() || ViewerManager.isProcessingActive()}
             onClick={this.handleStartProcessing}
           />
           {ViewerManager.hasProcessors() ? (
@@ -68,10 +68,10 @@ class ProcessingPanel extends React.Component<ProcessingPanelProps> {
               <HTMLSelect
                 fill={true}
                 onChange={this.handleSelectProcessing}
-                disabled={ViewerManager.isProcessingActive()}
-                defaultValue={selectProcIndex}
+                disabled={Boolean(ViewerManager.isProcessingActive())}
+                defaultValue={String(selectProcIndex)}
               >
-                {ViewerManager.getProcessors().map((p, index) => (
+                {ViewerManager.getProcessors().map((p: { name: string }, index: number) => (
                   <option key={p.name} value={index}>
                     {p.name}
                   </option>

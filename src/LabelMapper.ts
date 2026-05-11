@@ -1,6 +1,30 @@
+import OpenSeadragon from 'openseadragon';
+
+import type { LayerDisplaySetting, LayerDisplaySettings } from './components/ViewerPanelTypes';
+
 type HexColor = string;
 
 type ColorTable = Map<HexColor, string>;
+
+type DrawnTile = {
+  bounds: OpenSeadragon.Rect;
+  sourceBounds: {
+    width: number;
+    height: number;
+  };
+  cacheImageRecord: {
+    getRenderedContext(): CanvasRenderingContext2D;
+  };
+  level: string | number;
+};
+
+type DrawnTiledImage = OpenSeadragon.TiledImage & {
+  lastDrawn: DrawnTile[];
+  _viewportToTiledImageRectangle(rect: OpenSeadragon.Rect): OpenSeadragon.Rect;
+  _tileCache: {
+    getImageRecord(key: string): { _tiles?: DrawnTile[] } | undefined;
+  };
+};
 
 class LabelMapper {
   private static LabelColorPattern =
@@ -37,8 +61,8 @@ class LabelMapper {
   }
 
   static initLabelMapper(
-    viewer,
-    layerDisplaySettings,
+    viewer: OpenSeadragon.Viewer,
+    layerDisplaySettings: LayerDisplaySettings,
     color2labelMap: ColorTable,
     onClassFocused: (color: HexColor | undefined, label?: string) => void,
   ) {
@@ -47,24 +71,36 @@ class LabelMapper {
     return typeof labelMapper.mouseTracker !== 'undefined';
   }
 
-  private previousClassColor: string;
-  private mouseTracker = undefined;
+  private previousClassColor: string | undefined;
+  private mouseTracker: OpenSeadragon.MouseTracker | undefined = undefined;
+
+  private static isDrawnTile(tile: unknown): tile is DrawnTile {
+    return (
+      typeof tile === 'object' &&
+      tile !== null &&
+      'bounds' in tile &&
+      'sourceBounds' in tile &&
+      'cacheImageRecord' in tile
+    );
+  }
 
   private constructor(
-    viewer,
-    layerDisplaySettings,
+    viewer: OpenSeadragon.Viewer,
+    layerDisplaySettings: LayerDisplaySettings,
     color2labelMap: ColorTable,
     onClassFocused: (color: HexColor | undefined, label?: string) => void,
   ) {
-    const labelMapLayer = Object.values(layerDisplaySettings).find((l) => l.isLabelMap);
+    const labelMapLayer = Object.values(layerDisplaySettings).find(
+      (l): l is LayerDisplaySetting & { index: number } => Boolean(l.isLabelMap) && typeof l.index === 'number',
+    );
     if (labelMapLayer && color2labelMap) {
       // (see https://github.com/openseadragon/openseadragon/issues/1471#issuecomment-391425270 )
       this.mouseTracker = new OpenSeadragon.MouseTracker({
         element: viewer.element,
-        moveHandler: function (event) {
+        moveHandler: (event) => {
           //find labelMap layer, if any
           const viewportPos = viewer.viewport.pointFromPixel(event.position);
-          const tiledImage = viewer.world.getItemAt(labelMapLayer.index);
+          const tiledImage = viewer.world.getItemAt(labelMapLayer.index) as DrawnTiledImage | undefined;
           if (tiledImage) {
             const labelMapTile = LabelMapper.findLabelMapTile(
               viewer,
@@ -73,7 +109,7 @@ class LabelMapper {
               tiledImage,
               viewportPos,
             );
-            if (labelMapTile) {
+            if (labelMapTile && LabelMapper.isDrawnTile(labelMapTile)) {
               const rgb = LabelMapper.getPointRGBLabel(labelMapTile, viewportPos);
               if (rgb) {
                 const color = LabelMapper.rgbToHexColor(rgb);
@@ -96,64 +132,71 @@ class LabelMapper {
     }
   }
 
-  private static getPointRGBLabel = (labelMapTile, viewportPos) => {
+  private static getPointRGBLabel = (labelMapTile: DrawnTile, viewportPos: OpenSeadragon.Point) => {
     //points in the source tile
-    if (labelMapTile.bounds) {
-      const tx =
-        ((viewportPos.x - labelMapTile.bounds.x) / labelMapTile.bounds.width) * labelMapTile.sourceBounds.width;
-      const ty =
-        ((viewportPos.y - labelMapTile.bounds.y) / labelMapTile.bounds.height) * labelMapTile.sourceBounds.height;
-      //get pixel color from cached tile
-      const rc = labelMapTile.cacheImageRecord.getRenderedContext();
-      const data = rc.getImageData(tx, ty, 1, 1).data;
-      const rgb = [data[0], data[1], data[2]];
-      return rgb;
-    } else {
-      return null;
-    }
+    const tx = ((viewportPos.x - labelMapTile.bounds.x) / labelMapTile.bounds.width) * labelMapTile.sourceBounds.width;
+    const ty =
+      ((viewportPos.y - labelMapTile.bounds.y) / labelMapTile.bounds.height) * labelMapTile.sourceBounds.height;
+    //get pixel color from cached tile
+    const rc = labelMapTile.cacheImageRecord.getRenderedContext();
+    const data = rc.getImageData(tx, ty, 1, 1).data;
+    return [data[0], data[1], data[2]];
   };
 
-  private static findLabelMapTile = (viewer, layerDisplaySettings, labelMapLayer, tiledImage, viewportPos) => {
+  private static findLabelMapTile = (
+    viewer: OpenSeadragon.Viewer,
+    layerDisplaySettings: LayerDisplaySettings,
+    labelMapLayer: LayerDisplaySetting & { index: number },
+    tiledImage: DrawnTiledImage,
+    viewportPos: OpenSeadragon.Point,
+  ): DrawnTile | undefined => {
     if (labelMapLayer.enabled && labelMapLayer.opacity > 0) {
       //if labelmap layer is visible, can get info directly from lastDrawn
-      return tiledImage.lastDrawn.find((tile) => tile.bounds.containsPoint(viewportPos));
-    } else {
-      //labelmap layer is not visible, first need to find tiles level and coords
+      return (tiledImage.lastDrawn as unknown[]).find(
+        (tile): tile is DrawnTile => LabelMapper.isDrawnTile(tile) && tile.bounds.containsPoint(viewportPos),
+      );
+    }
 
-      const anyVisibleLayer = Object.values(layerDisplaySettings).find((l) => l.enabled && l.opacity > 0);
-      if (anyVisibleLayer) {
-        //get current title level from lastdrawn on any enabled layer (see https://github.com/openseadragon/openseadragon/issues/1888#issuecomment-1282423960 )
-        const coordinates = viewer.world.getItemAt(anyVisibleLayer.index).lastDrawn.map((item) => {
-          const container = [];
-          container.push(parseInt(item.level, 10));
-          return container;
-        });
+    //labelmap layer is not visible, first need to find tiles level and coords
+    const anyVisibleLayer = Object.values(layerDisplaySettings).find(
+      (l): l is LayerDisplaySetting & { index: number } =>
+        Boolean(l.enabled) && typeof l.opacity === 'number' && l.opacity > 0 && typeof l.index === 'number',
+    );
+    if (anyVisibleLayer) {
+      //get current title level from lastdrawn on any enabled layer (see https://github.com/openseadragon/openseadragon/issues/1888#issuecomment-1282423960 )
+      const visibleTiledImage = viewer.world.getItemAt(anyVisibleLayer.index) as DrawnTiledImage | undefined;
+      const coordinates = visibleTiledImage?.lastDrawn.map((item) => parseInt(String(item.level), 10));
 
-        const tileLevel = Math.max.apply(null, coordinates);
+      if (!coordinates?.length) {
+        return undefined;
+      }
 
-        // getTileAtPoint technique
-        const viewportPosRect = new OpenSeadragon.Rect(viewportPos.x, viewportPos.y, 0, 0);
-        const tileSourcePosRect = tiledImage._viewportToTiledImageRectangle(viewportPosRect);
-        const tileSourcePos = tileSourcePosRect.getTopLeft();
-        const source = tiledImage.source;
-        if (
-          tileSourcePos.x >= 0 &&
-          tileSourcePos.x <= 1 &&
-          tileSourcePos.y >= 0 &&
-          tileSourcePos.y <= 1 / source.aspectRatio
-        ) {
-          const tileCoord = source.getTileAtPoint(tileLevel, tileSourcePos);
+      const tileLevel = Math.max(...coordinates);
 
-          //Since labelmap layers' tiles are always loaded, they can be retrieved from tileCache
-          const cacheKey = tiledImage.source.getTileUrl(tileLevel, tileCoord.x, tileCoord.y);
-          const imageRecord = tiledImage._tileCache.getImageRecord(cacheKey);
-          if (imageRecord?._tiles && imageRecord._tiles.length > 0) {
-            const labelMapTile = imageRecord._tiles[0];
-            return labelMapTile;
-          }
+      // getTileAtPoint technique
+      const viewportPosRect = new OpenSeadragon.Rect(viewportPos.x, viewportPos.y, 0, 0);
+      const tileSourcePosRect = tiledImage._viewportToTiledImageRectangle(viewportPosRect);
+      const tileSourcePos = tileSourcePosRect.getTopLeft();
+      const source = tiledImage.source;
+      if (
+        tileSourcePos.x >= 0 &&
+        tileSourcePos.x <= 1 &&
+        tileSourcePos.y >= 0 &&
+        tileSourcePos.y <= 1 / source.aspectRatio
+      ) {
+        const tileCoord = source.getTileAtPoint(tileLevel, tileSourcePos);
+
+        //Since labelmap layers' tiles are always loaded, they can be retrieved from tileCache
+        const cacheKey = String(tiledImage.source.getTileUrl(tileLevel, tileCoord.x, tileCoord.y));
+        const imageRecord = tiledImage._tileCache.getImageRecord(cacheKey);
+        const labelMapTile = imageRecord?._tiles?.[0];
+        if (labelMapTile && LabelMapper.isDrawnTile(labelMapTile)) {
+          return labelMapTile;
         }
       }
     }
+
+    return undefined;
   };
 }
 

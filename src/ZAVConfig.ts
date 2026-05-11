@@ -1,8 +1,14 @@
-// biome-ignore-all lint/suspicious/useIterableCallbackReturn: This legacy configuration loader intentionally uses concise callback returns in chained collection operations.
-
 import axios from 'axios';
 import _ from 'underscore';
 import { getJson, getOptionalJson, getText, postFormJson } from './common/http';
+import type { ConfigNDatasetPayload, ImageConfig } from './common/Types';
+import type {
+  AtlasOption,
+  BrandingInfo,
+  DatasetVersionInfo,
+  ViewerDatasetInfo,
+  ViewerRange,
+} from './components/ViewerPanelTypes';
 import LabelMapper from './LabelMapper';
 import UserSettings from './UserSettings';
 import Utils from './Utils';
@@ -12,37 +18,180 @@ import ExtraConfig from './ZAVConfig.json';
 export const AXIAL = 1;
 export const CORONAL = 2;
 export const SAGITTAL = 3;
+type Plane = typeof AXIAL | typeof CORONAL | typeof SAGITTAL;
+type ConfigReadyCallback = (config: LegacyViewerConfig) => void;
+type PlaneValues<T> = Record<Plane, T>;
+type LegacyLayerResponse = {
+  metadata?: string;
+  extension?: string;
+  protocol?: string;
+  colortable?: string;
+  [key: string]: unknown;
+};
+type LegacySubviewConfig = {
+  axial_slide?: string | number;
+  coronal_slide?: string | number;
+  sagittal_slide?: string | number;
+  foldername?: string;
+  size?: string | number;
+  x_min?: number;
+  x_max?: number;
+  y_min?: number;
+  y_max?: number;
+  z_min?: number;
+  z_max?: number;
+  x_label?: string;
+  y_label?: string;
+  z_label?: string;
+  min?: number;
+  max?: number;
+  label?: string;
+  [key: string]: unknown;
+};
+type LegacyFirstAccess = {
+  plane?: string;
+  slide?: string | number;
+  delineations?: string;
+  region_labels?: string;
+  [key: string]: unknown;
+};
+type LegacyLayersConfigResponse = {
+  error?: string;
+  dataset_id?: string;
+  data_root_path?: string;
+  subview: LegacySubviewConfig;
+  slide_count?: string | number;
+  atlases?: AtlasOption[];
+  tree?: string;
+  delineations?: string;
+  matrix?: string;
+  axial_matrix?: string;
+  coronal_matrix?: string;
+  sagittal_matrix?: string;
+  axial_slice_step?: string | number;
+  coronal_slice_step?: string | number;
+  sagittal_slice_step?: string | number;
+  slice_step?: string | number;
+  image_size?: string | number;
+  axial_size?: string | number;
+  coronal_size?: string | number;
+  sagittal_size?: string | number;
+  data?: Record<string, LegacyLayerResponse>;
+  first_access?: LegacyFirstAccess;
+  verofdata?: {
+    all?: DatasetVersionInfo;
+    [key: string]: unknown;
+  };
+  branding?: BrandingInfo;
+  volume?: {
+    url?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+type BackendPathResponse = {
+  admin_path?: string;
+  iipserver_path?: string;
+  publish_path?: string;
+  [key: string]: unknown;
+};
+type ImageGroupListEntry = {
+  publish_id: string;
+  display_name?: string;
+  extension?: string;
+  [key: string]: unknown;
+};
+type ImageGroupListResponse = {
+  error?: string;
+  [key: string]: ImageGroupListEntry | string | undefined;
+};
+type LegacyViewerConfig = {
+  hasBackend: boolean;
+  hasCOSource: boolean;
+  hasMultiPlanes: boolean;
+  firstActivePlane?: Plane;
+  hasAxialPlane: boolean;
+  hasCoronalPlane: boolean;
+  hasSagittalPlane: boolean;
+  axialSlideCount: number;
+  coronalSlideCount: number;
+  sagittalSlideCount: number;
+  axialSliceStep: number;
+  coronalSliceStep: number;
+  sagittalSliceStep: number;
+  currentAtlas?: number;
+  atlases: AtlasOption[];
+  showRegions: boolean;
+  displayAreas: boolean;
+  displayBorders: boolean;
+  displayLabels: boolean;
+  displayROIs: boolean;
+  useCustomBorders: boolean;
+  customBorderColor: string;
+  customBorderWidth: number;
+  PUBLISH_PATH?: string;
+  IIPSERVER_PATH?: string;
+  volumeUrl?: string;
+  layers: Record<string, Record<string, unknown>>;
+  data?: Record<string, LegacyLayerResponse>;
+  subviewSize: number;
+  subviewZoomRatio: number;
+  dataset_info?: ViewerDatasetInfo;
+  branding?: BrandingInfo;
+  datasetId?: string;
+  datasetVersion?: DatasetVersionInfo;
+  getTotalSlidesCount(): number;
+  hasPlane(plane: Plane): boolean;
+  getTreeDataUrl(): string | undefined;
+  getSubviewHRange(plane: Plane): ViewerRange | undefined;
+  getSubviewVRange(plane: Plane): ViewerRange | undefined;
+  setSelectedAtlas(atlasIndex: number): void;
+  resolveSimpleUrl(path?: string): string | undefined;
+  setPlaneSizes(plane: Plane | null): void;
+  [key: string]: any;
+};
+type ConfigRequestState = {
+  callbacks: ConfigReadyCallback[];
+  instance?: ZAVConfig;
+  isReady: boolean;
+};
+type DatasetCollectionResponse = Partial<ConfigNDatasetPayload> & {
+  datasets?: ViewerDatasetInfo[];
+  config?: ImageConfig;
+};
 /* internal plane names */
-const PLANE_NAMES = { [AXIAL]: 'axial', [CORONAL]: 'coronal', [SAGITTAL]: 'sagittal' };
+const PLANE_NAMES: PlaneValues<string> = { [AXIAL]: 'axial', [CORONAL]: 'coronal', [SAGITTAL]: 'sagittal' };
 /* plane abbrev */
-export const PLANE_ABBREVS = { [AXIAL]: 'a', [CORONAL]: 'c', [SAGITTAL]: 's' };
+export const PLANE_ABBREVS: PlaneValues<string> = { [AXIAL]: 'a', [CORONAL]: 'c', [SAGITTAL]: 's' };
 
 /* external plane labels (UI) */
-const PLANE_LABELS = { [AXIAL]: 'axial', [CORONAL]: 'coronal', [SAGITTAL]: 'sagittal' };
+const PLANE_LABELS: PlaneValues<string> = { [AXIAL]: 'axial', [CORONAL]: 'coronal', [SAGITTAL]: 'sagittal' };
 
 /** color of plane border  */
-export const PLANE_COLORS = { [AXIAL]: '#33dd33', [CORONAL]: '#ff4444', [SAGITTAL]: '#3399ff' };
+export const PLANE_COLORS: PlaneValues<string> = { [AXIAL]: '#33dd33', [CORONAL]: '#ff4444', [SAGITTAL]: '#3399ff' };
 
 /** orthogonal planes  */
-export const PLANE_ORTHOG = {
+export const PLANE_ORTHOG: PlaneValues<{ v: Plane; h: Plane }> = {
   [AXIAL]: { v: SAGITTAL, h: CORONAL },
   [CORONAL]: { v: SAGITTAL, h: AXIAL },
   [SAGITTAL]: { v: CORONAL, h: AXIAL },
 };
 
 /** labels of coordinate axis defining the plane */
-export const PLANE_AXIS = {
+export const PLANE_AXIS: PlaneValues<{ v: string; h: string }> = {
   [AXIAL]: { v: 'y', h: 'x' },
   [CORONAL]: { v: 'z', h: 'x' },
   [SAGITTAL]: { v: 'z', h: 'y' },
 };
 
 /** preferred subview plane for main image plane (signel plane mode) */
-export const PLANE_PREFSUBVIEW = { [AXIAL]: CORONAL, [CORONAL]: SAGITTAL, [SAGITTAL]: AXIAL };
+export const PLANE_PREFSUBVIEW: PlaneValues<Plane> = { [AXIAL]: CORONAL, [CORONAL]: SAGITTAL, [SAGITTAL]: AXIAL };
 
 /** Class in charge of retrieving and holding configuration associated to a dataset */
 class ZAVConfig {
-  static configRequests = new Map();
+  config: LegacyViewerConfig;
+
+  static configRequests = new Map<string, ConfigRequestState>();
 
   static get AXIAL() {
     return AXIAL;
@@ -54,43 +203,48 @@ class ZAVConfig {
     return SAGITTAL;
   }
 
-  static getPlaneName(plane) {
+  static getPlaneName(plane: Plane) {
     return PLANE_NAMES[plane];
   }
 
-  static getPlaneLabel(plane) {
+  static getPlaneLabel(plane: Plane) {
     return PLANE_LABELS[plane];
   }
 
-  static getPlaneColor(plane) {
+  static getPlaneColor(plane: Plane) {
     return PLANE_COLORS[plane];
   }
 
-  static getPlaneOrthoVertical(plane) {
+  static getPlaneOrthoVertical(plane: Plane) {
     return PLANE_ORTHOG[plane].v;
   }
 
-  static getPlaneOrthoHorizontal(plane) {
+  static getPlaneOrthoHorizontal(plane: Plane) {
     return PLANE_ORTHOG[plane].h;
   }
 
-  static getPlaneVerticalAxis(plane) {
+  static getPlaneVerticalAxis(plane: Plane) {
     return PLANE_AXIS[plane].v;
   }
 
-  static getPlaneHorizontalAxis(plane) {
+  static getPlaneHorizontalAxis(plane: Plane) {
     return PLANE_AXIS[plane].h;
   }
 
-  static getPreferredSubviewForPlane(plane) {
+  static getPreferredSubviewForPlane(plane: Plane) {
     return PLANE_PREFSUBVIEW[plane];
   }
 
-  static getConfigRequestKey(configId, dataSrc, dataVersionTag) {
+  static getConfigRequestKey(configId?: string, dataSrc?: string, dataVersionTag?: string) {
     return JSON.stringify([configId ?? null, dataSrc ?? null, dataVersionTag ?? '']);
   }
 
-  static getConfig(configId, dataSrc, dataVersionTag, callbackWhenReady) {
+  static getConfig(
+    configId?: string,
+    dataSrc?: string,
+    dataVersionTag?: string,
+    callbackWhenReady?: ConfigReadyCallback,
+  ): ZAVConfig {
     const normalizedDataSrc = dataSrc ? dataSrc.toString().trim() : undefined;
     const requestKey = ZAVConfig.getConfigRequestKey(configId, normalizedDataSrc, dataVersionTag);
     const existingRequest = ZAVConfig.configRequests.get(requestKey);
@@ -98,24 +252,32 @@ class ZAVConfig {
     if (existingRequest) {
       if (callbackWhenReady) {
         if (existingRequest.isReady) {
-          queueMicrotask(() => callbackWhenReady(existingRequest.instance.config));
+          queueMicrotask(() => {
+            if (existingRequest.instance) {
+              callbackWhenReady(existingRequest.instance.config);
+            }
+          });
         } else {
           existingRequest.callbacks.push(callbackWhenReady);
         }
       }
-      return existingRequest.instance;
+      if (existingRequest.instance) {
+        return existingRequest.instance;
+      }
     }
 
-    const requestState = {
+    const requestState: ConfigRequestState = {
       callbacks: callbackWhenReady ? [callbackWhenReady] : [],
       instance: undefined,
       isReady: false,
     };
-    const notifyWhenReady = (config) => {
+    const notifyWhenReady = (config: LegacyViewerConfig) => {
       requestState.isReady = true;
       const callbacks = requestState.callbacks.slice();
       requestState.callbacks.length = 0;
-      callbacks.forEach((callback) => callback(config));
+      callbacks.forEach((callback) => {
+        callback(config);
+      });
     };
 
     requestState.instance = new ZAVConfig(configId, normalizedDataSrc, dataVersionTag, notifyWhenReady);
@@ -130,7 +292,7 @@ class ZAVConfig {
    * @param {string} dataVersionTag -  optional version tag for cache busting purpose
    * @param {function} callbackWhenReady - function asynchronously invoked to signal that the configuration is fully loaded
    */
-  constructor(configId, dataSrc, dataVersionTag, callbackWhenReady) {
+  constructor(configId?: string, dataSrc?: string, dataVersionTag?: string, callbackWhenReady?: ConfigReadyCallback) {
     /** default subview size */
     const _subviewSize = 200;
     const _subviewZoomRatio = 200 / _subviewSize;
@@ -151,7 +313,7 @@ class ZAVConfig {
       hasCoronalPlane: false,
       hasSagittalPlane: false,
 
-      hasPlane: function (plane) {
+      hasPlane: function (plane: Plane) {
         switch (plane) {
           case AXIAL:
             return this.hasAxialPlane;
@@ -191,7 +353,7 @@ class ZAVConfig {
       /** URL path to the folder holding the current tree region data */
       treeUrlPath: undefined,
 
-      resolveSimpleUrl: function (path) {
+      resolveSimpleUrl: function (path?: string) {
         if (!path || !this.baseConfigPath) {
           return path;
         }
@@ -210,7 +372,7 @@ class ZAVConfig {
           : this.fallbackTreeUrl;
       },
 
-      setSelectedAtlas: function (atlasIndex) {
+      setSelectedAtlas: function (atlasIndex: number) {
         if (atlasIndex >= 0 && atlasIndex < this.atlases.length) {
           this.currentAtlas = atlasIndex;
           const regset = this.atlases[this.currentAtlas];
@@ -251,7 +413,7 @@ class ZAVConfig {
       zMinGlobal: undefined,
       zMaxGlobal: undefined,
 
-      getSubviewHRange: function (plane) {
+      getSubviewHRange: function (plane: Plane) {
         switch (plane) {
           case AXIAL:
           case CORONAL:
@@ -261,7 +423,7 @@ class ZAVConfig {
         }
       },
 
-      getSubviewVRange: function (plane) {
+      getSubviewVRange: function (plane: Plane) {
         switch (plane) {
           case AXIAL:
             return { min: this.yMinGlobal, max: this.yMaxGlobal, len: this.yMaxGlobal - this.yMinGlobal };
@@ -289,7 +451,7 @@ class ZAVConfig {
       dzLayerWidth: 1000,
       dzLayerHeight: 1000,
 
-      setPlaneSizes: function (plane) {
+      setPlaneSizes: function (plane: Plane | null) {
         switch (plane) {
           case AXIAL:
             this.imageSize = this.axial_size;
@@ -372,7 +534,7 @@ class ZAVConfig {
             */
 
       this.config.hasCOSource = !!dataSrc;
-      this.config.baseConfigPath = this.config.hasCOSource ? dataSrc + (dataSrc.endsWith('/') ? '' : '/') : '';
+      this.config.baseConfigPath = this.config.hasCOSource ? `${dataSrc}${dataSrc?.endsWith('/') ? '' : '/'}` : '';
 
       this.config.dataRootPath = this.config.resolveSimpleUrl('data');
       /** base URL for region infos, region SVGs, ... */
@@ -398,9 +560,9 @@ class ZAVConfig {
     }
   }
 
-  expandDatasetImagesUrl = (data, config) => {
-    data.thumbnailUrl = `${config.imageBaseUrl}/${config.thumbnailsFolder}/${data.thumbnail}`;
-    data.snapshotUrl = `${config.imageBaseUrl}/${config.snapshotsFolder}/${data.snapshot}`;
+  expandDatasetImagesUrl = (data: ViewerDatasetInfo, config: Partial<ImageConfig>) => {
+    data.thumbnailUrl = `${config.imageBaseUrl ?? ''}/${config.thumbnailsFolder ?? ''}/${data.thumbnail}`;
+    data.snapshotUrl = `${config.imageBaseUrl ?? ''}/${config.snapshotsFolder ?? ''}/${data.snapshot}`;
     return data;
   };
 
@@ -409,32 +571,32 @@ class ZAVConfig {
    * @param {function} callbackWhenReady - function invoked when the configuration is fully loaded
    * @private
    */
-  retrieveConfigFromBackend(callbackWhenReady) {
+  retrieveConfigFromBackend(callbackWhenReady?: ConfigReadyCallback) {
     const baseConfigUrl = './path.json';
     void (async () => {
       try {
-        const response = await getJson(baseConfigUrl);
+        const response = await getJson<BackendPathResponse>(baseConfigUrl);
 
         this.config.ADMIN_PATH = response.admin_path;
         this.config.IIPSERVER_PATH = response.iipserver_path;
         this.config.PUBLISH_PATH = response.publish_path;
 
         const configUrl = Utils.makePath(this.config.ADMIN_PATH, 'json.php');
-        const data = await postFormJson(configUrl, {
+        const data = (await postFormJson(configUrl, {
           id: this.config.viewerId,
-        });
+        })) as LegacyLayersConfigResponse;
 
         if (data.dataset_id) {
           this.config.datasetId = data.dataset_id;
         }
 
         if (this.config.fmDatasetsInfoUrl) {
-          void getJson(this.config.fmDatasetsInfoUrl)
+          void getJson<DatasetCollectionResponse>(this.config.fmDatasetsInfoUrl)
             .then((datasetData) => {
               if (datasetData.datasets?.length) {
                 const dataset_info = _.findWhere(datasetData.datasets, { marmosetID: this.config.datasetId });
                 if (dataset_info) {
-                  this.config.dataset_info = this.expandDatasetImagesUrl(dataset_info, datasetData.config);
+                  this.config.dataset_info = this.expandDatasetImagesUrl(dataset_info, datasetData.config ?? {});
                 }
               } else {
                 console.info('Missing info for dataset: ', this.config.datasetId);
@@ -451,16 +613,20 @@ class ZAVConfig {
           id: this.config.viewerId,
         })
           .then((imageGroupListData) => {
-            if (!imageGroupListData.error) {
-              this.config.imageGroupListData = imageGroupListData;
-              Object.entries(imageGroupListData).forEach(([_key, value]) => {
-                this.config.editLayers[value.publish_id] = {
-                  name: value.display_name,
-                  ext: `.${value.extension}`,
-                };
+            const typedImageGroupListData = imageGroupListData as ImageGroupListResponse;
+            if (!typedImageGroupListData.error) {
+              this.config.imageGroupListData = typedImageGroupListData;
+              Object.entries(typedImageGroupListData).forEach(([_key, value]) => {
+                if (value && typeof value === 'object' && 'publish_id' in value) {
+                  const entry = value as ImageGroupListEntry;
+                  this.config.editLayers[entry.publish_id] = {
+                    name: entry.display_name,
+                    ext: `.${entry.extension}`,
+                  };
+                }
               });
             } else {
-              this.config.imageGroupListError = imageGroupListData.error;
+              this.config.imageGroupListError = typedImageGroupListData.error;
             }
           })
           .catch(() => {
@@ -482,23 +648,28 @@ class ZAVConfig {
    * @param {function} callbackWhenReady - function invoked when the configuration is fully loaded
    * @private
    */
-  retrieveSimpleConfig(callbackWhenReady) {
-    const configUrl = this.config.resolveSimpleUrl('viewer.json');
+  retrieveSimpleConfig(callbackWhenReady?: ConfigReadyCallback) {
+    const configUrl = this.config.resolveSimpleUrl('viewer.json') ?? 'viewer.json';
 
     void (async () => {
       try {
-        const data = await getJson(configUrl);
+        const data = await getJson<LegacyLayersConfigResponse>(configUrl);
         if (data.dataset_id) {
           this.config.datasetId = data.dataset_id;
         }
 
         if (this.config.datasetId) {
-          const datasetInfoUrl = this.config.resolveSimpleUrl(Utils.makePath(data.data_root_path, 'datasetInfo.json'));
+          const datasetInfoUrl =
+            this.config.resolveSimpleUrl(Utils.makePath(data.data_root_path ?? '', 'datasetInfo.json')) ??
+            'datasetInfo.json';
 
-          void getOptionalJson(datasetInfoUrl)
+          void getOptionalJson<ViewerDatasetInfo>(datasetInfoUrl)
             .then((datasetInfo) => {
               if (datasetInfo) {
-                this.config.dataset_info = this.expandDatasetImagesUrl(datasetInfo, datasetInfo);
+                this.config.dataset_info = this.expandDatasetImagesUrl(
+                  datasetInfo,
+                  datasetInfo as Partial<ImageConfig>,
+                );
               }
             })
             .catch((error) => {
@@ -518,15 +689,15 @@ class ZAVConfig {
     })();
   }
 
-  parseLayersConfig(callbackWhenReady, response) {
-    const parseIntOr = (value, fallback) => {
-      const parsedValue = Number.parseInt(value, 10);
+  parseLayersConfig(callbackWhenReady: ConfigReadyCallback | undefined, response: LegacyLayersConfigResponse) {
+    const parseIntOr = (value: string | number | undefined, fallback: number) => {
+      const parsedValue = Number.parseInt(String(value), 10);
       return Number.isFinite(parsedValue) ? parsedValue : fallback;
     };
 
-    const parseCountOrZero = (value) => Math.max(parseIntOr(value, 0), 0);
+    const parseCountOrZero = (value: string | number | undefined) => Math.max(parseIntOr(value, 0), 0);
 
-    const clampSlice = (value, sliceCount) => {
+    const clampSlice = (value: string | number | undefined, sliceCount: number) => {
       const maxSliceIndex = Math.max(sliceCount - 1, 0);
       return Math.min(Math.max(parseIntOr(value, 0), 0), maxSliceIndex);
     };
@@ -541,7 +712,10 @@ class ZAVConfig {
     this.config.hasCoronalPlane = _.has(response.subview, 'coronal_slide');
     this.config.hasSagittalPlane = _.has(response.subview, 'sagittal_slide');
     //single or multi-plane mode?
-    const nbDefinedPlanes = this.config.hasAxialPlane + this.config.hasCoronalPlane + this.config.hasSagittalPlane;
+    const nbDefinedPlanes =
+      (this.config.hasAxialPlane ? 1 : 0) +
+      (this.config.hasCoronalPlane ? 1 : 0) +
+      (this.config.hasSagittalPlane ? 1 : 0);
     this.config.hasMultiPlanes = nbDefinedPlanes > 1;
     //if no plane explicitely specified
     if (nbDefinedPlanes === 0) {
@@ -602,7 +776,7 @@ class ZAVConfig {
         PLANE_LABELS[CORONAL] = response.subview.y_label;
       }
       if (response.subview.x_label) {
-        PLANE_LABELS[AXIAL] = response.subview.z_label;
+        PLANE_LABELS[AXIAL] = response.subview.z_label ?? PLANE_LABELS[AXIAL];
       }
     } else {
       if (this.config.hasBackend) {
@@ -760,7 +934,7 @@ class ZAVConfig {
         }
       }
 
-      const getShowSettings = (setting) => {
+      const getShowSettings = (setting?: string) => {
         //override user settings if setting specified all in capital letters
         const forced = setting === 'SHOW' || setting === 'HIDE';
 
@@ -785,39 +959,32 @@ class ZAVConfig {
 
       //override dataset settings with users' settings
       if (!forcedRegionVisibility) {
-        this.config.displayAreas = UserSettings.getBoolItem(
-          UserSettings.SettingsKeys.ShowAtlasRegionArea,
-          this.config.displayAreas,
-        );
-        this.config.displayBorders = UserSettings.getBoolItem(
-          UserSettings.SettingsKeys.ShowAtlasRegionBorder,
-          this.config.displayBorders,
-        );
+        this.config.displayAreas =
+          UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionArea, this.config.displayAreas) ??
+          this.config.displayAreas;
+        this.config.displayBorders =
+          UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionBorder, this.config.displayBorders) ??
+          this.config.displayBorders;
       }
       if (!forceddisplayLabels) {
-        this.config.displayLabels = UserSettings.getBoolItem(
-          UserSettings.SettingsKeys.ShowAtlasRegionLabel,
-          this.config.displayLabels,
-        );
+        this.config.displayLabels =
+          UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionLabel, this.config.displayLabels) ??
+          this.config.displayLabels;
       }
 
-      this.config.displayROIs = UserSettings.getBoolItem(
-        UserSettings.SettingsKeys.ShowOverlayROI,
-        this.config.displayROIs,
-      );
+      this.config.displayROIs =
+        UserSettings.getBoolItem(UserSettings.SettingsKeys.ShowOverlayROI, this.config.displayROIs) ??
+        this.config.displayROIs;
 
-      this.config.useCustomBorders = UserSettings.getBoolItem(
-        UserSettings.SettingsKeys.UseCustomRegionBorder,
-        this.config.useCustomBorders,
-      );
-      this.config.customBorderColor = UserSettings.getStrItem(
-        UserSettings.SettingsKeys.CustomRegionBorderColor,
-        this.config.customBorderColor,
-      );
-      this.config.customBorderWidth = UserSettings.getNumItem(
-        UserSettings.SettingsKeys.CustomRegionBorderWidth,
-        this.config.customBorderWidth,
-      );
+      this.config.useCustomBorders =
+        UserSettings.getBoolItem(UserSettings.SettingsKeys.UseCustomRegionBorder, this.config.useCustomBorders) ??
+        this.config.useCustomBorders;
+      this.config.customBorderColor =
+        UserSettings.getStrItem(UserSettings.SettingsKeys.CustomRegionBorderColor, this.config.customBorderColor) ??
+        this.config.customBorderColor;
+      this.config.customBorderWidth =
+        UserSettings.getNumItem(UserSettings.SettingsKeys.CustomRegionBorderWidth, this.config.customBorderWidth) ??
+        this.config.customBorderWidth;
       this.config.showRegions = this.config.displayAreas || this.config.displayBorders;
 
       //start with the middle slice if none is specified
@@ -889,7 +1056,7 @@ class ZAVConfig {
     } else {
       this.config.firstActivePlane = CORONAL;
     }
-    this.config.setPlaneSizes(this.config.firstActivePlane);
+    this.config.setPlaneSizes(this.config.firstActivePlane ?? null);
 
     if (response.verofdata) {
       if (response.verofdata.all) {

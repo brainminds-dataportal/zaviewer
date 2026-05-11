@@ -44,7 +44,7 @@ export async function getText(url: string) {
   return response.data;
 }
 
-export async function getXmlDocument(url: string, mimeType = 'application/xml') {
+export async function getXmlDocument(url: string, mimeType: DOMParserSupportedType = 'application/xml') {
   const content = await getText(url);
   return new DOMParser().parseFromString(content, mimeType);
 }

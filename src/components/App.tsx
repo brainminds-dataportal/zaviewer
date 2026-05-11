@@ -13,6 +13,7 @@ import ViewerManager from '../ViewerManager';
 import ZAVConfig from '../ZAVConfig';
 import { CollapseDirection, DrawerHandle } from './Drawer';
 import ViewerComposed from './ViewerComposed';
+import type { ZAViewerConfig } from './ViewerPanelTypes';
 
 import './App.scss';
 import './Themes.scss';
@@ -40,9 +41,9 @@ type AppProps = {
 const App = (props: AppProps) => {
   const needsExtraInit = React.useRef(true);
 
-  const [config, setConfig] = React.useState(undefined);
+  const [config, setConfig] = React.useState<ZAViewerConfig | undefined>(undefined);
   //display region panel expanded if any region selection specified
-  const [isRegPanelExpanded, setIsRegPanelExpanded] = React.useState(props?.initConfig?.rs);
+  const [isRegPanelExpanded, setIsRegPanelExpanded] = React.useState(Boolean(props?.initConfig?.rs));
   const [splitSize, setSplitSize] = React.useState(defaultSplitSize);
 
   const [regionsStatus, setRegionsStatus] = React.useState<IRegionsStatus | undefined>(undefined);
@@ -98,8 +99,11 @@ const App = (props: AppProps) => {
   );
 
   const resetRegionsTree = React.useCallback(
-    (someConfig?, preselected?: string[]) => {
+    (someConfig?: ZAViewerConfig, preselected?: string[]) => {
       const usedConfig = someConfig || config;
+      if (!usedConfig) {
+        return;
+      }
       //load regions related data
       const treeDataUrl = usedConfig.getTreeDataUrl();
       loadAndInitRegionsTree(treeDataUrl, usedConfig.hasBackend, usedConfig.hasMultiPlanes, preselected);
@@ -110,7 +114,7 @@ const App = (props: AppProps) => {
   React.useEffect(() => {
     //retrieve config asynchronously...
     ZAVConfig.getConfig(props.configId, props.dataSrc, props.dataVersionTag, (newConfig) => {
-      setConfig((currentConfig) => (currentConfig === newConfig ? currentConfig : newConfig));
+      setConfig((currentConfig) => (currentConfig === newConfig ? currentConfig : (newConfig as ZAViewerConfig)));
     });
   }, [props.configId, props.dataSrc, props.dataVersionTag]);
 
@@ -147,11 +151,12 @@ const App = (props: AppProps) => {
 
   //
   const currentTourStep = React.useContext(TourContext).stepContext?.currentStep;
-  const isRegionPanelExpanded = ['_init_', 'mainImagePanel'].includes(currentTourStep)
-    ? false
-    : currentTourStep === 'expandedRegionPanel'
-      ? true
-      : isRegPanelExpanded;
+  const isRegionPanelExpanded =
+    currentTourStep && ['_init_', 'mainImagePanel'].includes(currentTourStep)
+      ? false
+      : currentTourStep === 'expandedRegionPanel'
+        ? true
+        : isRegPanelExpanded;
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 

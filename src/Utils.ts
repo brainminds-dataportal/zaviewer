@@ -6,8 +6,9 @@ import _ from 'underscore';
 type HashLocation = Pick<Location, 'hash'>;
 type HistoryStepParams = Record<string, unknown>;
 
-// biome-ignore lint/complexity/noStaticOnlyClass: Utils is intentionally exposed as a static utility API across the app.
 class Utils {
+  private constructor() {}
+
   //Finds y value of given object
   static findPosY(obj: HTMLElement) {
     let curtop = 0;
@@ -19,6 +20,7 @@ class Utils {
       } while (current);
       return [curtop];
     }
+    return undefined;
   }
 
   static findPosX(obj: HTMLElement) {
@@ -31,12 +33,19 @@ class Utils {
       } while (current);
       return [curleft];
     }
+    return undefined;
   }
 
   static makePath(...args: Array<string | undefined>) {
-    return args.reduce((acc, frag) =>
-      frag ? acc + (acc.endsWith('/') || frag.startsWith('/') ? '' : '/') + frag : acc,
-    );
+    return args.reduce<string>((acc, frag) => {
+      if (!frag) {
+        return acc;
+      }
+      if (!acc) {
+        return frag;
+      }
+      return acc + (acc.endsWith('/') || frag.startsWith('/') ? '' : '/') + frag;
+    }, '');
   }
 
   static getCleanHash(hash: string) {

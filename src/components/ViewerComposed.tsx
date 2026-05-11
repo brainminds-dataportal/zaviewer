@@ -1,7 +1,3 @@
-// biome-ignore-all lint/a11y/noStaticElementInteractions: The composed viewer shell still uses legacy clickable container elements that require a larger component refactor.
-// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard support for those legacy container controls is deferred to a focused accessibility pass.
-// biome-ignore-all lint/suspicious/noArrayIndexKey: Stable viewer branding fragments are currently rendered from fixed-order text splits in legacy UI code.
-
 import {
   Classes,
   Collapse,
@@ -14,13 +10,14 @@ import {
   popoverPositionToNextPlacement,
 } from '@blueprintjs/core';
 import classNames from 'classnames';
+import type { BrowserHistory } from 'history';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import RegionsManager from '../RegionsManager';
+import RegionsManager, { type IRegionsStatus } from '../RegionsManager';
 import RoiInfo from '../RoiInfo';
 import ViewerManager from '../ViewerManager';
 import ZAVConfig from '../ZAVConfig';
-import Drawer from './Drawer';
+import Drawer, { CollapseDirection } from './Drawer';
 import { TourContext } from './GuidedTour';
 import MeasureInfoPanel from './MeasureInfoPanel';
 import MetadataView from './MetadataView';
@@ -32,13 +29,88 @@ import RegionOptions from './RegionOptions';
 import ROIOptions from './ROIOptions';
 import SliderNavigatorPanel from './SliderNavigatorPanel';
 import SubViewPanel from './SubViewPanel';
+import type { BrandingInfo, LayerDisplaySettings, ZAViewerConfig } from './ViewerPanelTypes';
 
 import './ViewerComposed.scss';
 
 const VolumeView = React.lazy(() => import('./VolumeView'));
+type Plane = Parameters<typeof ZAVConfig.getPlaneLabel>[0];
 
-class TitledCard extends React.Component {
-  constructor(props) {
+type TitledCardProps = {
+  className?: string;
+  header: React.ReactNode;
+  isCollapsible?: boolean;
+  collapsed?: boolean;
+  children?: React.ReactNode;
+};
+
+type TitledCardState = {
+  isCollapsible: boolean;
+  isOpen: boolean;
+};
+
+type BrandingMarkProps = {
+  brandingInfo?: BrandingInfo;
+};
+
+type ViewerPositionInfo = {
+  c: number;
+};
+
+type ViewerComposedProps = {
+  containerRef?: React.RefObject<HTMLDivElement>;
+  config?: ZAViewerConfig;
+  regionsStatus?: IRegionsStatus;
+  resetRegionsTree?: () => void;
+  history: BrowserHistory;
+};
+
+type ViewerComposedState = {
+  showRegions: boolean;
+  displayAreas: boolean;
+  displayBorders: boolean;
+  displayLabels: boolean;
+  displayROIs: boolean;
+  hasRegionLabels: boolean;
+  initRegionsOpacity: number;
+  regionsOpacity: number;
+  pos?: unknown;
+  position?: ViewerPositionInfo[];
+  initExpanded: boolean;
+  isToolbarExpanded: boolean;
+  activePlane?: Plane;
+  chosenSlice?: number;
+  layerDisplaySettings?: LayerDisplaySettings;
+  hoveredRegion?: string | null;
+  hoveredRegionSide?: string | null;
+  hoveredROI?: string | null;
+  hoveredROILabel?: string | null;
+  longRunningMessage?: string | null;
+  editModeOn?: boolean;
+  editingActive?: boolean;
+  editPathId?: string | null;
+  editPathFillColor?: string | null;
+  editingTool?: string;
+  editingToolRadius?: number;
+  lastSelectedPath?: string | null;
+  hasROIs?: boolean;
+  markedPos?: { x: number; y: number }[];
+  markedPosColors?: string[];
+  useCustomBorders?: boolean;
+  customBorderColor?: string;
+  customBorderWidth?: number;
+  [key: string]: unknown;
+};
+
+type HotkeyConfig = {
+  combo: string;
+  global: boolean;
+  label: string;
+  onKeyDown: () => void;
+};
+
+class TitledCard extends React.Component<TitledCardProps, TitledCardState> {
+  constructor(props: TitledCardProps) {
     super(props);
     this.state = {
       isCollapsible: props.collapsed || Boolean(props.isCollapsible),
@@ -51,12 +123,14 @@ class TitledCard extends React.Component {
       <div className={`zav-TitledCard${this.props.className ? ` ${this.props.className}` : ''}`}>
         <div className={'zav-TitledCardHead'}>
           {this.state.isCollapsible ? (
-            <div
+            <button
+              type="button"
               className="zav-TitledCardHeadExpColButton"
               onClick={() => this.setState((_state) => ({ isOpen: !this.state.isOpen }))}
+              aria-label={this.state.isOpen ? 'Collapse section' : 'Expand section'}
             >
               <Icon icon={this.state.isOpen ? 'chevron-up' : 'chevron-down'} size={12} />
-            </div>
+            </button>
           ) : null}
           <div style={this.state.isCollapsible ? {} : { gridColumn: '1/3' }} className="zav-TitledCardTitle">
             {this.props.header}
@@ -68,8 +142,11 @@ class TitledCard extends React.Component {
   }
 }
 
-class BrandingMark extends React.Component {
-  constructor(props) {
+class BrandingMark extends React.Component<BrandingMarkProps> {
+  private readonly el: HTMLDivElement;
+  private placeHolder: HTMLElement | null = null;
+
+  constructor(props: BrandingMarkProps) {
     super(props);
     this.el = document.createElement('div');
   }
@@ -93,9 +170,16 @@ class BrandingMark extends React.Component {
                   >
                     <p>
                       <br />
-                      {this.props.brandingInfo.descr.split('\n').map((l, i) => (
-                        <p key={i}>{l}</p>
-                      ))}
+                      {this.props.brandingInfo.descr.split('\n').reduce<React.ReactNode[]>((nodes, line) => {
+                        const occurrenceCount = nodes.filter(
+                          (node) =>
+                            React.isValidElement(node) &&
+                            typeof node.key === 'string' &&
+                            node.key.startsWith(`${line}-`),
+                        ).length;
+                        nodes.push(<p key={`${line}-${occurrenceCount}`}>{line}</p>);
+                        return nodes;
+                      }, [])}
                     </p>
                   </div>
                 }
@@ -119,38 +203,39 @@ class BrandingMark extends React.Component {
 
 //props.containerRef: React.RefObject<HTMLDivElement>,
 
-class ViewerComposed extends React.Component {
+class ViewerComposed extends React.Component<ViewerComposedProps, ViewerComposedState> {
   static contextType = TourContext;
+  declare context: React.ContextType<typeof TourContext>;
+  private initialized: boolean;
 
-  hotkeys = //HotkeyConfig[]
-    [
-      {
-        combo: 'ctrl + left',
-        global: true,
-        label: 'Go to the previous slice',
-        onKeyDown: () => ViewerManager.shiftToSlice(-1),
-      },
-      {
-        combo: 'meta + left',
-        global: true,
-        label: 'Go to the previous slice',
-        onKeyDown: () => ViewerManager.shiftToSlice(-1),
-      },
-      {
-        combo: 'ctrl + right',
-        global: true,
-        label: 'Go to the next slice',
-        onKeyDown: () => ViewerManager.shiftToSlice(1),
-      },
-      {
-        combo: 'meta + right',
-        global: true,
-        label: 'Go to the next slice',
-        onKeyDown: () => ViewerManager.shiftToSlice(1),
-      },
-    ];
+  hotkeys: HotkeyConfig[] = [
+    {
+      combo: 'ctrl + left',
+      global: true,
+      label: 'Go to the previous slice',
+      onKeyDown: () => ViewerManager.shiftToSlice(-1),
+    },
+    {
+      combo: 'meta + left',
+      global: true,
+      label: 'Go to the previous slice',
+      onKeyDown: () => ViewerManager.shiftToSlice(-1),
+    },
+    {
+      combo: 'ctrl + right',
+      global: true,
+      label: 'Go to the next slice',
+      onKeyDown: () => ViewerManager.shiftToSlice(1),
+    },
+    {
+      combo: 'meta + right',
+      global: true,
+      label: 'Go to the next slice',
+      onKeyDown: () => ViewerManager.shiftToSlice(1),
+    },
+  ];
 
-  constructor(props) {
+  constructor(props: ViewerComposedProps) {
     super(props);
     this.initialized = false;
     this.state = {
@@ -183,9 +268,10 @@ class ViewerComposed extends React.Component {
     this.initialized = true;
 
     if (this.props.config.branding?.theme) {
-      const App = document.getElementsByClassName('App');
-      App.item(0).className =
-        App.item(0).className + (this.props.config.branding.theme === 'light' ? ' theme-light' : '');
+      const appElement = document.getElementsByClassName('App').item(0);
+      if (appElement) {
+        appElement.className += this.props.config.branding.theme === 'light' ? ' theme-light' : '';
+      }
     }
   }
 
@@ -246,27 +332,28 @@ class ViewerComposed extends React.Component {
     const regionName = region ? region.name : '';
 
     const subviewTitleSuffix =
-      this.props.config && !this.props.config.hasMultiPlanes
+      this.props.config && !this.props.config.hasMultiPlanes && typeof this.state.activePlane === 'number'
         ? ` — ${ZAVConfig.getPlaneLabel(ZAVConfig.getPreferredSubviewForPlane(this.state.activePlane))} view`
         : '';
 
     const currentTourStep = this.context.stepContext?.currentStep;
     const tourSpecificInit = {
-      controlPanelExpanded: ['mainImagePanel', 'collapsedControlPanel', 'expandedRegionPanel'].includes(currentTourStep)
-        ? false
-        : ['expandedControlPanel', 'navigatorPanel'].includes(currentTourStep)
-          ? true
-          : undefined,
+      controlPanelExpanded:
+        currentTourStep && ['mainImagePanel', 'collapsedControlPanel', 'expandedRegionPanel'].includes(currentTourStep)
+          ? false
+          : currentTourStep && ['expandedControlPanel', 'navigatorPanel'].includes(currentTourStep)
+            ? true
+            : undefined,
     };
-    if (['_init_'].includes(currentTourStep)) {
-      ViewerManager.goHome(true);
+    if (currentTourStep === '_init_') {
+      (ViewerManager.goHome as (zoomout: boolean) => void)(true);
     } else if (currentTourStep === 'navigatorPanel') {
-      ViewerManager.setZoomFactor(50);
+      (ViewerManager.setZoomFactor as (zf: number) => void)(50);
     }
 
     //url of repo from where source images can be retrieved
     const ginRepoBaseUrl = this.props.config?.dataset_info ? this.props.config.dataset_info.ginRepoBaseUrl : null;
-    const layerFolderMap = ginRepoBaseUrl ? this.props.config.dataset_info.layerFolderMap : null;
+    const layerFolderMap = ginRepoBaseUrl ? (this.props.config?.dataset_info?.layerFolderMap ?? null) : null;
 
     return (
       <HotkeysTarget2 hotkeys={this.hotkeys}>
@@ -286,7 +373,7 @@ class ViewerComposed extends React.Component {
                   <span>
                     <b>{this.state.hoveredRegion}</b> {regionName} {this.state.hoveredRegionSide}
                   </span>
-                  {!this.props.config.hasDelineation || this.state.showRegions ? null : (
+                  {!this.props.config?.hasDelineation || this.state.showRegions ? null : (
                     <span className="zav-StatusBarHint">[Shift]+Click on the image to reveal the border</span>
                   )}
                 </React.Fragment>
@@ -299,7 +386,7 @@ class ViewerComposed extends React.Component {
           </div>
 
           <OSDMain />
-          <Overlay className={Classes.OVERLAY_SCROLL_CONTAINER} isOpen={this.state.longRunningMessage}>
+          <Overlay className={Classes.OVERLAY_SCROLL_CONTAINER} isOpen={Boolean(this.state.longRunningMessage)}>
             <div style={{ left: 'calc(50vw - 200px)', margin: '10vh 0', top: 0, width: 400 }} className={classes}>
               <h3>
                 <Icon icon="pulse" />
@@ -311,8 +398,13 @@ class ViewerComposed extends React.Component {
 
           <Drawer
             id="ZAV-rightPanel"
+            collapseDirection={CollapseDirection.RIGHT}
             initExpanded={this.state.initExpanded}
-            forceExpanded={tourSpecificInit.controlPanelExpanded || this.state.initExpanded}
+            forceExpanded={
+              Boolean((tourSpecificInit as { controlPanelExpanded?: boolean }).controlPanelExpanded) ||
+              this.state.initExpanded
+            }
+            onClick={undefined}
             onExpandCollapse={this.onToolbarExpandCollapse.bind(this)}
             quickactions={
               <QuickActionButtons
@@ -353,9 +445,14 @@ class ViewerComposed extends React.Component {
                         placement={popoverPositionToNextPlacement(Position.LEFT)}
                         shouldReturnFocusOnClose={false}
                       >
-                        <div title="display 3D volume" className="zav-TitledCardButton">
+                        <button
+                          type="button"
+                          title="display 3D volume"
+                          className="zav-TitledCardButton"
+                          style={{ background: 'none', border: 0, padding: 0 }}
+                        >
                           <Icon icon="cube" color="#FFF" />
-                        </div>
+                        </button>
                       </PopoverNext>
                       <span>{`Slices navigation${subviewTitleSuffix}`}</span>
                     </div>
@@ -385,7 +482,7 @@ class ViewerComposed extends React.Component {
 
             {ViewerManager.hasProcessingsModule() ? (
               <TitledCard header={'Processing'} isCollapsible={true}>
-                <ProcessingPanel posCount={this.state.position ? this.state.position[0].c : 0} pos={this.state.pos} />
+                <ProcessingPanel posCount={this.state.position?.[0]?.c ?? 0} pos={this.state.pos} />
               </TitledCard>
             ) : null}
 
@@ -402,9 +499,9 @@ class ViewerComposed extends React.Component {
                   displayBorders={this.state.displayBorders}
                   hasRegionLabels={this.state.hasRegionLabels}
                   displayLabels={this.state.displayLabels}
-                  useCustomBorders={this.state.useCustomBorders}
-                  customBorderColor={this.state.customBorderColor}
-                  customBorderWidth={this.state.customBorderWidth}
+                  useCustomBorders={Boolean(this.state.useCustomBorders)}
+                  customBorderColor={this.state.customBorderColor ?? '#ffffff'}
+                  customBorderWidth={this.state.customBorderWidth ?? 1}
                 />
                 {this.state.editModeOn ? (
                   <React.Fragment>
@@ -415,8 +512,8 @@ class ViewerComposed extends React.Component {
                       editingActive={this.state.editingActive}
                       editPathId={this.state.editPathId}
                       editPathFillColor={this.state.editPathFillColor}
-                      editingTool={this.state.editingTool}
-                      editingToolRadius={this.state.editingToolRadius}
+                      editingTool={this.state.editingTool ?? 'pen'}
+                      editingToolRadius={this.state.editingToolRadius ?? 10}
                     />
                   </React.Fragment>
                 ) : null}
@@ -425,7 +522,7 @@ class ViewerComposed extends React.Component {
 
             {this.props.config && RoiInfo.hasROI ? (
               <TitledCard className="zav-controlPanel_ROIs" header={'ROIs'} isCollapsible={true}>
-                <ROIOptions sliceHasROI={this.state.hasROIs} displayROIs={this.state.displayROIs} />
+                <ROIOptions sliceHasROI={Boolean(this.state.hasROIs)} displayROIs={this.state.displayROIs} />
               </TitledCard>
             ) : null}
 
@@ -437,10 +534,9 @@ class ViewerComposed extends React.Component {
                 collapsed={true}
               >
                 <MeasureInfoPanel
-                  posCount={this.state.position ? this.state.position[0].c : 0}
-                  pos={this.state.pos}
-                  markedPos={this.state.markedPos}
-                  markedPosColors={this.state.markedPosColors}
+                  posCount={this.state.position?.[0]?.c ?? 0}
+                  markedPos={this.state.markedPos ?? []}
+                  markedPosColors={this.state.markedPosColors ?? []}
                 />
               </TitledCard>
             ) : null}
@@ -450,7 +546,7 @@ class ViewerComposed extends React.Component {
     );
   }
 
-  onToolbarExpandCollapse(isExpanded) {
+  onToolbarExpandCollapse(isExpanded: boolean) {
     if (isExpanded) {
       ViewerManager.refreshNavigator();
     }

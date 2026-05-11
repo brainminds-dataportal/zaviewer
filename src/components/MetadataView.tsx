@@ -36,7 +36,7 @@ type MetadataViewProps = {
 const MetadataView = (props: MetadataViewProps) => {
   const downloadLink = React.useRef<HTMLAnchorElement>(null);
   const infoDataset = props.infoDataset;
-  const { layers, thumbnail, thumbnailUrl, snapshot, snapshotUrl, zaviewerID, ...metadata } = infoDataset;
+  const { layers, thumbnail, thumbnailUrl, snapshot, snapshotUrl, ...metadata } = infoDataset;
   return (
     <div
       style={{
@@ -64,7 +64,7 @@ const MetadataView = (props: MetadataViewProps) => {
               icon="import"
               title="Download metadata"
               onClick={() => {
-                downloadLink.current.click();
+                downloadLink.current?.click();
               }}
             />
           </div>

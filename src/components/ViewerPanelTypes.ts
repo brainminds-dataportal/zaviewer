@@ -44,3 +44,87 @@ export type ViewerConfigLike = {
   getTotalSlidesCount(): number;
   hasDelineation?: boolean;
 };
+
+export type BrandingInfo = {
+  short?: string;
+  descr?: string;
+  theme?: string;
+};
+
+export type DatasetVersionInfo = {
+  label: string;
+  uri: string;
+};
+
+export type ViewerExtraConfig = {
+  termsOfUse?: string;
+  hasIIPserver?: boolean;
+};
+
+export type ViewerRange = {
+  min: number;
+  max: number;
+  len: number;
+};
+
+export type ViewerLayerConfig = {
+  protocol?: string;
+  metadata?: string;
+  opacity?: string | number;
+  ext?: string;
+  key?: string;
+  colortable?: string;
+  contrast?: string | number;
+  gamma?: string | number;
+  [key: string]: unknown;
+};
+
+export type ZAViewerConfig = ViewerConfigLike & {
+  hasBackend: boolean;
+  hasCOSource?: boolean;
+  hasMultiPlanes: boolean;
+  firstActivePlane?: number;
+  axialSlideCount: number;
+  coronalSlideCount: number;
+  sagittalSlideCount: number;
+  axialSliceStep?: number;
+  coronalSliceStep?: number;
+  sagittalSliceStep?: number;
+  currentAtlas?: number | null;
+  atlases: AtlasOption[];
+  data: Record<string, ViewerLayerConfig>;
+  showRegions?: boolean;
+  displayAreas?: boolean;
+  displayBorders?: boolean;
+  displayLabels?: boolean;
+  displayROIs?: boolean;
+  useCustomBorders?: boolean;
+  customBorderColor?: string;
+  customBorderWidth?: number;
+  PUBLISH_PATH?: string;
+  IIPSERVER_PATH?: string;
+  volumeUrl?: string;
+  layers: Record<string, ViewerLayerConfig>;
+  viewerId?: string;
+  svgFolderName?: string;
+  treeUrlPath?: string;
+  fallbackTreeUrl?: string;
+  dataVersionTag?: string;
+  imageSize?: number;
+  axial_size?: number;
+  coronal_size?: number;
+  sagittal_size?: number;
+  matrix?: unknown;
+  extra?: ViewerExtraConfig;
+  branding?: BrandingInfo;
+  datasetId?: string;
+  datasetVersion?: DatasetVersionInfo;
+  subviewFolderName?: string;
+  subviewSize: number;
+  subviewZoomRatio?: number;
+  hasPlane(plane: number): boolean;
+  getTreeDataUrl(): string;
+  getSubviewHRange(plane: number): ViewerRange;
+  getSubviewVRange(plane: number): ViewerRange;
+  setSelectedAtlas?(atlasIndex: number): void;
+};

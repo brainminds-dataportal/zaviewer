@@ -12,8 +12,6 @@ import { GuidedTour } from './components/GuidedTour';
 import Utils from './Utils';
 import { setupLegacyVendors } from './vendor/setupLegacyVendors';
 
-await setupLegacyVendors();
-
 declare global {
   interface Window {
     __ZAV_BROWSER_SUPPORTED__?: boolean;
@@ -44,25 +42,29 @@ const getConfigParams = () => {
   return params;
 };
 
-const parentContainer = document.getElementById('root');
-if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
-  //version tag for cache busting
-  const dataVersionTag = parentContainer.hasAttribute(DataVersion_PropName)
-    ? `?ver=${parentContainer.getAttribute(DataVersion_PropName)}`
-    : //by default, no version tag
-      '';
+void (async () => {
+  await setupLegacyVendors();
 
-  createRoot(parentContainer).render(
-    <React.StrictMode>
-      <HotkeysProvider>
-        <GuidedTour>
-          <App
-            //configID is undefined when the viewer is used without backend (i.e. shipped within its dataset)
-            {...getConfigParams()}
-            dataVersionTag={dataVersionTag}
-          />
-        </GuidedTour>
-      </HotkeysProvider>
-    </React.StrictMode>,
-  );
-}
+  const parentContainer = document.getElementById('root');
+  if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
+    //version tag for cache busting
+    const dataVersionTag = parentContainer.hasAttribute(DataVersion_PropName)
+      ? `?ver=${parentContainer.getAttribute(DataVersion_PropName)}`
+      : //by default, no version tag
+        '';
+
+    createRoot(parentContainer).render(
+      <React.StrictMode>
+        <HotkeysProvider>
+          <GuidedTour>
+            <App
+              //configID is undefined when the viewer is used without backend (i.e. shipped within its dataset)
+              {...getConfigParams()}
+              dataVersionTag={dataVersionTag}
+            />
+          </GuidedTour>
+        </HotkeysProvider>
+      </React.StrictMode>,
+    );
+  }
+})();

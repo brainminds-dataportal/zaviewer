@@ -1,6 +1,3 @@
-// biome-ignore-all lint/a11y/noStaticElementInteractions: This legacy region-editing panel uses clickable layout elements that need a broader component refactor to replace safely.
-// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard equivalents for the legacy region-editing controls are deferred to a dedicated accessibility pass.
-
 import {
   Alignment,
   Button,
@@ -25,22 +22,56 @@ import './RegionEditPanel.scss';
 
 const REGIONEDITOR_ACTIONSOURCEID = 'REGEDIT';
 
-class ColorBullet extends React.Component {
+type RegionShapeInfo = {
+  pathId: string;
+  fill: string;
+  abbrev: string;
+};
+
+type ColorBulletProps = {
+  color: string | null;
+  onClick?: React.MouseEventHandler<HTMLSpanElement>;
+  label?: string;
+};
+
+type RegionEditPanelProps = {
+  editingTool: string;
+  editPathId?: string | null;
+  editPathFillColor?: string | null;
+  editingToolRadius: number;
+  lastSelectedPath?: string | null;
+  editModeOn?: boolean;
+  editingActive?: boolean;
+};
+
+class ColorBullet extends React.Component<ColorBulletProps> {
   render() {
-    return (
-      <span className="zav-colorbullet" style={{ backgroundColor: this.props.color }} onClick={this.props.onClick} />
+    const bulletStyle = { backgroundColor: this.props.color ?? undefined };
+    return this.props.onClick ? (
+      <button
+        type="button"
+        className="zav-colorbullet"
+        style={bulletStyle}
+        onClick={this.props.onClick as React.MouseEventHandler<HTMLButtonElement>}
+        aria-label={this.props.label ?? 'Select color'}
+      />
+    ) : (
+      <span className="zav-colorbullet" style={bulletStyle} />
     );
   }
 }
 
 class RegionGrid extends React.Component {
-  constructor(props) {
+  private regionActionner: ReturnType<typeof RegionsManager.getActionner>;
+
+  constructor(props: Record<string, never>) {
     super(props);
     this.regionActionner = RegionsManager.getActionner(REGIONEDITOR_ACTIONSOURCEID);
   }
 
   render() {
-    const regionsInfo = Array.from(ViewerManager.getCurrentSliceRegions().values());
+    const regionsMap = ViewerManager.getCurrentSliceRegions() as Map<string, RegionShapeInfo> | null;
+    const regionsInfo = regionsMap ? Array.from(regionsMap.values()) : [];
     return (
       <div>
         <div
@@ -57,21 +88,26 @@ class RegionGrid extends React.Component {
         >
           {regionsInfo.map((ri) => (
             <React.Fragment key={`frg-${ri.pathId}`}>
-              <div
+              <button
+                type="button"
                 key={`lbl-${ri.pathId}`}
                 className="zav-regiongrid-item zav-regiongrid-label"
                 onClick={this.onSelectClick.bind(this, ri)}
                 onDoubleClick={this.onCenterClick.bind(this, ri)}
+                style={{ background: 'none', border: 0, padding: 0, textAlign: 'left' }}
               >
                 {ri.pathId}
-              </div>
-              <div
+              </button>
+              <button
+                type="button"
                 key={`clr-${ri.pathId}`}
                 className="zav-regiongrid-item zav-regiongrid-color"
                 onClick={this.onStartEditClick.bind(this, ri)}
+                style={{ background: 'none', border: 0, padding: 0 }}
+                aria-label={`Edit region ${ri.pathId}`}
               >
                 <ColorBullet color={ri.fill} />
-              </div>
+              </button>
             </React.Fragment>
           ))}
         </div>
@@ -91,45 +127,49 @@ class RegionGrid extends React.Component {
     );
   }
 
-  onSelectClick(regionInfo) {
-    this.regionActionner.replaceSelected(regionInfo.abbrev);
+  onSelectClick(regionInfo: RegionShapeInfo) {
+    this.regionActionner.replaceSelected(regionInfo.abbrev, false);
     ViewerManager.setLastSelectedPath(regionInfo.pathId);
   }
 
-  onCenterClick(regionInfo) {
+  onCenterClick(regionInfo: RegionShapeInfo) {
     ViewerManager.centerOnRegions([regionInfo.abbrev]);
   }
 
-  onStartEditClick(regionInfo) {
-    this.regionActionner.replaceSelected(regionInfo.abbrev);
-    ViewerManager.startEditRegionPath([regionInfo.pathId]);
+  onStartEditClick(regionInfo: RegionShapeInfo) {
+    this.regionActionner.replaceSelected(regionInfo.abbrev, false);
+    ViewerManager.startEditRegionPath(regionInfo.pathId);
   }
 }
 
-class RegionEditPanel extends React.Component {
+class RegionEditPanel extends React.Component<RegionEditPanelProps> {
   render() {
-    const editingTools = {
+    const editingTools: Record<
+      string,
+      { toolid: string; icon: React.ComponentProps<typeof Button>['icon']; title: string }
+    > = {
       pen: { toolid: 'pen', icon: 'draw', title: 'tool to extend region' },
       eraser: { toolid: 'eraser', icon: 'eraser', title: 'tool to reduce region' },
     };
-    const activeTool = editingTools[this.props.editingTool];
+    const activeTool = editingTools[this.props.editingTool as keyof typeof editingTools] ?? editingTools.pen;
     const isEditing = this.props.editPathId;
 
     let pathIdBase = '';
     let pathIdSuffix = '';
-    let color = null;
+    let color: string | null = null;
 
-    let displayedPathId = null;
+    let displayedPathId: string | null = null;
     if (this.props.editPathId) {
       //edit mode: display path being edited
       displayedPathId = this.props.editPathId;
-      color = this.props.editPathFillColor;
+      color = this.props.editPathFillColor ?? null;
     } else {
       //not in edit mode: display last selected path
-      displayedPathId = ViewerManager.getLastSelectedPath();
+      displayedPathId = ViewerManager.getLastSelectedPath() ?? null;
     }
 
-    const regionsInfo = ViewerManager.getCurrentSliceRegions().get(displayedPathId);
+    const regionsMap = ViewerManager.getCurrentSliceRegions() as Map<string, RegionShapeInfo> | null;
+    const regionsInfo = displayedPathId ? regionsMap?.get(displayedPathId) : undefined;
     if (displayedPathId && regionsInfo) {
       const sepIndex = displayedPathId.lastIndexOf('-');
       pathIdBase = displayedPathId.substr(0, sepIndex);
@@ -164,7 +204,7 @@ class RegionEditPanel extends React.Component {
         >
           <div>
             <Switch
-              checked={isEditing}
+              checked={Boolean(isEditing)}
               alignIndicator={Alignment.RIGHT}
               disabled={!isEditing && !displayedPathId}
               onChange={(_e) => {
@@ -182,7 +222,7 @@ class RegionEditPanel extends React.Component {
               id="regionedit-name-abbrev"
               type="text"
               className="bp3-input"
-              style={{ width: 110, fontsize: 'small', padding: '0 2px', textAlign: 'right' }}
+              style={{ width: 110, fontSize: 'small', padding: '0 2px', textAlign: 'right' }}
               placeholder="region name"
               maxLength={18}
               value={pathIdBase}
@@ -193,7 +233,7 @@ class RegionEditPanel extends React.Component {
               id="regionedit-name-suffix"
               type="text"
               className="bp3-input"
-              style={{ width: 34, fontsize: 'small', padding: '0 2px', textAlign: 'left' }}
+              style={{ width: 34, fontSize: 'small', padding: '0 2px', textAlign: 'left' }}
               disabled={true}
               value={pathIdSuffix}
             />
@@ -217,13 +257,13 @@ class RegionEditPanel extends React.Component {
                   <HexColorPicker
                     id="zav_editregioncolorpicker"
                     style={{ width: 180, height: 180 }}
-                    color={color}
+                    color={color ?? '#000000'}
                     onChange={(color) => ViewerManager.changeEditedRegionFill(color)}
                   />
                 </div>
               }
             >
-              <ColorBullet color={color} />
+              <ColorBullet color={color ?? '#000000'} label="Edit region color" />
             </PopoverNext>
           </div>
         </div>
@@ -264,7 +304,7 @@ class RegionEditPanel extends React.Component {
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button icon={activeTool.icon} title={activeTool.title} outlined={true} active={isEditing} />
+            <Button icon={activeTool.icon} title={activeTool.title} outlined={true} active={Boolean(isEditing)} />
 
             <PopoverNext
               interactionKind={PopoverInteractionKind.HOVER}
@@ -300,7 +340,7 @@ class RegionEditPanel extends React.Component {
                   value={this.props.editingToolRadius}
                   showTrackFill={true}
                   labelStepSize={50}
-                  labelRenderer={(value) => value}
+                  labelRenderer={(value) => String(value)}
                   vertical={true}
                   onChange={(radius) => ViewerManager.changeEditingRadius(radius)}
                 />
@@ -322,7 +362,7 @@ class RegionEditPanel extends React.Component {
     );
   }
 
-  handleChangeRegionName(event) {
+  handleChangeRegionName(event: React.ChangeEvent<HTMLInputElement>) {
     ViewerManager.changeEditedRegionName(event.target.value.trim());
     event.preventDefault();
   }

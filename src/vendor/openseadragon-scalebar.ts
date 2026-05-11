@@ -48,11 +48,10 @@ declare module 'openseadragon' {
     const ScalebarLocation: typeof import('./openseadragon-scalebar').ScalebarLocation;
     type ScalebarType = ScalebarTypeValue;
     type ScalebarLocation = ScalebarLocationValue;
-    interface ScalebarOptions extends ZAVScalebarOptions {}
   }
 
   interface Viewer {
-    scalebar(options?: OpenSeadragon.ScalebarOptions): void;
+    scalebar(options?: ZAVScalebarOptions): void;
     scalebarInstance?: Scalebar;
   }
 }
@@ -76,7 +75,7 @@ class Scalebar {
   private barThickness = 2;
   private sizeAndTextRenderer: SizeAndTextRenderer = renderMetricLength;
 
-  constructor(options: OpenSeadragon.ScalebarOptions) {
+  constructor(options: ZAVScalebarOptions) {
     if (!options.viewer) {
       throw new Error('A viewer must be specified.');
     }
@@ -97,10 +96,14 @@ class Scalebar {
     this.viewer.addHandler('close', this.refresh);
     this.viewer.addHandler('before-destroy', this.destroy);
 
-    this.refresh(options);
+    this.applyOptionsAndRefresh(options);
   }
 
-  refresh = (options?: OpenSeadragon.ScalebarOptions) => {
+  refresh = () => {
+    this.applyOptionsAndRefresh();
+  };
+
+  applyOptionsAndRefresh(options?: ZAVScalebarOptions) {
     this.updateOptions(options);
 
     if (!this.viewer.isOpen() || this.type === ScalebarType.NONE || !this.location || !this.pixelsPerMeter) {
@@ -141,7 +144,7 @@ class Scalebar {
     }
 
     this.element.style.display = 'block';
-  };
+  }
 
   destroy = () => {
     this.viewer.removeHandler('open', this.refresh);
@@ -150,13 +153,13 @@ class Scalebar {
     this.viewer.removeHandler('close', this.refresh);
     this.viewer.removeHandler('before-destroy', this.destroy);
     if (this.controlAnchor !== null) {
-      this.viewer.removeControl(this.element);
+      this.viewer.removeControl(this.element as unknown as OpenSeadragon.Control);
       this.controlAnchor = null;
     }
     this.viewer.scalebarInstance = undefined;
   };
 
-  private updateOptions(options?: OpenSeadragon.ScalebarOptions) {
+  private updateOptions(options?: ZAVScalebarOptions) {
     if (!options) {
       return;
     }
@@ -252,7 +255,7 @@ class Scalebar {
     const nextAnchor = this.stayInsideImage ? OpenSeadragon.ControlAnchor.ABSOLUTE : this.getControlAnchor();
 
     if (this.controlAnchor !== null && this.controlAnchor !== nextAnchor) {
-      this.viewer.removeControl(this.element);
+      this.viewer.removeControl(this.element as unknown as OpenSeadragon.Control);
       this.controlAnchor = null;
     }
 
@@ -364,7 +367,7 @@ class Scalebar {
 
     const imageRect = tiledImage.imageToViewportRectangle(0, 0, dimensions.x, dimensions.y);
 
-    return tiledImage.viewportToViewerElementRectangle(imageRect);
+    return this.viewer.viewport.viewportToViewerElementRectangle(imageRect);
   }
 }
 
@@ -443,7 +446,7 @@ osdWithScalebar.ScalebarType ??= ScalebarType;
 osdWithScalebar.ScalebarLocation ??= ScalebarLocation;
 
 if (!OpenSeadragon.Viewer.prototype.scalebar) {
-  OpenSeadragon.Viewer.prototype.scalebar = function scalebar(options: OpenSeadragon.ScalebarOptions = {}) {
+  OpenSeadragon.Viewer.prototype.scalebar = function scalebar(options: ZAVScalebarOptions = {}) {
     if (!this.scalebarInstance) {
       this.scalebarInstance = new Scalebar({
         ...options,
@@ -452,6 +455,6 @@ if (!OpenSeadragon.Viewer.prototype.scalebar) {
       return;
     }
 
-    this.scalebarInstance.refresh(options);
+    this.scalebarInstance.applyOptionsAndRefresh(options);
   };
 }

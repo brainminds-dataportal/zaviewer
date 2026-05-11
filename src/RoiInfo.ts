@@ -17,10 +17,11 @@ export interface IRoi {
   };
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: Existing API is intentionally static across the app.
 export class RoiInfos {
   private static roiById = new Map<string, IRoi>();
   static hasROI = this.roiById.size > 0;
+
+  private constructor() {}
 
   /**
    * Retrieve region data associated to a configuration

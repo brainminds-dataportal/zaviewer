@@ -27,12 +27,14 @@
     padding-bottom: 2px;
 }
 
-.zav-roi-list-line.zav-roi-line-active {
+.zav-roi-list-line:hover,
+.zav-roi-list-line:focus-within {
     background-color: hsl(203, 100%, 86%);
     transition: background-color 0.8s ease-in-out;
 }
 
-.zav-roi-list-line.zav-roi-line-active>.zav-roi-list-button {
+.zav-roi-list-line:hover>.zav-roi-list-button,
+.zav-roi-list-line:focus-within>.zav-roi-list-button {
     transition: opacity 0.8s ease-in-out;
     opacity: 1;
 }

@@ -65,13 +65,13 @@ class LayerSlider extends React.Component<LayerSliderProps> {
     } = this.props;
 
     const safeChosenSlice = Number.isFinite(chosenSlice) ? chosenSlice : 0;
-    const safeOpacity = Number.isFinite(opacity) ? opacity : 0;
-    const safeInitOpacity = Number.isFinite(initOpacity) ? initOpacity : 0;
-    const safeContrast = Number.isFinite(contrast) ? contrast : 0;
-    const safeInitContrast = Number.isFinite(initContrast) ? initContrast : 0;
-    const safeGamma = Number.isFinite(gamma) ? gamma : 0;
-    const safeInitGamma = Number.isFinite(initGamma) ? initGamma : 0;
-    const safeDilation = Number.isFinite(dilation) ? dilation : 0;
+    const safeOpacity = typeof opacity === 'number' ? opacity : 0;
+    const safeInitOpacity = typeof initOpacity === 'number' ? initOpacity : 0;
+    const safeContrast = typeof contrast === 'number' ? contrast : 0;
+    const safeInitContrast = typeof initContrast === 'number' ? initContrast : 0;
+    const safeGamma = typeof gamma === 'number' ? gamma : 0;
+    const safeInitGamma = typeof initGamma === 'number' ? initGamma : 0;
+    const safeDilation = typeof dilation === 'number' ? dilation : 0;
     const isEnabled = Boolean(enabled);
     const isContrastEnabled = Boolean(contrastEnabled);
     const isGammaEnabled = Boolean(gammaEnabled);
@@ -194,7 +194,7 @@ class LayerSlider extends React.Component<LayerSliderProps> {
                 icon={
                   <span
                     className="bp3-icon"
-                    style={{ display: 'inline-block', width: 16, marginRight: 10, texAlign: 'right' }}
+                    style={{ display: 'inline-block', width: 16, marginRight: 10, textAlign: 'right' }}
                   >
                     𝛄
                   </span>

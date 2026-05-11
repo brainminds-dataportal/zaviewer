@@ -1,4 +1,3 @@
-// biome-ignore-all lint/suspicious/useIterableCallbackReturn: Existing collection traversal uses concise return expressions and is preserved during lint cleanup.
 export interface IRegionsPayload {
   regions: IRegion[];
   groupings: { g116: IGroupingDef };
@@ -18,6 +17,7 @@ export interface IGroupDef {
 
 export interface IGroupings {
   g116: string;
+  [key: string]: string;
 }
 
 interface IIndexedGroups {
@@ -27,7 +27,7 @@ interface IIndexedGroups {
 
 interface IRegionData {
   regionById: Map<string, IRegion>;
-  root: string;
+  root: string | undefined;
   groupsById: Map<string, IIndexedGroups>;
   lineage: object;
 }
@@ -90,13 +90,14 @@ export interface IRegionsStatus {
 export type ICallbackWhenChanged = (status: IRegionsStatus) => void;
 
 /** Class in charge of managing regions */
-// biome-ignore lint/complexity/noStaticOnlyClass: RegionsManager is intentionally a static facade for shared atlas-region state.
 class RegionsManager {
   static status: IRegionsStatus;
   private static regionsData: IRegionData;
   private static listeners: ICallbackWhenChanged[];
   private static isHighlightingOn: boolean;
   private static highlightingLocked: boolean;
+
+  private constructor() {}
 
   /**
    * Retrieve region data associated to a configuration
@@ -158,7 +159,9 @@ class RegionsManager {
         currRegion.trail = Array.from(trail);
         if (currRegion.children?.length) {
           trail.push(regionId);
-          currRegion.children.forEach((childId) => addTrailToRegion(childId, trail));
+          currRegion.children.forEach((childId) => {
+            addTrailToRegion(childId, trail);
+          });
           trail.pop();
         }
       }
@@ -169,7 +172,9 @@ class RegionsManager {
       region.abbupper = region.abb.toUpperCase();
     });
 
-    addTrailToRegion(RegionsManager.regionsData.root, []);
+    if (RegionsManager.regionsData.root) {
+      addTrailToRegion(RegionsManager.regionsData.root, []);
+    }
 
     RegionsManager.status.loadedRegions = true;
 
@@ -186,11 +191,15 @@ class RegionsManager {
 
       RegionsManager._replaceAllSelected(RegionsManager.status.lastActionSource, regionsAndLeaves, true);
       //treeview needs to be expanded to display selection
-      regionsAndLeaves.forEach((r) => RegionsManager._expandFromRootTo(r));
+      regionsAndLeaves.forEach((r) => {
+        RegionsManager._expandFromRootTo(r);
+      });
     } else {
       /** only first level expanded at startup */
       RegionsManager._collapseAll();
-      RegionsManager._setExpanded(RegionsManager.status.lastActionSource, RegionsManager.regionsData.root, true);
+      if (RegionsManager.regionsData.root) {
+        RegionsManager._setExpanded(RegionsManager.status.lastActionSource, RegionsManager.regionsData.root, true);
+      }
     }
   }
 
@@ -202,7 +211,9 @@ class RegionsManager {
         const regionInfo = RegionsManager.regionsData.regionById.get(regionId);
         if (regionInfo) {
           existsOrParent.add(regionInfo.abb);
-          regionInfo.trail?.forEach((rid) => existsOrParent.add(rid));
+          regionInfo.trail?.forEach((rid) => {
+            existsOrParent.add(rid);
+          });
         }
       });
       //reset all regions
@@ -218,7 +229,9 @@ class RegionsManager {
 
   private static signalListeners() {
     RegionsManager.status = { ...RegionsManager.status };
-    RegionsManager.listeners.forEach((listener) => listener(RegionsManager.status));
+    RegionsManager.listeners.forEach((listener) => {
+      listener(RegionsManager.status);
+    });
   }
 
   static addListeners(callbackWhenChanged: ICallbackWhenChanged) {
@@ -388,7 +401,9 @@ class RegionsManager {
   static _expandFromRootTo(regionId: string) {
     const region = RegionsManager.getRegion(regionId);
     if (region?.trail) {
-      region.trail.forEach((ancestorId) => RegionsManager.status.expanded.set(ancestorId, true));
+      region.trail.forEach((ancestorId) => {
+        RegionsManager.status.expanded.set(ancestorId, true);
+      });
     }
   }
 
@@ -397,7 +412,9 @@ class RegionsManager {
     const childrenRegions = region ? region.children : null;
     if (childrenRegions) {
       const that = RegionsManager;
-      childrenRegions.forEach((childId) => that._expandCollapseAllFrom(actionGroupId, childId, expanded, true));
+      childrenRegions.forEach((childId) => {
+        that._expandCollapseAllFrom(actionGroupId, childId, expanded, true);
+      });
     }
     RegionsManager._setExpanded(actionGroupId, regionId, expanded, true);
     if (!silent) {
@@ -408,9 +425,9 @@ class RegionsManager {
 
   static _collapseAll() {
     if (RegionsManager.regionsData) {
-      RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
-        RegionsManager.status.expanded.set(regionId, false),
-      );
+      RegionsManager.regionsData.regionById.forEach((_region, regionId) => {
+        RegionsManager.status.expanded.set(regionId, false);
+      });
     }
   }
 
@@ -511,9 +528,9 @@ class RegionsManager {
         });
 
         /** reset all node to expanded */
-        RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
-          RegionsManager.status.expanded.set(regionId, true),
-        );
+        RegionsManager.regionsData.regionById.forEach((_region, regionId) => {
+          RegionsManager.status.expanded.set(regionId, true);
+        });
 
         RegionsManager.isHighlightingOn = true;
       }
@@ -599,9 +616,9 @@ class RegionsManager {
         }, RegionsManager);
 
         /** reset all node to expanded */
-        RegionsManager.regionsData.regionById.forEach((_region, regionId) =>
-          RegionsManager.status.expanded.set(regionId, true),
-        );
+        RegionsManager.regionsData.regionById.forEach((_region, regionId) => {
+          RegionsManager.status.expanded.set(regionId, true);
+        });
 
         RegionsManager.isHighlightingOn = true;
       }
@@ -740,7 +757,7 @@ function debounce<TArgs extends unknown[], TResult>(
   wait: number,
   immediate: boolean,
 ) {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
   return function (this: unknown, ...args: TArgs) {
     const later = () => {
       timeout = null;
@@ -749,7 +766,7 @@ function debounce<TArgs extends unknown[], TResult>(
       }
     };
     const callNow = immediate && !timeout;
-    clearTimeout(timeout);
+    clearTimeout(timeout ?? undefined);
     timeout = setTimeout(later, wait);
     if (callNow) {
       func.apply(this, args);

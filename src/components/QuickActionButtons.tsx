@@ -72,12 +72,15 @@ class QuickActionButtons extends React.Component<QuickActionButtonsProps, QuickA
 
   render() {
     const tracerLayer = Object.values(this.props.displaySettings ?? {}).find((layer) => layer.isTracer);
+    const tourMenu = this.props.tourMenu;
     const showRegions = Boolean(this.props.showRegions);
     const tracerLayerEnabled = Boolean(tracerLayer?.enabled);
-    const tracerLayerOpacity = Number.isFinite(tracerLayer?.opacity) ? tracerLayer.opacity : 0;
+    const tracerLayerOpacity = typeof tracerLayer?.opacity === 'number' ? tracerLayer.opacity : 0;
 
     const rawCurrentSlice = this.getCurrentSliceFromProps(this.props);
-    const planeSlideCount = this.props.config ? ViewerManager.getPlaneSlideCount(this.props.activePlane) : 1001;
+    const activePlane = this.getActivePlaneFromProps(this.props);
+    const planeSlideCount =
+      this.props.config && ViewerManager.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
     const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
     const currentSlice = Math.min(Math.max(rawCurrentSlice, 0), maxSliceNum);
     const displayedSlice = Math.min(
@@ -88,7 +91,7 @@ class QuickActionButtons extends React.Component<QuickActionButtonsProps, QuickA
       <>
         <PopoverNext
           interactionKind={PopoverInteractionKind.HOVER}
-          content={this.props.tourMenu}
+          content={tourMenu ? <div>{tourMenu}</div> : undefined}
           placement={popoverPositionToNextPlacement(Position.LEFT_BOTTOM)}
         >
           <div title="Help and guided tours!">
@@ -190,7 +193,7 @@ class QuickActionButtons extends React.Component<QuickActionButtonsProps, QuickA
                           value={displayedSlice}
                           showTrackFill={false}
                           labelStepSize={maxSliceNum}
-                          labelRenderer={(value) => value}
+                          labelRenderer={(value) => String(value)}
                         />
                       </div>
                       <Icon
@@ -294,10 +297,22 @@ class QuickActionButtons extends React.Component<QuickActionButtonsProps, QuickA
   }
 
   getCurrentSliceFromProps(props: QuickActionButtonsProps) {
-    const planeSlideCount = props.config ? ViewerManager.getPlaneSlideCount(props.activePlane) : 1001;
+    const activePlane = this.getActivePlaneFromProps(props);
+    const planeSlideCount =
+      props.config && ViewerManager.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
     const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
     const requestedSlice = typeof props.chosenSlice === 'number' ? props.chosenSlice : 0;
     return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
+  }
+
+  getActivePlaneFromProps(props: QuickActionButtonsProps) {
+    if (typeof props.activePlane === 'number') {
+      return props.activePlane;
+    }
+    if (props.config && 'firstActivePlane' in props.config && typeof props.config.firstActivePlane === 'number') {
+      return props.config.firstActivePlane;
+    }
+    return ViewerManager.getActivePlane();
   }
 
   startSliceSliderInteraction() {

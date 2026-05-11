@@ -7,30 +7,107 @@ $subview-total-padding: 20px;
 .zav-SubViewSlider {
 	width: 100%;
 	margin: 0;
-	display: flex;
-	align-items: flex-start;
-	justify-content: center;
-	gap: 0;
+	display: block;
 }
 
 .zav-SubVSliceSlider {
-	display: inline-block;
-	flex: 1 1 auto;
+	display: block;
 	min-width: 0;
+	margin: 0;
 }
 
 .zav-SubViewSliderTrack {
-	flex: 1 1 auto;
-	min-width: 0;
+	display: block;
+	min-height: 40px;
+	padding: 0 18px;
+	position: relative;
 }
 
 .zav-SubViewSliderChevron {
-	flex: 0 0 auto;
+	appearance: none;
+	position: absolute;
+	top: 8px;
 	cursor: pointer;
-	margin-top: 0;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	color: #fff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	background: transparent;
+	font-size: 12px;
+	line-height: 1;
+	font-weight: bold;
+	transform: translateY(-50%);
 }
 
-//remove outline when Switch is focused
+.zav-SubViewSliderChevronLeft {
+	left: 0;
+}
+
+.zav-SubViewSliderChevronRight {
+	right: 0;
+}
+
+.zav-SubViewSwitch {
+	margin: 0 0 6px 0;
+	display: inline-flex;
+}
+
+.zav-SubViewSwitch.bp6-control,
+.zav-SubViewSwitch.bp5-control,
+.zav-SubViewSwitch.bp3-control {
+	margin: 0 0 6px;
+	min-height: 18px;
+	padding-inline-start: 0;
+	padding-left: 0;
+}
+
+.zav-SubViewSwitch .bp6-control-indicator,
+.zav-SubViewSwitch .bp5-control-indicator,
 .zav-SubViewSwitch .bp3-control-indicator {
-	outline: none !important;
+	width: 100%;
+	min-width: 0;
+	height: 18px;
+	border-radius: 3px;
+	padding: 0 4px;
+	margin-inline-start: 0;
+	margin-left: 0;
+}
+
+.zav-SubViewSwitch .bp6-control-indicator-child,
+.zav-SubViewSwitch .bp5-control-indicator-child,
+.zav-SubViewSwitch .bp3-control-indicator-child {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	padding: 0 6px;
+}
+
+.zav-SubViewSwitch .bp6-switch-inner-text,
+.zav-SubViewSwitch .bp5-switch-inner-text,
+.zav-SubViewSwitch .bp3-switch-inner-text {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	line-height: 1;
+	white-space: nowrap;
+	color: #ffffff;
+}
+
+.zav-SubViewList {
+	display: flex;
+	flex-direction: row;
+	margin-top: 8px;
+}
+
+.zav-SubViewItem {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }

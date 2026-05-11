@@ -1,5 +1,4 @@
 import { AnchorButton } from '@blueprintjs/core';
-import React from 'react';
 
 import ViewerManager from '../ViewerManager';
 
@@ -16,58 +15,51 @@ type MeasureInfoPanelProps = {
   markedPosColors: string[];
 };
 
-class MeasureInfoPanel extends React.Component<MeasureInfoPanelProps> {
-  constructor(props: MeasureInfoPanelProps) {
-    super(props);
-    this.handleClick = this.handleClick.bind(this);
+const MeasureInfoPanel = (props: MeasureInfoPanelProps) => {
+  let distance = '';
+  const posx = ['-', '-'];
+  const posy = ['-', '-'];
+  const markedPos = props.markedPos;
+  for (let i = 0; i < props.posCount; i++) {
+    posx[i] = `${markedPos[i].x}.00`.replace(/(\.\d{2}).*$/, '$1');
+    posy[i] = `${markedPos[i].y}.00`.replace(/(\.\d{2}).*$/, '$1');
+  }
+  if (props.posCount === 2) {
+    distance =
+      `${Math.sqrt((markedPos[0].x - markedPos[1].x) ** 2 + (markedPos[0].y - markedPos[1].y) ** 2)}.00`.replace(
+        /(\.\d{2}).*$/,
+        '$1',
+      );
   }
 
-  render() {
-    let distance = '';
-    const posx = ['-', '-'];
-    const posy = ['-', '-'];
-    const markedPos = this.props.markedPos;
-    for (let i = 0; i < this.props.posCount; i++) {
-      posx[i] = `${markedPos[i].x}.00`.replace(/(\.\d{2}).*$/, '$1');
-      posy[i] = `${markedPos[i].y}.00`.replace(/(\.\d{2}).*$/, '$1');
-    }
-    if (this.props.posCount === 2) {
-      distance =
-        `${Math.sqrt((markedPos[0].x - markedPos[1].x) ** 2 + (markedPos[0].y - markedPos[1].y) ** 2)}.00`.replace(
-          /(\.\d{2}).*$/,
-          '$1',
-        );
-    }
+  const handleClick = () => {
+    ViewerManager.setMeasureMode(!ViewerManager.isMeasureModeOn());
+  };
 
-    return (
-      <div className="distMeasure">
-        <div className="posDis" style={this.props.posCount > 1 ? { color: '#fff' } : {}}>
-          <AnchorButton
-            title={`${ViewerManager.isMeasureModeOn() ? 'de-' : ''}activate measurement mode`}
-            small
-            icon="flows"
-            intent={ViewerManager.isMeasureModeOn() ? 'primary' : 'none'}
-            onClick={this.handleClick}
-          />
-          <span style={{ marginLeft: 26 }}>
-            Distance:<span className="posdistance">{distance}</span>&nbsp;(mm)
-          </span>
+  return (
+    <div className="distMeasure">
+      <div className="posDis" style={props.posCount > 1 ? { color: '#fff' } : {}}>
+        <AnchorButton
+          title={`${ViewerManager.isMeasureModeOn() ? 'de-' : ''}activate measurement mode`}
+          small
+          icon="flows"
+          intent={ViewerManager.isMeasureModeOn() ? 'primary' : 'none'}
+          onClick={handleClick}
+        />
+        <span style={{ marginLeft: 26 }}>
+          Distance:<span className="posdistance">{distance}</span>&nbsp;(mm)
+        </span>
+      </div>
+      <div className="posPoints">
+        <div style={props.posCount > 0 ? { color: props.markedPosColors[0] } : {}}>
+          <span>P1</span>&nbsp;(<span>{posx[0]}</span>,&nbsp;<span>{posy[0]}</span>)
         </div>
-        <div className="posPoints">
-          <div style={this.props.posCount > 0 ? { color: this.props.markedPosColors[0] } : {}}>
-            <span>P1</span>&nbsp;(<span>{posx[0]}</span>,&nbsp;<span>{posy[0]}</span>)
-          </div>
-          <div style={this.props.posCount > 1 ? { color: this.props.markedPosColors[1] } : {}}>
-            <span>P2</span>&nbsp;(<span>{posx[1]}</span>,&nbsp;<span>{posy[1]}</span>)
-          </div>
+        <div style={props.posCount > 1 ? { color: props.markedPosColors[1] } : {}}>
+          <span>P2</span>&nbsp;(<span>{posx[1]}</span>,&nbsp;<span>{posy[1]}</span>)
         </div>
       </div>
-    );
-  }
-
-  handleClick() {
-    ViewerManager.setMeasureMode(!ViewerManager.isMeasureModeOn());
-  }
-}
+    </div>
+  );
+};
 
 export default MeasureInfoPanel;

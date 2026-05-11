@@ -6,7 +6,7 @@ import {
   popoverPositionToNextPlacement,
   Slider,
 } from '@blueprintjs/core';
-import React from 'react';
+import type React from 'react';
 
 import './ParamAdjusterLabel.scss';
 
@@ -24,113 +24,105 @@ type ParamAdjusterLabelProps = {
   noAdjust?: boolean;
 };
 
-class ParamAdjusterLabel extends React.Component<ParamAdjusterLabelProps> {
-  render() {
-    const icon =
-      typeof this.props.icon === 'string' ? (
-        <Icon icon={this.props.icon as React.ComponentProps<typeof Icon>['icon']} style={{ marginRight: 10 }} />
-      ) : (
-        this.props.icon
-      );
-
-    const renderedValue: React.ReactNode = this.props.labelRenderer
-      ? this.props.labelRenderer(this.props.value)
-      : this.props.value;
-    const adjLabel = (
-      <span className="zav-AdjusterLabel" data-disabled={!this.props.enabled}>
-        {icon}
-        {renderedValue}
-      </span>
-    );
-
-    const defaultValue = this.props.defaultValue;
-    const resetEnabled = typeof defaultValue !== 'undefined' && defaultValue !== this.props.value;
-    return this.props.enabled && !this.props.noAdjust ? (
-      <PopoverNext
-        interactionKind={PopoverInteractionKind.HOVER}
-        placement={popoverPositionToNextPlacement(Position.BOTTOM_RIGHT)}
-        rootBoundary="viewport"
-        content={
-          <div style={{ padding: '12px 6px 0 6px' }}>
-            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-              <span>
-                {icon}
-                {this.props.label}
-              </span>
-              {typeof this.props.defaultValue !== 'undefined' ? (
-                <span title={'click to reset to default value'}>
-                  <button
-                    type="button"
-                    style={{
-                      marginLeft: 10,
-                      color: resetEnabled ? undefined : 'silver',
-                      cursor: resetEnabled ? 'pointer' : 'default',
-                      background: 'transparent',
-                      border: 0,
-                      padding: 0,
-                    }}
-                    onClick={
-                      resetEnabled && typeof defaultValue !== 'undefined'
-                        ? () => this.props.onChange(defaultValue)
-                        : undefined
-                    }
-                  >
-                    ↺
-                  </button>
-                </span>
-              ) : null}
-            </div>
-            <div style={{ padding: 10 }}>
-              <Icon
-                icon="chevron-left"
-                title="go to previous slice"
-                style={{ paddingRight: 10, verticalAlign: 'top' }}
-                onClick={this.handleClickDown.bind(this)}
-              />
-              <Slider
-                className="zav-Slider zav-OpacitySlider"
-                min={this.props.min}
-                max={this.props.max}
-                stepSize={this.props.stepSize}
-                labelStepSize={this.props.max}
-                onChange={this.props.onChange}
-                value={this.props.value}
-                showTrackFill={false}
-                labelRenderer={
-                  this.props.labelRenderer ? (value) => this.props.labelRenderer?.(value) ?? String(value) : undefined
-                }
-                disabled={!this.props.enabled}
-              />
-              <Icon
-                icon="chevron-right"
-                title="go to next slice"
-                style={{ paddingLeft: 10, verticalAlign: 'top' }}
-                onClick={this.handleClickUp.bind(this)}
-              />
-            </div>
-          </div>
-        }
-      >
-        {adjLabel}
-      </PopoverNext>
+const ParamAdjusterLabel = (props: ParamAdjusterLabelProps) => {
+  const icon =
+    typeof props.icon === 'string' ? (
+      <Icon icon={props.icon as React.ComponentProps<typeof Icon>['icon']} style={{ marginRight: 10 }} />
     ) : (
-      adjLabel
+      props.icon
     );
-  }
 
-  handleClickDown() {
-    const newVal = this.props.value - this.props.stepSize;
-    if (newVal >= this.props.min) {
-      this.props.onChange(newVal);
-    }
-  }
+  const renderedValue: React.ReactNode = props.labelRenderer ? props.labelRenderer(props.value) : props.value;
+  const adjLabel = (
+    <span className="zav-AdjusterLabel" data-disabled={!props.enabled}>
+      {icon}
+      {renderedValue}
+    </span>
+  );
 
-  handleClickUp() {
-    const newVal = this.props.value + this.props.stepSize;
-    if (newVal <= this.props.max) {
-      this.props.onChange(newVal);
+  const handleClickDown = () => {
+    const newVal = props.value - props.stepSize;
+    if (newVal >= props.min) {
+      props.onChange(newVal);
     }
-  }
-}
+  };
+
+  const handleClickUp = () => {
+    const newVal = props.value + props.stepSize;
+    if (newVal <= props.max) {
+      props.onChange(newVal);
+    }
+  };
+
+  const defaultValue = props.defaultValue;
+  const resetEnabled = typeof defaultValue !== 'undefined' && defaultValue !== props.value;
+  return props.enabled && !props.noAdjust ? (
+    <PopoverNext
+      interactionKind={PopoverInteractionKind.HOVER}
+      placement={popoverPositionToNextPlacement(Position.BOTTOM_RIGHT)}
+      rootBoundary="viewport"
+      content={
+        <div style={{ padding: '12px 6px 0 6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+            <span>
+              {icon}
+              {props.label}
+            </span>
+            {typeof props.defaultValue !== 'undefined' ? (
+              <span title={'click to reset to default value'}>
+                <button
+                  type="button"
+                  style={{
+                    marginLeft: 10,
+                    color: resetEnabled ? undefined : 'silver',
+                    cursor: resetEnabled ? 'pointer' : 'default',
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                  }}
+                  onClick={
+                    resetEnabled && typeof defaultValue !== 'undefined' ? () => props.onChange(defaultValue) : undefined
+                  }
+                >
+                  ↺
+                </button>
+              </span>
+            ) : null}
+          </div>
+          <div style={{ padding: 10 }}>
+            <Icon
+              icon="chevron-left"
+              title="go to previous slice"
+              style={{ paddingRight: 10, verticalAlign: 'top' }}
+              onClick={handleClickDown}
+            />
+            <Slider
+              className="zav-Slider zav-OpacitySlider"
+              min={props.min}
+              max={props.max}
+              stepSize={props.stepSize}
+              labelStepSize={props.max}
+              onChange={props.onChange}
+              value={props.value}
+              showTrackFill={false}
+              labelRenderer={props.labelRenderer ? (value) => props.labelRenderer?.(value) ?? String(value) : undefined}
+              disabled={!props.enabled}
+            />
+            <Icon
+              icon="chevron-right"
+              title="go to next slice"
+              style={{ paddingLeft: 10, verticalAlign: 'top' }}
+              onClick={handleClickUp}
+            />
+          </div>
+        </div>
+      }
+    >
+      {adjLabel}
+    </PopoverNext>
+  ) : (
+    adjLabel
+  );
+};
 
 export default ParamAdjusterLabel;

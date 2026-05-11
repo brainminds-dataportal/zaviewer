@@ -16,9 +16,9 @@ $region-detailpane-height: 150px;
 
 	display: block;
 	margin: 0;
-	padding: 0;
+	padding: 0 0 0 2px;
 
-	box-sizing: content-box;
+	box-sizing: border-box;
 	list-style-type: none;
 	list-style-image: none;
 	background-color: #e1e1e1;
@@ -34,9 +34,13 @@ $region-detailpane-height: 150px;
 .zav-TreeSubItems {
 	display: block;
 	padding-left: 0;
-	margin-left: 25px;
+	margin-left: 16px;
 	margin-top: 0;
 	list-style-type: none;
+}
+
+.zav-TreeSubItemsRoot {
+	margin-left: 2px;
 }
 
 .zav-TreeSubItems[data-ishovered="true"] {
@@ -46,13 +50,19 @@ $region-detailpane-height: 150px;
 .zav-TreeItemCont {
 	display: block;
 	font-size: 13px;
-	line-height: 22px;
-	margin-top: 2px;
+	line-height: 24px;
+	margin-top: 0;
 	border-left: dotted 1px grey;
+	position: relative;
 }
 
 .zav-TreeItemCont[data-islastchild="true"] {
 	border-left-color: transparent;
+}
+
+.zav-TreeItemCont[data-isroot="true"] {
+	border-left-color: transparent;
+	margin-left: -10px;
 }
 
 .zav-TreeItemCont[data-isexpanded="false"] > ul {
@@ -61,27 +71,59 @@ $region-detailpane-height: 150px;
 
 .zav-TreeItemLink {
 	display: inline-block;
-	height: 14px;
+	height: 24px;
 	width: 16px;
 	position: relative;
-	top: -3px;
-	left: -1px;
+	top: 0;
+	left: 0;
 	border-left: dotted 1px transparent;
+	vertical-align: top;
+}
+
+.zav-TreeItemLink::after {
+	content: "";
+	position: absolute;
+	left: 1px;
+	right: -6px;
+	top: calc(50% + 0.5px);
 	border-bottom: dotted 1px grey;
 }
 
-.zav-TreeItemLink[data-islastchild="true"] {
-	border-left-color: grey;
+.zav-TreeItemLink[data-islastchild="true"]::after {
+	right: 0;
+}
+
+.zav-TreeItemLink[data-islastchild="true"]::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: calc(50% + 1px);
+	border-left: dotted 1px grey;
+}
+
+.zav-TreeItemCont[data-isroot="true"] > .zav-TreeItem > .zav-TreeItemLink {
+	width: 8px;
+}
+
+.zav-TreeItemCont[data-isroot="true"] > .zav-TreeItem > .zav-TreeItemLink::after {
+	display: none;
 }
 
 .zav-TreeItem {
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
 	white-space: nowrap;
+	vertical-align: top;
 }
 
 .zav-TreeItemHeader {
 	cursor: pointer;
-	padding: 1px 5px 1px 1px;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	min-height: 24px;
+	padding: 0 5px 0 1px;
 	border-radius: 4px;
 	border-style: solid;
 	border-width: 1px;
@@ -94,11 +136,16 @@ $region-detailpane-height: 150px;
 
 .zav-TreeItemHeaderButton {
 	appearance: none;
+	display: inline-flex;
+	align-items: center;
 	background: none;
 	border: 0;
 	padding: 0;
 	font: inherit;
 	color: inherit;
+	cursor: pointer;
+	min-width: 0;
+	line-height: inherit;
 }
 
 .zav-TreeItem[data-exists="false"] > .zav-TreeItemHeader {
@@ -133,11 +180,13 @@ $region-detailpane-height: 150px;
 	padding: 0;
 
 	position: relative;
-	top: 4px;
+	top: 0;
 
 	border: solid 2px transparent;
 	border-radius: $region-bullet-size;
 	margin-right: 7px;
+	flex: 0 0 auto;
+	vertical-align: middle;
 }
 
 .zav-TreeItemLabelBullet[data-exists="false"] {
@@ -152,30 +201,34 @@ $region-detailpane-height: 150px;
 	padding: 0;
 	font: inherit;
 
-	position: relative;
-
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	width: $region-expand-handle-size;
 	height: $region-expand-handle-size;
 	text-align: center;
 	vertical-align: middle;
 
-	margin-right: 3px;
+	margin-right: 0;
 
 	font-weight: bold;
 	color: gray;
+	flex: 0 0 auto;
 }
 
 .zav-TreeItemHandle[data-haschild="false"] {
 	cursor: default;
 	background-color: transparent;
 	border-color: transparent;
-	height: 0;
 }
 
 .zav-TreeItemHandleText {
-	top: -5px;
-	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	line-height: 1;
 }
 
 .zav-TreeItemHandle[data-isexpanded="false"] .zav-TreeItemHandleText::before {
@@ -218,10 +271,14 @@ $region-detailpane-height: 150px;
 	justify-content: space-between;
 }
 
+.zav-RegionDetail .bp6-popover-content,
+.zav-RegionDetail .bp5-popover-content,
 .zav-RegionDetail .bp3-popover-content {
 	padding: 4px !important;
 }
 
+.zav-RegionDetail .bp6-popover-arrow,
+.zav-RegionDetail .bp5-popover-arrow,
 .zav-RegionDetail .bp3-popover-arrow {
 	display: none;
 }
@@ -240,6 +297,8 @@ $region-detailpane-height: 150px;
 	margin-left: 12px;
 }
 
+.zav-RegionToaster .bp6-toast,
+.zav-RegionToaster .bp5-toast,
 .zav-RegionToaster .bp3-toast {
 	background-color: #e1e1e1cc;
 }

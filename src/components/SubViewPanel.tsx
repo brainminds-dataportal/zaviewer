@@ -1,4 +1,4 @@
-import { Button, Slider, Switch } from '@blueprintjs/core';
+import { Slider, Switch } from '@blueprintjs/core';
 import React from 'react';
 import Utils from '../Utils';
 import ViewerManager from '../ViewerManager';
@@ -36,11 +36,6 @@ type SubViewProps = {
   size?: number;
 };
 
-type SubViewState = {
-  dragging: boolean;
-  bbox: DOMRect | null;
-};
-
 type SubViewPanelProps = {
   activePlane?: Plane;
   chosenSlice?: number;
@@ -48,578 +43,502 @@ type SubViewPanelProps = {
   config?: ZAViewerConfig;
 };
 
-type SubViewPanelState = {
-  displayedSlice: number;
-  isDraggingSlice: boolean;
+const getPlaneSlicePercentOffset = (plane: Plane) => {
+  const planeSlideCount = ViewerManager.getPlaneSlideCount(plane) ?? 0;
+  if (!Number.isFinite(planeSlideCount) || planeSlideCount <= 1) {
+    return 0;
+  }
+  const chosenSlice = ViewerManager.getPlaneChosenSlice(plane);
+  const safeChosenSlice = typeof chosenSlice === 'number' && Number.isFinite(chosenSlice) ? chosenSlice : 0;
+  return safeChosenSlice / (planeSlideCount - 1);
 };
 
-class AxisArrow extends React.Component<AxisArrowProps> {
-  render() {
-    const arrowHead = { width: 3, length: 8 };
-    const _fontSize = 12;
+const AxisArrow = ({ pX, pY, arrowlen, axisLabel, horizontal }: AxisArrowProps) => {
+  const arrowHead = { width: 3, length: 8 };
 
-    const { pX, pY, arrowlen, axisLabel } = this.props;
-    let arrowPath: React.ReactNode;
-    let arrowLabel: React.ReactNode;
-    if (this.props.horizontal) {
-      arrowPath = (
-        <path
-          d={`M${pX},${pY} l${arrowlen},0 M${pX},${pY} l${arrowHead.length},-${arrowHead.width} M${pX},${pY} l${arrowHead.length},${arrowHead.width}`}
-          stroke="silver"
-          strokeWidth={1}
-        />
-      );
-      arrowLabel = (
-        <text x={pX - 3} y={pY} textAnchor="end" stroke="silver">
-          {axisLabel}
-        </text>
-      );
-    } else {
-      arrowPath = (
-        <path
-          d={`M${pX},${pY} l0,${arrowlen} M${pX},${pY} l-${arrowHead.width},${arrowHead.length} M${pX},${pY} l${arrowHead.width},${arrowHead.length}`}
-          stroke="silver"
-          strokeWidth={1}
-        />
-      );
-      arrowLabel = (
-        <text x={pX} y={pY - 3} textAnchor="middle" stroke="silver">
-          {axisLabel}
-        </text>
-      );
-    }
-
-    return (
-      <React.Fragment>
-        {arrowPath}
-        {arrowLabel}
-      </React.Fragment>
+  let arrowPath: React.ReactNode;
+  let arrowLabel: React.ReactNode;
+  if (horizontal) {
+    arrowPath = (
+      <path
+        d={`M${pX},${pY} l${arrowlen},0 M${pX},${pY} l${arrowHead.length},-${arrowHead.width} M${pX},${pY} l${arrowHead.length},${arrowHead.width}`}
+        stroke="silver"
+        strokeWidth={1}
+      />
     );
-  }
-}
-
-class SubViewOrthoPlanBar extends React.Component<SubViewOrthoPlanBarProps> {
-  constructor(props: SubViewOrthoPlanBarProps) {
-    super(props);
-    this.getPlaneSlicePercentOffset = this.getPlaneSlicePercentOffset.bind(this);
-  }
-
-  render() {
-    const markerLineWidth = 1;
-    const _dragMargin = 3;
-
-    if (this.props.vertical) {
-      const orthoVertical = ZAVConfig.getPlaneOrthoVertical(this.props.viewPlane);
-      if (this.props.config.hasPlane(orthoVertical)) {
-        const orthoVSlicePct = this.getPlaneSlicePercentOffset(orthoVertical);
-
-        const hRange = this.props.config.getSubviewHRange(this.props.viewPlane);
-        let hOffset: number;
-        if (this.props.config.hasMultiPlanes) {
-          //in multi-plane mode, origin of horizontal axis is at the right
-          hOffset = this.props.scale * (this.props.config.subviewSize - (hRange.min + hRange.len * orthoVSlicePct));
-        } else {
-          //in single plane mode, origin of horizontal axis is at the left
-          hOffset = this.props.scale * (hRange.min + hRange.len * orthoVSlicePct);
-        }
-        const verticalLine = (
-          <line
-            x1={hOffset}
-            y1="0"
-            x2={hOffset}
-            y2={this.props.size}
-            stroke={ZAVConfig.getPlaneColor(orthoVertical)}
-            strokeWidth={markerLineWidth}
-          />
-        );
-        return verticalLine;
-      }
-    } else {
-      const orthoHorizontal = ZAVConfig.getPlaneOrthoHorizontal(this.props.viewPlane);
-      if (this.props.config.hasPlane(orthoHorizontal)) {
-        const orthoHSlicePct = this.getPlaneSlicePercentOffset(orthoHorizontal);
-
-        const vRange = this.props.config.getSubviewVRange(this.props.viewPlane);
-        //note: origin of vertical axis is at the bottom
-
-        const vOffset = this.props.scale * (this.props.config.subviewSize - (vRange.min + vRange.len * orthoHSlicePct));
-        const horizontalLine = (
-          <line
-            x1="0"
-            y1={vOffset}
-            x2={this.props.size}
-            y2={vOffset}
-            stroke={ZAVConfig.getPlaneColor(orthoHorizontal)}
-            strokeWidth={markerLineWidth}
-          />
-        );
-        return horizontalLine;
-      }
-    }
-    return null;
-  }
-
-  getPlaneSlicePercentOffset(plane: Plane) {
-    const planeSlideCount = ViewerManager.getPlaneSlideCount(plane) ?? 0;
-    if (!Number.isFinite(planeSlideCount) || planeSlideCount <= 1) {
-      return 0;
-    }
-    const chosenSlice = ViewerManager.getPlaneChosenSlice(plane);
-    const safeChosenSlice = typeof chosenSlice === 'number' && Number.isFinite(chosenSlice) ? chosenSlice : 0;
-    return safeChosenSlice / (planeSlideCount - 1);
-  }
-}
-
-class SubView extends React.Component<SubViewProps, SubViewState> {
-  svgRef: React.RefObject<SVGSVGElement>;
-
-  constructor(props: SubViewProps) {
-    super(props);
-
-    this.state = {
-      dragging: false, //true when dragging is on
-      bbox: null, //bounding box of subview
-    };
-    this.svgRef = React.createRef<SVGSVGElement>();
-    this.getSliceForWidgetPos = this.getSliceForWidgetPos.bind(this);
-  }
-
-  render() {
-    //bounding box of the subview widget
-    const size = this.props.size ? this.props.size : 200;
-
-    //thicker border for active plane (but don't change widget bounding box size when changing border size)
-    const border = this.props.activePlane && this.props.activePlane === this.props.viewPlane ? 3 : 1;
-    const gap = this.props.activePlane && this.props.activePlane === this.props.viewPlane ? 1 : 3;
-    const margin = 2 * border + 2 * gap;
-
-    let horizontalLine: React.ReactNode = null;
-    let verticalLine: React.ReactNode = null;
-    let horizontalArrow: React.ReactNode = null;
-    let verticalArrow: React.ReactNode = null;
-    let imageUrl: string | undefined;
-    const arrowLen = (size * 1) / 3 - 6;
-    if (this.props.config && this.props.activePlane) {
-      // scaling factor when widget size is different from subview image size (image range are proportional to subview image size),
-      const scale = size / this.props.config.subviewSize;
-
-      //line marker for orthogonal plane crossing the subview plane horizontally
-      horizontalLine = (
-        <SubViewOrthoPlanBar
-          vertical={false}
-          viewPlane={this.props.viewPlane}
-          size={size}
-          scale={scale}
-          config={this.props.config}
-        />
-      );
-      const vArrow = {
-        pX: size - 6,
-        pY: (size * 2) / 3,
-        arrowlen: arrowLen,
-        axisLabel: ZAVConfig.getPlaneVerticalAxis(this.props.viewPlane),
-      };
-      verticalArrow = <AxisArrow horizontal={false} {...vArrow} />;
-
-      //line marker for orthogonal plane crossing the subview plane vertically
-      verticalLine = (
-        <SubViewOrthoPlanBar
-          vertical={true}
-          viewPlane={this.props.viewPlane}
-          size={size}
-          scale={scale}
-          config={this.props.config}
-        />
-      );
-      const hArrow = {
-        pX: (size * 2) / 3,
-        pY: size - 6,
-        arrowlen: arrowLen,
-        axisLabel: ZAVConfig.getPlaneHorizontalAxis(this.props.viewPlane),
-      };
-      horizontalArrow = <AxisArrow horizontal={true} {...hArrow} />;
-
-      if (this.props.config.subviewFolderName) {
-        //in single plane mode, only 1 image for the subview, but one for each slice in multiplane
-        //FIXME introduce a specific parameter for this feature
-        if (this.props.config.hasMultiPlanes) {
-          imageUrl = Utils.makePath(
-            this.props.config.PUBLISH_PATH,
-            this.props.config.subviewFolderName,
-            ZAVConfig.getPlaneName(this.props.viewPlane),
-            `${ViewerManager.getPlaneChosenSlice(this.props.viewPlane)}.jpg`,
-          );
-        } else {
-          imageUrl = Utils.makePath(
-            this.props.config.PUBLISH_PATH,
-            this.props.config.subviewFolderName,
-            '/subview.jpg',
-          );
-        }
-      } else {
-        imageUrl = nullSubviewImageUrl;
-      }
-    }
-
-    return (
-      <div
-        className="subview_holder"
-        style={{
-          position: 'relative',
-          height: size + margin,
-          width: size + margin,
-          borderColor: ZAVConfig.getPlaneColor(this.props.viewPlane),
-          borderStyle: 'solid',
-          borderWidth: border,
-        }}
-      >
-        <img
-          className="subview_image"
-          style={{ position: 'absolute', top: gap, left: gap }}
-          width={size}
-          height={size}
-          src={imageUrl}
-          alt={`${ZAVConfig.getPlaneLabel(this.props.viewPlane)} subview`}
-        />
-        <svg
-          ref={this.svgRef}
-          width={size}
-          style={{
-            position: 'absolute',
-            top: gap,
-            left: gap,
-            cursor: 'crosshair',
-          }}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          xmlns="http://www.w3.org/2000/svg"
-          xmlnsXlink="http://www.w3.org/1999/xlink"
-          onPointerDown={this.onDragStart.bind(this)}
-          onPointerUp={this.onDragEnd.bind(this)}
-          onPointerMove={this.onPointerMove.bind(this)}
-        >
-          <title>{`${ZAVConfig.getPlaneLabel(this.props.viewPlane)} subview overlay`}</title>
-          {horizontalLine}
-          {verticalLine}
-          {horizontalArrow}
-          {verticalArrow}
-        </svg>
-      </div>
+    arrowLabel = (
+      <text x={pX - 3} y={pY} textAnchor="end" stroke="silver">
+        {axisLabel}
+      </text>
+    );
+  } else {
+    arrowPath = (
+      <path
+        d={`M${pX},${pY} l0,${arrowlen} M${pX},${pY} l-${arrowHead.width},${arrowHead.length} M${pX},${pY} l${arrowHead.width},${arrowHead.length}`}
+        stroke="silver"
+        strokeWidth={1}
+      />
+    );
+    arrowLabel = (
+      <text x={pX} y={pY - 3} textAnchor="middle" stroke="silver">
+        {axisLabel}
+      </text>
     );
   }
 
-  onDragStart(e: React.PointerEvent<SVGSVGElement>) {
-    const bbox = this.svgRef.current ? this.svgRef.current.getBoundingClientRect() : null;
-    this.setState({
-      dragging: true,
-      bbox: bbox,
-    });
-    this.setOrthoSlices(e.clientX, e.clientY, bbox);
+  return (
+    <React.Fragment>
+      {arrowPath}
+      {arrowLabel}
+    </React.Fragment>
+  );
+};
+
+const SubViewOrthoPlanBar = ({ vertical, viewPlane, size, scale, config }: SubViewOrthoPlanBarProps) => {
+  const markerLineWidth = 1;
+
+  if (vertical) {
+    const orthoVertical = ZAVConfig.getPlaneOrthoVertical(viewPlane);
+    if (config.hasPlane(orthoVertical)) {
+      const orthoVSlicePct = getPlaneSlicePercentOffset(orthoVertical);
+      const hRange = config.getSubviewHRange(viewPlane);
+      const hOffset = config.hasMultiPlanes
+        ? scale * (config.subviewSize - (hRange.min + hRange.len * orthoVSlicePct))
+        : scale * (hRange.min + hRange.len * orthoVSlicePct);
+      return (
+        <line
+          x1={hOffset}
+          y1="0"
+          x2={hOffset}
+          y2={size}
+          stroke={ZAVConfig.getPlaneColor(orthoVertical)}
+          strokeWidth={markerLineWidth}
+        />
+      );
+    }
+  } else {
+    const orthoHorizontal = ZAVConfig.getPlaneOrthoHorizontal(viewPlane);
+    if (config.hasPlane(orthoHorizontal)) {
+      const orthoHSlicePct = getPlaneSlicePercentOffset(orthoHorizontal);
+      const vRange = config.getSubviewVRange(viewPlane);
+      const vOffset = scale * (config.subviewSize - (vRange.min + vRange.len * orthoHSlicePct));
+      return (
+        <line
+          x1="0"
+          y1={vOffset}
+          x2={size}
+          y2={vOffset}
+          stroke={ZAVConfig.getPlaneColor(orthoHorizontal)}
+          strokeWidth={markerLineWidth}
+        />
+      );
+    }
   }
 
-  onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    if (this.state.dragging && this.state.bbox) {
-      //check that left button is still pressed, as an untracked pointerUp might have happened outside the subview
-      if ((e.buttons & 1) !== 1) {
-        this.setState({ dragging: false });
+  return null;
+};
+
+const SubView = (props: SubViewProps) => {
+  const [dragging, setDragging] = React.useState(false);
+  const [bbox, setBbox] = React.useState<DOMRect | null>(null);
+  const svgRef = React.useRef<SVGSVGElement>(null);
+
+  const getSliceForWidgetPos = React.useCallback(
+    (plane: Plane, range: ViewerRange, subviewSize: number, scale: number, pos: number, invertedSliceIndex = false) => {
+      const maxSlideNum = ViewerManager.getPlaneSlideCount(plane) ?? 0;
+      const percentOffset = invertedSliceIndex
+        ? (pos / scale - range.min) / range.len
+        : (subviewSize - pos / scale - range.min) / range.len;
+
+      if (percentOffset <= 0) {
+        return 0;
+      }
+      if (percentOffset >= 1) {
+        return maxSlideNum;
+      }
+      return Math.round(maxSlideNum * percentOffset);
+    },
+    [],
+  );
+
+  const setOrthoSlices = React.useCallback(
+    (clientX: number, clientY: number, bounds: DOMRect | null) => {
+      if (!bounds) {
         return;
       }
-      this.setOrthoSlices(e.clientX, e.clientY, this.state.bbox);
-    }
-  }
 
-  onDragEnd(_e: React.PointerEvent<SVGSVGElement>) {
-    if (this.state.dragging) {
-      this.setState({ dragging: false });
-    }
-  }
-
-  setOrthoSlices(clientX: number, clientY: number, bnds: DOMRect | null) {
-    if (bnds) {
       const newSlices: Record<number, number> = {};
-      const size = this.props.size ? this.props.size : 200;
-      const scale = size / this.props.config.subviewSize;
+      const size = props.size ?? 200;
+      const scale = size / props.config.subviewSize;
 
-      const subviewY = clientY - bnds.top;
-      const orthoHorizontal = ZAVConfig.getPlaneOrthoHorizontal(this.props.viewPlane);
-      if (this.props.config.hasPlane(orthoHorizontal)) {
-        const vRange = this.props.config.getSubviewVRange(this.props.viewPlane);
-        const vSliceNum = this.getSliceForWidgetPos(
-          orthoHorizontal,
-          vRange,
-          this.props.config.subviewSize,
-          scale,
-          subviewY,
-        );
+      const subviewY = clientY - bounds.top;
+      const orthoHorizontal = ZAVConfig.getPlaneOrthoHorizontal(props.viewPlane);
+      if (props.config.hasPlane(orthoHorizontal)) {
+        const vRange = props.config.getSubviewVRange(props.viewPlane);
+        const vSliceNum = getSliceForWidgetPos(orthoHorizontal, vRange, props.config.subviewSize, scale, subviewY);
         newSlices[orthoHorizontal] = vSliceNum;
       }
 
-      const subviewX = clientX - bnds.left;
-      const orthoVertical = ZAVConfig.getPlaneOrthoVertical(this.props.viewPlane);
-      if (this.props.config.hasPlane(orthoVertical)) {
-        const hRange = this.props.config.getSubviewHRange(this.props.viewPlane);
-        const hSliceNum = this.getSliceForWidgetPos(
+      const subviewX = clientX - bounds.left;
+      const orthoVertical = ZAVConfig.getPlaneOrthoVertical(props.viewPlane);
+      if (props.config.hasPlane(orthoVertical)) {
+        const hRange = props.config.getSubviewHRange(props.viewPlane);
+        const hSliceNum = getSliceForWidgetPos(
           orthoVertical,
           hRange,
-          this.props.config.subviewSize,
+          props.config.subviewSize,
           scale,
           subviewX,
-          !this.props.config.hasMultiPlanes,
+          !props.config.hasMultiPlanes,
         );
         newSlices[orthoVertical] = hSliceNum;
       }
 
       ViewerManager.changeSlices(newSlices);
-    }
-  }
+    },
+    [getSliceForWidgetPos, props.config, props.size, props.viewPlane],
+  );
 
-  getSliceForWidgetPos(
-    plane: Plane,
-    range: ViewerRange,
-    subviewSize: number,
-    scale: number,
-    pos: number,
-    invertedSliceIndex = false,
-  ) {
-    const maxSlideNum = ViewerManager.getPlaneSlideCount(plane) ?? 0;
-    const percentOffset = invertedSliceIndex
-      ? (pos / scale - range.min) / range.len
-      : (subviewSize - pos / scale - range.min) / range.len;
+  const onDragStart = React.useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const nextBbox = svgRef.current ? svgRef.current.getBoundingClientRect() : null;
+      setDragging(true);
+      setBbox(nextBbox);
+      setOrthoSlices(event.clientX, event.clientY, nextBbox);
+    },
+    [setOrthoSlices],
+  );
 
-    if (percentOffset <= 0) {
-      return 0;
-    } else if (percentOffset >= 1) {
-      return maxSlideNum;
-    } else {
-      return Math.round(maxSlideNum * percentOffset);
-    }
-  }
-}
-
-class SubViewPanel extends React.Component<SubViewPanelProps, SubViewPanelState> {
-  constructor(props: SubViewPanelProps) {
-    super(props);
-    this.state = { displayedSlice: this.getCurrentSliceFromProps(props), isDraggingSlice: false };
-    this.handleSliceChange = this.handleSliceChange.bind(this);
-    this.handleSliceRelease = this.handleSliceRelease.bind(this);
-    this.endSliceSliderInteraction = this.endSliceSliderInteraction.bind(this);
-  }
-
-  componentDidUpdate(prevProps: SubViewPanelProps) {
-    const prevSlice = this.getCurrentSliceFromProps(prevProps);
-    const nextSlice = this.getCurrentSliceFromProps(this.props);
-    if (!this.state.isDraggingSlice && prevSlice !== nextSlice && this.state.displayedSlice !== nextSlice) {
-      this.setState({ displayedSlice: nextSlice });
-    }
-  }
-
-  componentWillUnmount() {
-    this.endSliceSliderInteraction();
-  }
-
-  shouldComponentUpdate(nextProps: SubViewPanelProps, nextState: SubViewPanelState) {
-    return (
-      nextProps.activePlane !== this.props.activePlane ||
-      nextProps.chosenSlice !== this.props.chosenSlice ||
-      nextProps.isToolbarExpanded !== this.props.isToolbarExpanded ||
-      nextProps.config !== this.props.config ||
-      nextState.displayedSlice !== this.state.displayedSlice ||
-      nextState.isDraggingSlice !== this.state.isDraggingSlice
-    );
-  }
-
-  render() {
-    const currentSlice = this.getCurrentSliceFromProps(this.props);
-    const activePlane = this.getActivePlaneFromProps(this.props);
-    const planeSlideCount = this.props.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
-    const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
-    const displayedSlice = Math.min(
-      Math.max(Number.isFinite(this.state.displayedSlice) ? this.state.displayedSlice : currentSlice, 0),
-      maxSliceNum,
-    );
-    const rawSliceStep = this.props.config ? ViewerManager.getPlaneSliceStep(activePlane) : 1;
-    const sliceStep = typeof rawSliceStep === 'number' && Number.isFinite(rawSliceStep) ? rawSliceStep : 1;
-
-    const subviews: React.ReactNode[] = [];
-    let justifyMode: React.CSSProperties['justifyContent'];
-    if (this.props.config && this.props.activePlane) {
-      if (this.props.config.hasMultiPlanes) {
-        const subViewSize = 64;
-        const subViewLabelWidth = subViewSize - 22;
-
-        subviews.push(
-          <div key={AXIAL_PLANE}>
-            <Switch
-              className="zav-SubViewSwitch"
-              style={{ width: subViewSize }}
-              checked={AXIAL_PLANE === this.props.activePlane}
-              labelElement={
-                <span style={{ display: 'inline-block', width: subViewLabelWidth }}>
-                  {ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
-                </span>
-              }
-              onChange={this.onChangePlane.bind(this, AXIAL_PLANE)}
-            />
-            <SubView
-              activePlane={this.props.activePlane}
-              viewPlane={AXIAL_PLANE}
-              config={this.props.config}
-              size={subViewSize}
-            />
-          </div>,
-        );
-
-        subviews.push(
-          <div key={CORONAL_PLANE}>
-            <Switch
-              className="zav-SubViewSwitch"
-              style={{ width: subViewSize }}
-              checked={CORONAL_PLANE === this.props.activePlane}
-              labelElement={
-                <span style={{ display: 'inline-block', width: subViewLabelWidth }}>
-                  {ZAVConfig.getPlaneLabel(CORONAL_PLANE)}
-                </span>
-              }
-              onChange={this.onChangePlane.bind(this, CORONAL_PLANE)}
-            />
-
-            <SubView
-              activePlane={this.props.activePlane}
-              viewPlane={CORONAL_PLANE}
-              config={this.props.config}
-              size={subViewSize}
-            />
-          </div>,
-        );
-
-        subviews.push(
-          <div key={SAGITTAL_PLANE}>
-            <Switch
-              className="zav-SubViewSwitch"
-              style={{ width: subViewSize }}
-              checked={SAGITTAL_PLANE === this.props.activePlane}
-              labelElement={
-                <span style={{ display: 'inline-block', width: subViewLabelWidth }}>
-                  {ZAVConfig.getPlaneLabel(SAGITTAL_PLANE)}
-                </span>
-              }
-              onChange={this.onChangePlane.bind(this, SAGITTAL_PLANE)}
-            />
-            <SubView
-              activePlane={this.props.activePlane}
-              viewPlane={SAGITTAL_PLANE}
-              config={this.props.config}
-              size={subViewSize}
-            />
-          </div>,
-        );
-        justifyMode = 'space-between';
-      } else {
-        const subviewPlane = ZAVConfig.getPreferredSubviewForPlane(this.props.activePlane);
-        subviews.push(
-          <SubView
-            key={subviewPlane}
-            activePlane={this.props.activePlane}
-            viewPlane={subviewPlane}
-            config={this.props.config}
-          />,
-        );
-        justifyMode = 'center';
+  const onPointerMove = React.useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      if (!dragging || !bbox) {
+        return;
       }
+
+      if ((event.buttons & 1) !== 1) {
+        setDragging(false);
+        return;
+      }
+
+      setOrthoSlices(event.clientX, event.clientY, bbox);
+    },
+    [bbox, dragging, setOrthoSlices],
+  );
+
+  const onDragEnd = React.useCallback(() => {
+    if (dragging) {
+      setDragging(false);
     }
+  }, [dragging]);
 
-    return (
-      <React.Fragment>
-        <div>
-          <div className="zav-SubViewSlider">
-            <Button
-              minimal
-              className="zav-SubViewSliderChevron"
-              icon="chevron-left"
-              title="go to previous slice"
-              onClick={this.onGoToSlice.bind(this, currentSlice - 1)}
-            />
+  const size = props.size ?? 200;
+  const border = props.activePlane && props.activePlane === props.viewPlane ? 3 : 1;
+  const gap = props.activePlane && props.activePlane === props.viewPlane ? 1 : 3;
+  const margin = 2 * border + 2 * gap;
 
-            <div
-              className="zav-SubViewSliderTrack"
-              onPointerDownCapture={this.startSliceSliderInteraction.bind(this)}
-              onPointerUpCapture={this.endSliceSliderInteraction}
-              onPointerCancelCapture={this.endSliceSliderInteraction}
-            >
-              <Slider
-                key={`${this.props.activePlane}-${this.props.isToolbarExpanded ? 'expanded' : 'collapsed'}`}
-                className="zav-Slider zav-SubVSliceSlider"
-                min={0}
-                max={maxSliceNum}
-                stepSize={1}
-                labelStepSize={Math.max(maxSliceNum, 1)}
-                onChange={this.handleSliceChange}
-                onRelease={this.handleSliceRelease}
-                value={displayedSlice}
-                showTrackFill={false}
-                labelRenderer={(value) => String(value * sliceStep)}
-              />
-            </div>
-            <Button
-              minimal
-              className="zav-SubViewSliderChevron"
-              icon="chevron-right"
-              title="go to next slice"
-              onClick={this.onGoToSlice.bind(this, currentSlice + 1)}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: justifyMode }}>{subviews}</div>
-      </React.Fragment>
+  let horizontalLine: React.ReactNode = null;
+  let verticalLine: React.ReactNode = null;
+  let horizontalArrow: React.ReactNode = null;
+  let verticalArrow: React.ReactNode = null;
+  let imageUrl: string | undefined;
+  const arrowLen = size / 3 - 6;
+  if (props.activePlane) {
+    const scale = size / props.config.subviewSize;
+    horizontalLine = (
+      <SubViewOrthoPlanBar
+        vertical={false}
+        viewPlane={props.viewPlane}
+        size={size}
+        scale={scale}
+        config={props.config}
+      />
     );
-  }
+    verticalArrow = (
+      <AxisArrow
+        horizontal={false}
+        pX={size - 6}
+        pY={(size * 2) / 3}
+        arrowlen={arrowLen}
+        axisLabel={ZAVConfig.getPlaneVerticalAxis(props.viewPlane)}
+      />
+    );
 
-  onGoToSlice(sliceNum: number) {
-    this.setState({ displayedSlice: sliceNum });
-    ViewerManager.goToSlice(sliceNum);
-  }
+    verticalLine = (
+      <SubViewOrthoPlanBar
+        vertical={true}
+        viewPlane={props.viewPlane}
+        size={size}
+        scale={scale}
+        config={props.config}
+      />
+    );
+    horizontalArrow = (
+      <AxisArrow
+        horizontal={true}
+        pX={(size * 2) / 3}
+        pY={size - 6}
+        arrowlen={arrowLen}
+        axisLabel={ZAVConfig.getPlaneHorizontalAxis(props.viewPlane)}
+      />
+    );
 
-  handleSliceChange(sliceNum: number) {
-    this.setState({ displayedSlice: sliceNum, isDraggingSlice: true });
-    ViewerManager.goToSlice(sliceNum);
-  }
-
-  handleSliceRelease(sliceNum: number) {
-    this.setState({ displayedSlice: sliceNum, isDraggingSlice: false });
-  }
-
-  getCurrentSliceFromProps(props: SubViewPanelProps) {
-    const activePlane = this.getActivePlaneFromProps(props);
-    const planeSlideCount = props.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
-    const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
-    const requestedSlice =
-      typeof props.chosenSlice === 'number' && Number.isFinite(props.chosenSlice) ? props.chosenSlice : 0;
-    return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
-  }
-
-  getActivePlaneFromProps(props: SubViewPanelProps): Plane {
-    return (props.activePlane ?? ViewerManager.getActivePlane()) as Plane;
-  }
-
-  startSliceSliderInteraction() {
-    ViewerManager.setMouseNavigationEnabled(false);
-    window.addEventListener('pointerup', this.endSliceSliderInteraction, true);
-    window.addEventListener('pointercancel', this.endSliceSliderInteraction, true);
-  }
-
-  endSliceSliderInteraction() {
-    ViewerManager.setMouseNavigationEnabled(true);
-    this.setState({ isDraggingSlice: false });
-    window.removeEventListener('pointerup', this.endSliceSliderInteraction, true);
-    window.removeEventListener('pointercancel', this.endSliceSliderInteraction, true);
-  }
-
-  onChangePlane(plane: Plane) {
-    if (plane !== this.props.activePlane) {
-      ViewerManager.activatePlane(plane);
+    if (props.config.subviewFolderName) {
+      if (props.config.hasMultiPlanes) {
+        imageUrl = Utils.makePath(
+          props.config.PUBLISH_PATH,
+          props.config.subviewFolderName,
+          ZAVConfig.getPlaneName(props.viewPlane),
+          `${ViewerManager.getPlaneChosenSlice(props.viewPlane)}.jpg`,
+        );
+      } else {
+        imageUrl = Utils.makePath(props.config.PUBLISH_PATH, props.config.subviewFolderName, '/subview.jpg');
+      }
+    } else {
+      imageUrl = nullSubviewImageUrl;
     }
   }
-}
+
+  return (
+    <div
+      className="subview_holder"
+      style={{
+        position: 'relative',
+        height: size + margin,
+        width: size + margin,
+        borderColor: ZAVConfig.getPlaneColor(props.viewPlane),
+        borderStyle: 'solid',
+        borderWidth: border,
+      }}
+    >
+      <img
+        className="subview_image"
+        style={{ position: 'absolute', top: gap, left: gap }}
+        width={size}
+        height={size}
+        src={imageUrl}
+        alt={`${ZAVConfig.getPlaneLabel(props.viewPlane)} subview`}
+      />
+      <svg
+        ref={svgRef}
+        width={size}
+        style={{
+          position: 'absolute',
+          top: gap,
+          left: gap,
+          cursor: 'crosshair',
+        }}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
+        onPointerDown={onDragStart}
+        onPointerUp={onDragEnd}
+        onPointerMove={onPointerMove}
+      >
+        <title>{`${ZAVConfig.getPlaneLabel(props.viewPlane)} subview overlay`}</title>
+        {horizontalLine}
+        {verticalLine}
+        {horizontalArrow}
+        {verticalArrow}
+      </svg>
+    </div>
+  );
+};
+
+const getActivePlaneFromProps = (props: SubViewPanelProps): Plane =>
+  (props.activePlane ?? ViewerManager.getActivePlane()) as Plane;
+
+const getCurrentSliceFromProps = (props: SubViewPanelProps) => {
+  const activePlane = getActivePlaneFromProps(props);
+  const planeSlideCount = props.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
+  const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+  const requestedSlice =
+    typeof props.chosenSlice === 'number' && Number.isFinite(props.chosenSlice) ? props.chosenSlice : 0;
+  return Math.min(Math.max(requestedSlice, 0), maxSliceNum);
+};
+
+const SubViewPanelComponent = (props: SubViewPanelProps) => {
+  const [displayedSlice, setDisplayedSlice] = React.useState(() => getCurrentSliceFromProps(props));
+  const [isDraggingSlice, setIsDraggingSlice] = React.useState(false);
+
+  const currentSlice = getCurrentSliceFromProps(props);
+  React.useEffect(() => {
+    if (!isDraggingSlice && displayedSlice !== currentSlice) {
+      setDisplayedSlice(currentSlice);
+    }
+  }, [currentSlice, displayedSlice, isDraggingSlice]);
+
+  const endSliceSliderInteraction = React.useCallback(() => {
+    ViewerManager.setMouseNavigationEnabled(true);
+    setIsDraggingSlice(false);
+    window.removeEventListener('pointerup', endSliceSliderInteraction, true);
+    window.removeEventListener('pointercancel', endSliceSliderInteraction, true);
+  }, []);
+
+  React.useEffect(() => endSliceSliderInteraction, [endSliceSliderInteraction]);
+
+  const startSliceSliderInteraction = React.useCallback(() => {
+    ViewerManager.setMouseNavigationEnabled(false);
+    window.addEventListener('pointerup', endSliceSliderInteraction, true);
+    window.addEventListener('pointercancel', endSliceSliderInteraction, true);
+  }, [endSliceSliderInteraction]);
+
+  const onGoToSlice = React.useCallback((sliceNum: number) => {
+    setDisplayedSlice(sliceNum);
+    ViewerManager.goToSlice(sliceNum);
+  }, []);
+
+  const handleSliceChange = React.useCallback((sliceNum: number) => {
+    setDisplayedSlice(sliceNum);
+    setIsDraggingSlice(true);
+    ViewerManager.goToSlice(sliceNum);
+  }, []);
+
+  const handleSliceRelease = React.useCallback((sliceNum: number) => {
+    setDisplayedSlice(sliceNum);
+    setIsDraggingSlice(false);
+  }, []);
+
+  const onChangePlane = React.useCallback(
+    (plane: Plane) => {
+      if (plane !== props.activePlane) {
+        ViewerManager.activatePlane(plane);
+      }
+    },
+    [props.activePlane],
+  );
+
+  const activePlane = getActivePlaneFromProps(props);
+  const planeSlideCount = props.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
+  const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
+  const clampedDisplayedSlice = Math.min(
+    Math.max(Number.isFinite(displayedSlice) ? displayedSlice : currentSlice, 0),
+    maxSliceNum,
+  );
+  const rawSliceStep = props.config ? ViewerManager.getPlaneSliceStep(activePlane) : 1;
+  const sliceStep = typeof rawSliceStep === 'number' && Number.isFinite(rawSliceStep) ? rawSliceStep : 1;
+
+  const subviews: React.ReactNode[] = [];
+  let justifyMode: React.CSSProperties['justifyContent'];
+  if (props.config && props.activePlane) {
+    if (props.config.hasMultiPlanes) {
+      const subViewSize = 64;
+      subviews.push(
+        <div key={AXIAL_PLANE}>
+          <Switch
+            className="zav-SubViewSwitch"
+            style={{ width: subViewSize }}
+            checked={AXIAL_PLANE === props.activePlane}
+            innerLabel={ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
+            innerLabelChecked={ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
+            onChange={() => onChangePlane(AXIAL_PLANE)}
+          />
+          <SubView activePlane={props.activePlane} viewPlane={AXIAL_PLANE} config={props.config} size={subViewSize} />
+        </div>,
+      );
+
+      subviews.push(
+        <div key={CORONAL_PLANE}>
+          <Switch
+            className="zav-SubViewSwitch"
+            style={{ width: subViewSize }}
+            checked={CORONAL_PLANE === props.activePlane}
+            innerLabel={ZAVConfig.getPlaneLabel(CORONAL_PLANE)}
+            innerLabelChecked={ZAVConfig.getPlaneLabel(CORONAL_PLANE)}
+            onChange={() => onChangePlane(CORONAL_PLANE)}
+          />
+
+          <SubView activePlane={props.activePlane} viewPlane={CORONAL_PLANE} config={props.config} size={subViewSize} />
+        </div>,
+      );
+
+      subviews.push(
+        <div key={SAGITTAL_PLANE}>
+          <Switch
+            className="zav-SubViewSwitch"
+            style={{ width: subViewSize }}
+            checked={SAGITTAL_PLANE === props.activePlane}
+            innerLabel={ZAVConfig.getPlaneLabel(SAGITTAL_PLANE)}
+            innerLabelChecked={ZAVConfig.getPlaneLabel(SAGITTAL_PLANE)}
+            onChange={() => onChangePlane(SAGITTAL_PLANE)}
+          />
+          <SubView
+            activePlane={props.activePlane}
+            viewPlane={SAGITTAL_PLANE}
+            config={props.config}
+            size={subViewSize}
+          />
+        </div>,
+      );
+      justifyMode = 'space-between';
+    } else {
+      const subviewPlane = ZAVConfig.getPreferredSubviewForPlane(props.activePlane);
+      subviews.push(
+        <SubView key={subviewPlane} activePlane={props.activePlane} viewPlane={subviewPlane} config={props.config} />,
+      );
+      justifyMode = 'center';
+    }
+  }
+
+  return (
+    <div className="zav-SubViewPanel">
+      <div className="zav-SubViewSlider">
+        <div
+          className="zav-SubViewSliderTrack"
+          onPointerDownCapture={startSliceSliderInteraction}
+          onPointerUpCapture={endSliceSliderInteraction}
+          onPointerCancelCapture={endSliceSliderInteraction}
+        >
+          <button
+            type="button"
+            className="zav-SubViewSliderChevron zav-SubViewSliderChevronLeft"
+            title="go to previous slice"
+            onClick={() => onGoToSlice(currentSlice - 1)}
+          >
+            {'<'}
+          </button>
+          <Slider
+            key={`${props.activePlane}-${props.isToolbarExpanded ? 'expanded' : 'collapsed'}`}
+            className="zav-Slider zav-SubVSliceSlider"
+            min={0}
+            max={maxSliceNum}
+            stepSize={1}
+            labelStepSize={Math.max(maxSliceNum, 1)}
+            onChange={handleSliceChange}
+            onRelease={handleSliceRelease}
+            value={clampedDisplayedSlice}
+            showTrackFill={false}
+            labelRenderer={(value) => String(value * sliceStep)}
+          />
+          <button
+            type="button"
+            className="zav-SubViewSliderChevron zav-SubViewSliderChevronRight"
+            title="go to next slice"
+            onClick={() => onGoToSlice(currentSlice + 1)}
+          >
+            {'>'}
+          </button>
+        </div>
+      </div>
+
+      <div className="zav-SubViewList" style={{ justifyContent: justifyMode }}>
+        {subviews.map((subview) => (
+          <div key={(subview as React.ReactElement).key} className="zav-SubViewItem">
+            {subview}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const SubViewPanel = React.memo(
+  SubViewPanelComponent,
+  (prevProps, nextProps) =>
+    prevProps.activePlane === nextProps.activePlane &&
+    prevProps.chosenSlice === nextProps.chosenSlice &&
+    prevProps.isToolbarExpanded === nextProps.isToolbarExpanded &&
+    prevProps.config === nextProps.config,
+);
 
 export default SubViewPanel;

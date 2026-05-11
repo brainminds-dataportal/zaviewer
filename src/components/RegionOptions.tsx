@@ -1,5 +1,5 @@
 import { HTMLSelect, Switch } from '@blueprintjs/core';
-import React from 'react';
+import type React from 'react';
 import ViewerManager from '../ViewerManager';
 import BorderSettings from './BorderSettings';
 import ParamAdjusterLabel from './ParamAdjusterLabel';
@@ -21,116 +21,88 @@ type RegionOptionsProps = {
   customBorderWidth: number;
 };
 
-class RegionOptions extends React.Component<RegionOptionsProps> {
-  constructor(props: RegionOptionsProps) {
-    super(props);
-    this.handleClickHideShow = this.handleClickHideShow.bind(this);
-    this.handleOpacityChange = this.handleOpacityChange.bind(this);
-    this.handleBorderChange = this.handleBorderChange.bind(this);
-    this.handleClickLabelsShow = this.handleClickLabelsShow.bind(this);
-    this.handleSelectAtlas = this.handleSelectAtlas.bind(this);
-  }
-
-  render() {
-    return (
-      <div style={{ width: 196, marginLeft: 10 }}>
-        {this.props.atlases.length ? (
-          <span>
-            Atlas:
-            <div style={{ width: 156, display: 'inline-block', marginLeft: 6 }}>
-              <HTMLSelect fill={true} value={String(this.props.currentAtlas ?? 0)} onChange={this.handleSelectAtlas}>
-                {this.props.atlases.map((a, index) => (
-                  <option key={`${a.regionsSVG}-${a.regionsTreeDef}`} value={String(index)}>
-                    {a.label}
-                  </option>
-                ))}
-              </HTMLSelect>
-            </div>
-          </span>
-        ) : null}
-        <div title="adjust regions' area opacity">
-          <span title="toggle display of regions' area">
-            <Switch
-              checked={Boolean(this.props.displayAreas)}
-              onChange={this.handleClickHideShow}
-              inline
-              label="areas"
-            />
-          </span>
-          <ParamAdjusterLabel
-            icon="eye-open"
-            label="Opacity"
-            min={5}
-            max={100}
-            stepSize={1}
-            onChange={this.handleOpacityChange}
-            value={Math.round(this.props.regionsOpacity * 100)}
-            defaultValue={Math.round(this.props.initRegionsOpacity * 100)}
-            labelRenderer={(value) => (
-              <span>
-                {value}
-                <span style={{ fontSize: 8 }}>&nbsp;%</span>
-              </span>
-            )}
-            enabled={Boolean(this.props.displayAreas)}
-          />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span title="toggle display of regions' border">
-            <Switch
-              checked={Boolean(this.props.displayBorders)}
-              onChange={this.handleBorderChange}
-              inline
-              label="borders"
-            />
-          </span>
-
-          <span title="click to set regions' custom border">
-            <BorderSettings
-              disabled={!this.props.displayBorders}
-              useCustomBorders={this.props.useCustomBorders}
-              customBorderColor={this.props.customBorderColor}
-              customBorderWidth={this.props.customBorderWidth}
-            />
-          </span>
-        </div>
-        {this.props.hasRegionLabels ? (
-          <div title="toggle display of region labels">
-            <Switch
-              checked={Boolean(this.props.displayLabels)}
-              onChange={this.handleClickLabelsShow}
-              inline
-              label="labels"
-            />
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  handleClickHideShow() {
+const RegionOptions = (props: RegionOptionsProps) => {
+  const handleClickHideShow = () => {
     ViewerManager.toggleAreaDisplay();
-  }
+  };
 
-  handleOpacityChange(opacity: number) {
+  const handleOpacityChange = (opacity: number) => {
     ViewerManager.changeRegionsOpacity(opacity / 100);
-  }
+  };
 
-  handleBorderChange() {
+  const handleBorderChange = () => {
     ViewerManager.toggleBorderDisplay();
-  }
+  };
 
-  handleClickLabelsShow() {
+  const handleClickLabelsShow = () => {
     ViewerManager.toggleLabelDisplay();
-  }
+  };
 
-  handleSelectAtlas(event: React.ChangeEvent<HTMLSelectElement>) {
+  const handleSelectAtlas = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedAtlasIndex = parseInt(event.currentTarget.value, 10);
     ViewerManager.setSelectedAtlasIndex(selectedAtlasIndex);
-    if (this.props.resetRegionsTree) {
-      this.props.resetRegionsTree();
-    }
-  }
-}
+    props.resetRegionsTree?.();
+  };
+
+  return (
+    <div style={{ width: '100%' }}>
+      {props.atlases.length ? (
+        <span>
+          Atlas:
+          <div style={{ width: 156, display: 'inline-block', marginLeft: 6 }}>
+            <HTMLSelect fill={true} value={String(props.currentAtlas ?? 0)} onChange={handleSelectAtlas}>
+              {props.atlases.map((a, index) => (
+                <option key={`${a.regionsSVG}-${a.regionsTreeDef}`} value={String(index)}>
+                  {a.label}
+                </option>
+              ))}
+            </HTMLSelect>
+          </div>
+        </span>
+      ) : null}
+      <div title="adjust regions' area opacity">
+        <span title="toggle display of regions' area">
+          <Switch checked={Boolean(props.displayAreas)} onChange={handleClickHideShow} inline label="areas" />
+        </span>
+        <ParamAdjusterLabel
+          icon="eye-open"
+          label="Opacity"
+          min={5}
+          max={100}
+          stepSize={1}
+          onChange={handleOpacityChange}
+          value={Math.round(props.regionsOpacity * 100)}
+          defaultValue={Math.round(props.initRegionsOpacity * 100)}
+          labelRenderer={(value) => (
+            <span>
+              {value}
+              <span style={{ fontSize: 8 }}>&nbsp;%</span>
+            </span>
+          )}
+          enabled={Boolean(props.displayAreas)}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span title="toggle display of regions' border">
+          <Switch checked={Boolean(props.displayBorders)} onChange={handleBorderChange} inline label="borders" />
+        </span>
+
+        <span title="click to set regions' custom border">
+          <BorderSettings
+            disabled={!props.displayBorders}
+            useCustomBorders={props.useCustomBorders}
+            customBorderColor={props.customBorderColor}
+            customBorderWidth={props.customBorderWidth}
+          />
+        </span>
+      </div>
+      {props.hasRegionLabels ? (
+        <div title="toggle display of region labels">
+          <Switch checked={Boolean(props.displayLabels)} onChange={handleClickLabelsShow} inline label="labels" />
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 export default RegionOptions;

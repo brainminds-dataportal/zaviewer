@@ -107,12 +107,48 @@
 	margin: auto;
 }
 
+.zav-LayersPanel {
+	width: 100%;
+}
+
+.zav-LayerSlider {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.zav-AdjusterItem {
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) 24px;
+	align-items: center;
+	column-gap: 4px;
+}
+
+.zav-AdjusterToggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+}
+
+.zav-AdjusterToggleSecondary {
+	grid-column: 3;
+}
+
+.zav-AdjusterControl {
+	grid-column: 2;
+	min-width: 0;
+}
+
+.zav-OpacitySlider .bp6-slider-label,
+.zav-OpacitySlider .bp5-slider-label,
 .zav-OpacitySlider .bp3-slider-label {
 	font-size: 10px;
 }
 
+.zav-AdjusterItem .bp6-control,
+.zav-AdjusterItem .bp5-control,
 .zav-AdjusterItem .bp3-control {
-	margin-bottom: 4px;
+	margin: 0;
 }
 
 .zav-thinProgressBar {

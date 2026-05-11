@@ -924,6 +924,10 @@ class ViewerManager {
           navigatorId: NAVIGATOR_ID,
           showReferenceStrip: false,
           showFullPageControl: false,
+          gestureSettingsMouse: {
+            clickToZoom: false,
+            scrollToZoom: true,
+          },
           //keep image size (and zoom) when container/window is resized
           preserveImageSizeOnResize: true,
           autoResize: true,
@@ -937,6 +941,8 @@ class ViewerManager {
       elementFound: Boolean(document.getElementById(VIEWER_ID)),
       crossOriginPolicy: ViewerManager.config.hasCOSource ? 'Anonymous' : undefined,
     });
+
+    ViewerManager.setZoomEnabled(false);
 
     //Initialize labelMap handler
     ViewerManager.status.hasLabelMap = LabelMapper.initLabelMapper(
@@ -3752,24 +3758,39 @@ class ViewerManager {
   }
 
   static isZoomEnabled() {
-    const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & { zoomPerScroll?: number };
-    return Boolean(zoomViewer) && 1.0 !== zoomViewer.zoomPerScroll;
+    const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & {
+      zoomPerClick?: number;
+      gestureSettingsMouse?: {
+        clickToZoom?: boolean;
+      };
+    };
+    return (
+      Boolean(zoomViewer) && Boolean(zoomViewer.gestureSettingsMouse?.clickToZoom) && 1.0 !== zoomViewer.zoomPerClick
+    );
   }
 
   static setZoomEnabled(active: boolean) {
     const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & {
       zoomPerScroll?: number;
       zoomPerClick?: number;
+      gestureSettingsMouse?: {
+        clickToZoom?: boolean;
+        scrollToZoom?: boolean;
+      };
       zoomPerSecond?: number;
     };
     if (active) {
-      zoomViewer.zoomPerScroll = ViewerManager.status.prevZoomPerScroll;
-      zoomViewer.zoomPerClick = ViewerManager.status.prevZoomPerClick;
+      zoomViewer.zoomPerClick = ViewerManager.status.prevZoomPerClick ?? zoomViewer.zoomPerClick ?? 2;
+      if (zoomViewer.gestureSettingsMouse) {
+        zoomViewer.gestureSettingsMouse.clickToZoom = true;
+      }
     } else {
-      ViewerManager.status.prevZoomPerScroll = zoomViewer.zoomPerScroll;
-      zoomViewer.zoomPerScroll = 1.0;
-      ViewerManager.status.prevZoomPerClick = zoomViewer.zoomPerClick;
+      ViewerManager.status.prevZoomPerClick = zoomViewer.zoomPerClick ?? 2;
       zoomViewer.zoomPerClick = 1.0;
+      if (zoomViewer.gestureSettingsMouse) {
+        zoomViewer.gestureSettingsMouse.clickToZoom = false;
+        zoomViewer.gestureSettingsMouse.scrollToZoom = true;
+      }
     }
     ViewerManager.signalStatusChanged(ViewerManager.status);
   }

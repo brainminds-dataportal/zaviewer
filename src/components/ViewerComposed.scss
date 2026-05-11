@@ -45,11 +45,23 @@
 .zav-TitledCardHead {
 	display: grid;
 	grid-template-columns: 22px 1fr;
+	align-items: center;
 }
 
 .zav-TitledCardHeadExpColButton {
-	text-align: center;
-	margin-left: -6px;
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	margin-left: -4px;
+	border: 0;
+	border-radius: 3px;
+	background: transparent;
+	color: #ffffff;
+	cursor: pointer;
 }
 
 .zav-TitledCardHeadExpColButton:hover {
@@ -57,7 +69,7 @@
 }
 
 .zav-TitledCardTitle {
-	margin-top: 3px;
+	margin-top: 0;
 	margin-bottom: 6px;
 	border-bottom: dotted 1px #c0c0c0b3;
 	font-variant: small-caps;
@@ -66,7 +78,27 @@
 
 	display: flex;
 	flex-direction: row-reverse;
+	align-items: center;
 	justify-content: space-between;
+}
+
+.zav-TitledCardBody {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 2px 2px 0;
+}
+
+.zav-TitledCardBody > * {
+	margin-top: 0;
+}
+
+.zav-TitledCardBody > .navigatorParentClass {
+	margin: 4px 0 0;
+}
+
+.zav-controlPanel_Layers .zav-TitledCardBody {
+	padding: 2px 8px 0 6px;
 }
 
 .zav-TitledCardButton {

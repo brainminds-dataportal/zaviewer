@@ -650,17 +650,17 @@ class ViewerManager {
 
         /** currently selected slice for each plane */
         axialChosenSlice:
-          overridingConf.sliceNum && overridingPlane === ZAVConfig.AXIAL
+          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.AXIAL
             ? overridingConf.sliceNum
             : ViewerManager.config.axialChosenSlice,
 
         coronalChosenSlice:
-          overridingConf.sliceNum && overridingPlane === ZAVConfig.CORONAL
+          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.CORONAL
             ? overridingConf.sliceNum
             : ViewerManager.config.coronalChosenSlice,
 
         sagittalChosenSlice:
-          overridingConf.sliceNum && overridingPlane === ZAVConfig.SAGITTAL
+          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.SAGITTAL
             ? overridingConf.sliceNum
             : ViewerManager.config.sagittalChosenSlice,
 
@@ -803,12 +803,13 @@ class ViewerManager {
 
     if (ViewerManager.config.hasBackend) {
       if (ViewerManager.config.data) {
+        const backendPageCount = ViewerManager.config.getTotalSlidesCount();
         if (firstLayer.protocol === 'IIP') {
           //Internet Imaging Protocol (IIP)
 
           const that = ViewerManager;
           const iiifInfoUrl = ViewerManager.getIIIFTileSourceUrl(
-            ViewerManager.status.coronalChosenSlice ?? 0,
+            ViewerManager.getPageNumForCurrentSlice() ?? 0,
             firstLayerKey,
             firstLayerExt,
           );
@@ -871,8 +872,7 @@ class ViewerManager {
               that.status.iipTileInfos = iipTileInfos;
 
               //tile source for 1rst layer of each slices
-              //FIXME use specified plane
-              for (let j = 0; j < that.config.coronalSlideCount; j++) {
+              for (let j = 0; j < backendPageCount; j++) {
                 tileSources.push(that.getTileSourceDef(firstLayerKey, firstLayerExt));
               }
               that.status.tileSources = tileSources;
@@ -895,8 +895,7 @@ class ViewerManager {
 
           const tileSources: unknown[] = [];
           if (ViewerManager.config.data) {
-            //FIXME use specified plane
-            for (let j = 0; j < ViewerManager.config.coronalSlideCount; j++) {
+            for (let j = 0; j < backendPageCount; j++) {
               tileSources.push(ViewerManager.getIIIFTileSourceUrl(j, firstLayerKey, firstLayerExt));
             }
             ViewerManager.status.tileSources = tileSources;
@@ -4519,13 +4518,13 @@ class ViewerManager {
     Object.entries(rawConfFromPath).forEach(([key, value]) => {
       confFromPath[key] = typeof value === 'string' ? value : undefined;
     });
-    if (confFromPath.a) {
+    if (typeof confFromPath.a !== 'undefined') {
       const plane = parseInt(confFromPath.a, 10);
       if (plane === ZAVConfig.AXIAL || plane === ZAVConfig.CORONAL || plane === ZAVConfig.SAGITTAL) {
         confParams.activePlane = plane;
       }
     }
-    if (confFromPath.s) {
+    if (typeof confFromPath.s !== 'undefined') {
       const sliceNum = parseInt(confFromPath.s, 10);
       if (!Number.isNaN(sliceNum) && Number.isFinite(sliceNum)) {
         const plane = confParams.activePlane || ViewerManager.status.activePlane;
@@ -4534,7 +4533,7 @@ class ViewerManager {
         }
       }
     }
-    if (confFromPath.z) {
+    if (typeof confFromPath.z !== 'undefined') {
       const imageZoom = Number(confFromPath.z);
       if (!Number.isNaN(imageZoom) && Number.isFinite(imageZoom)) {
         if (imageZoom >= ViewerManager.config.minImageZoom && imageZoom <= ViewerManager.config.maxImageZoom) {
@@ -4542,7 +4541,7 @@ class ViewerManager {
         }
       }
     }
-    if (confFromPath.x && confFromPath.y) {
+    if (typeof confFromPath.x !== 'undefined' && typeof confFromPath.y !== 'undefined') {
       const x = parseInt(confFromPath.x, 10);
       const y = parseInt(confFromPath.y, 10);
       if (!Number.isNaN(x) && !Number.isNaN(y) && Number.isFinite(x) && Number.isFinite(y)) {
@@ -4584,15 +4583,6 @@ class ViewerManager {
   }
 
   static applyChangeFromHistory(params: ViewerHistoryParams) {
-    if (params.imageZoom) {
-      const viewportZoom = ViewerManager.viewer.viewport.imageToViewportZoom(params.imageZoom);
-      ViewerManager.viewer.viewport.zoomTo(viewportZoom);
-    }
-    if (params.center) {
-      const refPoint = ViewerManager.viewer.viewport.imageToViewportCoordinates(params.center);
-      ViewerManager.viewer.viewport.panTo(refPoint);
-    }
-
     const targetPlane = params.activePlane || ViewerManager.status.activePlane;
     if (typeof params.sliceNum !== 'undefined' && params.sliceNum !== ViewerManager.getPlaneChosenSlice(targetPlane)) {
       let targetSlice = params.sliceNum;
@@ -4604,6 +4594,14 @@ class ViewerManager {
       ViewerManager.switchPlane(targetPlane);
     } else if (typeof params.sliceNum !== 'undefined') {
       ViewerManager.viewer.goToPage(ViewerManager.getPageNumForCurrentSlice());
+    }
+    if (typeof params.imageZoom !== 'undefined') {
+      const viewportZoom = ViewerManager.viewer.viewport.imageToViewportZoom(params.imageZoom);
+      ViewerManager.viewer.viewport.zoomTo(viewportZoom);
+    }
+    if (params.center) {
+      const refPoint = ViewerManager.viewer.viewport.imageToViewportCoordinates(params.center);
+      ViewerManager.viewer.viewport.panTo(refPoint);
     }
 
     ViewerManager.status.editModeOn = params.editMode === true;

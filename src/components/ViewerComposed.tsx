@@ -1,9 +1,9 @@
 import {
   Classes,
   Collapse,
-  HotkeysTarget2,
+  HotkeysTarget,
   Icon,
-  Overlay,
+  Overlay2,
   PopoverInteractionKind,
   PopoverNext,
   Position,
@@ -292,7 +292,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
         placement={popoverPositionToNextPlacement(Position.LEFT)}
         interactionKind={PopoverInteractionKind.HOVER}
       >
-        <div title="display dataset informations" className="zav-TitledCardButton">
+        <div title="display dataset information" className="zav-TitledCardButton">
           <Icon icon="info-sign" color="#FFF" />
         </div>
       </PopoverNext>
@@ -313,7 +313,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
         content={tourContext.tourMenu}
         placement={popoverPositionToNextPlacement(Position.LEFT)}
       >
-        <div title="Help and guided tours!" className="zav-TitledCardButton">
+        <div title="Help and guided tours!" className="zav-TitledCardButton" style={{ borderColor: 'transparent' }}>
           <Icon icon="help" color="#FFF" />
         </div>
       </PopoverNext>
@@ -344,7 +344,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
   const layerFolderMap = ginRepoBaseUrl ? (props.config?.dataset_info?.layerFolderMap ?? null) : null;
 
   return (
-    <HotkeysTarget2 hotkeys={hotkeys}>
+    <HotkeysTarget hotkeys={hotkeys}>
       <div style={{ height: '100%' }}>
         <BrandingMark brandingInfo={props.config?.branding} />
 
@@ -374,7 +374,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
         </div>
 
         <OSDMain />
-        <Overlay className={Classes.OVERLAY_SCROLL_CONTAINER} isOpen={Boolean(viewerState.longRunningMessage)}>
+        <Overlay2 className={Classes.OVERLAY_SCROLL_CONTAINER} isOpen={Boolean(viewerState.longRunningMessage)}>
           <div style={{ left: 'calc(50vw - 200px)', margin: '10vh 0', top: 0, width: 400 }} className={classes}>
             <h3>
               <Icon icon="pulse" />
@@ -382,7 +382,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
             </h3>
             <p>{viewerState.longRunningMessage}</p>
           </div>
-        </Overlay>
+        </Overlay2>
 
         <Drawer
           id="ZAV-rightPanel"
@@ -527,7 +527,7 @@ const ViewerComposed = (props: ViewerComposedProps) => {
           ) : null}
         </Drawer>
       </div>
-    </HotkeysTarget2>
+    </HotkeysTarget>
   );
 };
 

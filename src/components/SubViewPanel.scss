@@ -53,49 +53,70 @@ $subview-total-padding: 20px;
 
 .zav-SubViewSwitch {
 	margin: 0 0 6px 0;
-	display: inline-flex;
+	display: block;
 }
 
 .zav-SubViewSwitch.bp6-control,
 .zav-SubViewSwitch.bp5-control,
 .zav-SubViewSwitch.bp3-control {
+	display: block;
 	margin: 0 0 6px;
 	min-height: 18px;
-	padding-inline-start: 0;
-	padding-left: 0;
+	padding-inline-start: 0 !important;
+	padding-left: 0 !important;
 }
 
-.zav-SubViewSwitch .bp6-control-indicator,
-.zav-SubViewSwitch .bp5-control-indicator,
-.zav-SubViewSwitch .bp3-control-indicator {
-	width: 100%;
-	min-width: 0;
+.zav-SubViewSwitch.bp6-control .bp6-control-indicator,
+.zav-SubViewSwitch.bp5-control .bp5-control-indicator,
+.zav-SubViewSwitch.bp3-control .bp3-control-indicator {
+	width: 100% !important;
+	min-width: 0 !important;
 	height: 18px;
-	border-radius: 3px;
-	padding: 0 4px;
-	margin-inline-start: 0;
-	margin-left: 0;
+	border-radius: 999px;
+	margin-inline-start: 0 !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	position: relative;
+	overflow: hidden;
+}
+
+.zav-SubViewSwitch .bp6-control-indicator-child:first-child,
+.zav-SubViewSwitch .bp5-control-indicator-child:first-child,
+.zav-SubViewSwitch .bp3-control-indicator-child:first-child {
+	margin: 0 !important;
+}
+
+.zav-SubViewSwitch .bp6-control-indicator-child:last-child,
+.zav-SubViewSwitch .bp5-control-indicator-child:last-child,
+.zav-SubViewSwitch .bp3-control-indicator-child:last-child {
+	margin: 0 !important;
 }
 
 .zav-SubViewSwitch .bp6-control-indicator-child,
 .zav-SubViewSwitch .bp5-control-indicator-child,
 .zav-SubViewSwitch .bp3-control-indicator-child {
+	position: absolute;
+	inset: 0;
 	display: flex;
+	width: 100%;
 	align-items: center;
 	justify-content: center;
-	height: 100%;
-	padding: 0 6px;
+	line-height: 1;
 }
 
 .zav-SubViewSwitch .bp6-switch-inner-text,
 .zav-SubViewSwitch .bp5-switch-inner-text,
 .zav-SubViewSwitch .bp3-switch-inner-text {
-	width: 100%;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 0 8px;
+	box-sizing: border-box;
 	font-size: 10px;
 	line-height: 1;
+	text-align: center;
 	white-space: nowrap;
 	color: #ffffff;
 }

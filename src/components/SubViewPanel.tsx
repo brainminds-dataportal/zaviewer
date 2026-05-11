@@ -43,6 +43,12 @@ type SubViewPanelProps = {
   config?: ZAViewerConfig;
 };
 
+const getSubviewHolderOuterSize = (size: number, isActive: boolean) => {
+  const border = isActive ? 3 : 1;
+  const gap = isActive ? 1 : 3;
+  return size + 2 * border + 2 * gap;
+};
+
 const getPlaneSlicePercentOffset = (plane: Plane) => {
   const planeSlideCount = ViewerManager.getPlaneSlideCount(plane) ?? 0;
   if (!Number.isFinite(planeSlideCount) || planeSlideCount <= 1) {
@@ -234,7 +240,7 @@ const SubView = (props: SubViewProps) => {
   const size = props.size ?? 200;
   const border = props.activePlane && props.activePlane === props.viewPlane ? 3 : 1;
   const gap = props.activePlane && props.activePlane === props.viewPlane ? 1 : 3;
-  const margin = 2 * border + 2 * gap;
+  const outerSize = getSubviewHolderOuterSize(size, props.activePlane === props.viewPlane);
 
   let horizontalLine: React.ReactNode = null;
   let verticalLine: React.ReactNode = null;
@@ -303,8 +309,8 @@ const SubView = (props: SubViewProps) => {
       className="subview_holder"
       style={{
         position: 'relative',
-        height: size + margin,
-        width: size + margin,
+        height: outerSize,
+        width: outerSize,
         borderColor: ZAVConfig.getPlaneColor(props.viewPlane),
         borderStyle: 'solid',
         borderWidth: border,
@@ -423,11 +429,14 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
   if (props.config && props.activePlane) {
     if (props.config.hasMultiPlanes) {
       const subViewSize = 64;
+      const axialSwitchWidth = getSubviewHolderOuterSize(subViewSize, AXIAL_PLANE === props.activePlane);
+      const coronalSwitchWidth = getSubviewHolderOuterSize(subViewSize, CORONAL_PLANE === props.activePlane);
+      const sagittalSwitchWidth = getSubviewHolderOuterSize(subViewSize, SAGITTAL_PLANE === props.activePlane);
       subviews.push(
         <div key={AXIAL_PLANE}>
           <Switch
             className="zav-SubViewSwitch"
-            style={{ width: subViewSize }}
+            style={{ width: axialSwitchWidth }}
             checked={AXIAL_PLANE === props.activePlane}
             innerLabel={ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
             innerLabelChecked={ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
@@ -441,7 +450,7 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
         <div key={CORONAL_PLANE}>
           <Switch
             className="zav-SubViewSwitch"
-            style={{ width: subViewSize }}
+            style={{ width: coronalSwitchWidth }}
             checked={CORONAL_PLANE === props.activePlane}
             innerLabel={ZAVConfig.getPlaneLabel(CORONAL_PLANE)}
             innerLabelChecked={ZAVConfig.getPlaneLabel(CORONAL_PLANE)}
@@ -456,7 +465,7 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
         <div key={SAGITTAL_PLANE}>
           <Switch
             className="zav-SubViewSwitch"
-            style={{ width: subViewSize }}
+            style={{ width: sagittalSwitchWidth }}
             checked={SAGITTAL_PLANE === props.activePlane}
             innerLabel={ZAVConfig.getPlaneLabel(SAGITTAL_PLANE)}
             innerLabelChecked={ZAVConfig.getPlaneLabel(SAGITTAL_PLANE)}

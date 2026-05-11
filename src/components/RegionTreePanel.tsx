@@ -36,7 +36,6 @@ type RegionItemProps = {
   regionsStatus?: IRegionsStatus;
   lastChild: boolean;
   isRoot?: boolean;
-  requestScrollIntoView: (itemRect: DOMRect) => void;
 };
 
 type RegionDetailProps = {
@@ -46,6 +45,7 @@ type RegionDetailProps = {
 
 type RegionTreeProps = {
   regionsStatus?: IRegionsStatus;
+  isVisible?: boolean;
 };
 
 type RegionTreeSearchProps = {
@@ -64,6 +64,7 @@ type RegionDetailPaneProps = {
 type RegionTreePanelProps = {
   regionsStatus?: IRegionsStatus;
   hasMultiPlanes?: boolean;
+  isVisible?: boolean;
 };
 
 const RegionItemLabel = (props: RegionItemLabelProps) => {
@@ -86,32 +87,12 @@ const RegionItemLabel = (props: RegionItemLabelProps) => {
 };
 
 const RegionItem = (props: RegionItemProps) => {
-  const treeItemRef = React.useRef<HTMLDivElement>(null);
   const regionActionner = React.useMemo(() => RegionsManager.getActionner(TREE_ACTIONSOURCEID), []);
   const [isHovered, setIsHovered] = React.useState(false);
 
   const region = RegionsManager.getRegion(props.regionId);
   const highlightStatus = region ? RegionsManager.getHighlightStatus(region.abb) : '0';
   const isExpanded = region ? RegionsManager.isExpanded(region.abb) : false;
-
-  React.useEffect(() => {
-    if (
-      !region ||
-      RegionsManager.getLastSelected() !== region.abb ||
-      !regionActionner.lastActionInitiatedByOther() ||
-      highlightStatus === '0'
-    ) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      if (treeItemRef.current) {
-        props.requestScrollIntoView(treeItemRef.current.getBoundingClientRect());
-      }
-    }, 400);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [highlightStatus, props, region, regionActionner]);
 
   const regionClick = React.useCallback(
     (event: React.MouseEvent<HTMLElement>, includeChildren: boolean) => {
@@ -157,7 +138,6 @@ const RegionItem = (props: RegionItemProps) => {
         isRoot={false}
         regionsStatus={props.regionsStatus}
         regionId={childId}
-        requestScrollIntoView={props.requestScrollIntoView}
       />
     ));
     subregions = (
@@ -176,8 +156,8 @@ const RegionItem = (props: RegionItemProps) => {
       data-highlight={highlightStatus}
     >
       <div
-        ref={treeItemRef}
         className="zav-TreeItem"
+        data-regionid={region.abb}
         data-highlight={highlightStatus}
         data-isselected={RegionsManager.isSelected(region.abb)}
         data-exists={1 === region.exists}
@@ -342,44 +322,42 @@ const RegionDetail = (props: RegionDetailProps) => {
 const RegionTree = (props: RegionTreeProps) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const onRequestScrollIntoView = React.useCallback((itemRect: DOMRect) => {
-    const itemHeight = 22;
-    if (!scrollContainerRef.current) {
+  const onRequestScrollIntoView = React.useCallback((itemElement: HTMLDivElement) => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) {
       return;
     }
-    const contRect = scrollContainerRef.current.getBoundingClientRect();
-
-    let desiredScrollY: number | null = null;
-    if (itemRect.top < contRect.top) {
-      desiredScrollY = scrollContainerRef.current.scrollTop + itemRect.top - contRect.top - itemHeight / 2;
-      if (desiredScrollY < 0) {
-        desiredScrollY = 0;
-      }
-    } else if (itemRect.bottom > contRect.height) {
-      desiredScrollY = scrollContainerRef.current.scrollTop + itemRect.bottom - contRect.height + itemHeight / 2;
-    }
-
-    let desiredScrollX: number | null = null;
-    if (itemRect.left < contRect.left) {
-      desiredScrollX = scrollContainerRef.current.scrollLeft + itemRect.left - contRect.left;
-      if (desiredScrollX < 0) {
-        desiredScrollX = 0;
-      }
-    } else if (itemRect.right > contRect.width) {
-      desiredScrollX = scrollContainerRef.current.scrollLeft + itemRect.left - contRect.left;
-    }
-
-    if (desiredScrollY || desiredScrollX) {
-      const scrollArg: ScrollToOptions = { behavior: 'smooth' };
-      if (desiredScrollY) {
-        scrollArg.top = desiredScrollY;
-      }
-      if (desiredScrollX) {
-        scrollArg.left = desiredScrollX;
-      }
-      scrollContainerRef.current.scrollTo(scrollArg);
-    }
+    itemElement.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'smooth',
+    });
   }, []);
+
+  React.useEffect(() => {
+    if (!props.isVisible || !props.regionsStatus?.lastSelected) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const scrollContainer = scrollContainerRef.current;
+      if (!scrollContainer) {
+        return;
+      }
+
+      const selectedItem = Array.from(
+        scrollContainer.querySelectorAll<HTMLDivElement>('.zav-TreeItem[data-isselected="true"]'),
+      ).find((item) => item.dataset.regionid === props.regionsStatus?.lastSelected);
+
+      if (selectedItem) {
+        onRequestScrollIntoView(selectedItem);
+      }
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [onRequestScrollIntoView, props.isVisible, props.regionsStatus?.lastSelected]);
 
   return (
     <div
@@ -394,7 +372,6 @@ const RegionTree = (props: RegionTreeProps) => {
             regionId={RegionsManager.getRoot() as string}
             lastChild={true}
             isRoot={true}
-            requestScrollIntoView={onRequestScrollIntoView}
           />
         ) : null}
       </ul>
@@ -547,7 +524,7 @@ const RegionTreePanel = (props: RegionTreePanelProps) => {
     <div style={{ height: '100%', width: '100%' }}>
       <div style={{ height: '100%', width: '100%', overflow: 'hidden', backgroundColor: '#e1e1e1' }}>
         <RegionTreeSearch regionsStatus={props.regionsStatus} />
-        <RegionTree regionsStatus={props.regionsStatus} />
+        <RegionTree regionsStatus={props.regionsStatus} isVisible={props.isVisible} />
         <RegionDetailPane regionsStatus={props.regionsStatus} hasMultiPlanes={props.hasMultiPlanes} />
         <RegionTreeStatus regionsStatus={props.regionsStatus} />
       </div>

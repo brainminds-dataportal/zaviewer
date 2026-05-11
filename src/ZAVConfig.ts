@@ -20,13 +20,27 @@ export const CORONAL = 2;
 export const SAGITTAL = 3;
 type Plane = typeof AXIAL | typeof CORONAL | typeof SAGITTAL;
 type ConfigReadyCallback = (config: LegacyViewerConfig) => void;
+type ConfigDynamicValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | object
+  | { [key: string]: ConfigDynamicValue }
+  | ConfigDynamicValue[]
+  | ((...args: never[]) => unknown);
+type EditableLayerConfig = {
+  name?: string;
+  ext?: string;
+};
 type PlaneValues<T> = Record<Plane, T>;
 type LegacyLayerResponse = {
   metadata?: string;
   extension?: string;
   protocol?: string;
   colortable?: string;
-  [key: string]: unknown;
+  [key: string]: ConfigDynamicValue;
 };
 type LegacySubviewConfig = {
   axial_slide?: string | number;
@@ -129,17 +143,59 @@ type LegacyViewerConfig = {
   useCustomBorders: boolean;
   customBorderColor: string;
   customBorderWidth: number;
+  viewerId?: string | number;
+  baseConfigPath?: string;
+  treeUrlPath?: string;
+  fallbackTreeUrl?: string;
+  svgFolderName?: string;
+  subviewFolderName?: string;
   PUBLISH_PATH?: string;
+  ADMIN_PATH?: string;
   IIPSERVER_PATH?: string;
+  TILE_EXTENSION?: string;
+  THUMB_EXTENSION?: string;
+  fmDatasetsInfoUrl?: string;
+  fallbackExtension?: string;
   volumeUrl?: string;
+  color2labelMap?: ReturnType<typeof LabelMapper.parseColorTable>;
   layers: Record<string, Record<string, unknown>>;
+  editLayers: Record<string, EditableLayerConfig>;
   data?: Record<string, LegacyLayerResponse>;
   subviewSize: number;
   subviewZoomRatio: number;
+  xMinGlobal?: number;
+  xMaxGlobal?: number;
+  yMinGlobal?: number;
+  yMaxGlobal?: number;
+  zMinGlobal?: number;
+  zMaxGlobal?: number;
+  anyImageSize: number;
+  axial_size?: number;
+  coronal_size?: number;
+  sagittal_size?: number;
+  imageSize?: number;
+  dzWidth: number;
+  dzHeight: number;
+  dzLayerWidth: number;
+  dzLayerHeight: number;
+  minImageZoom: number;
+  maxImageZoom: number;
+  initialPage: number;
+  axialChosenSlice: number;
+  coronalChosenSlice: number;
+  sagittalChosenSlice: number;
+  global_X: number;
+  global_Y: number;
+  global_Z: number;
+  dzDiff: number;
   dataset_info?: ViewerDatasetInfo;
   branding?: BrandingInfo;
   datasetId?: string;
   datasetVersion?: DatasetVersionInfo;
+  extra?: Record<string, unknown>;
+  imageGroupListData?: ImageGroupListResponse;
+  imageGroupListError?: string;
+  dataRootPath?: string;
   getTotalSlidesCount(): number;
   hasPlane(plane: Plane): boolean;
   getTreeDataUrl(): string | undefined;
@@ -148,7 +204,7 @@ type LegacyViewerConfig = {
   setSelectedAtlas(atlasIndex: number): void;
   resolveSimpleUrl(path?: string): string | undefined;
   setPlaneSizes(plane: Plane | null): void;
-  [key: string]: any;
+  [key: string]: ConfigDynamicValue;
 };
 type ConfigRequestState = {
   callbacks: ConfigReadyCallback[];
@@ -417,19 +473,35 @@ class ZAVConfig {
         switch (plane) {
           case AXIAL:
           case CORONAL:
-            return { min: this.xMinGlobal, max: this.xMaxGlobal, len: this.xMaxGlobal - this.xMinGlobal };
+            return {
+              min: this.xMinGlobal ?? 0,
+              max: this.xMaxGlobal ?? 0,
+              len: (this.xMaxGlobal ?? 0) - (this.xMinGlobal ?? 0),
+            };
           case SAGITTAL:
-            return { min: this.yMinGlobal, max: this.yMaxGlobal, len: this.yMaxGlobal - this.yMinGlobal };
+            return {
+              min: this.yMinGlobal ?? 0,
+              max: this.yMaxGlobal ?? 0,
+              len: (this.yMaxGlobal ?? 0) - (this.yMinGlobal ?? 0),
+            };
         }
       },
 
       getSubviewVRange: function (plane: Plane) {
         switch (plane) {
           case AXIAL:
-            return { min: this.yMinGlobal, max: this.yMaxGlobal, len: this.yMaxGlobal - this.yMinGlobal };
+            return {
+              min: this.yMinGlobal ?? 0,
+              max: this.yMaxGlobal ?? 0,
+              len: (this.yMaxGlobal ?? 0) - (this.yMinGlobal ?? 0),
+            };
           case CORONAL:
           case SAGITTAL:
-            return { min: this.zMinGlobal, max: this.zMaxGlobal, len: this.zMaxGlobal - this.zMinGlobal };
+            return {
+              min: this.zMinGlobal ?? 0,
+              max: this.zMaxGlobal ?? 0,
+              len: (this.zMaxGlobal ?? 0) - (this.zMinGlobal ?? 0),
+            };
         }
       },
 
@@ -470,13 +542,14 @@ class ZAVConfig {
             this.matrix = this.anyMatrix;
         }
         //FIXME assume that images are square
-        this.dzWidth = this.imageSize;
-        this.dzHeight = this.imageSize;
-        this.dzLayerWidth = this.imageSize;
-        this.dzLayerHeight = this.imageSize;
+        const imageSize = this.imageSize ?? this.anyImageSize;
+        this.dzWidth = imageSize;
+        this.dzHeight = imageSize;
+        this.dzLayerWidth = imageSize;
+        this.dzLayerHeight = imageSize;
         //zooming limits proportional to image resolution
-        this.minImageZoom = (this.minImageZoom / this.imageSize) * 1000;
-        this.maxImageZoom = (this.maxImageZoom / this.imageSize) * 1000;
+        this.minImageZoom = (this.minImageZoom / imageSize) * 1000;
+        this.maxImageZoom = (this.maxImageZoom / imageSize) * 1000;
       },
 
       //FIXME magic values
@@ -583,7 +656,7 @@ class ZAVConfig {
 
         const configUrl = Utils.makePath(this.config.ADMIN_PATH, 'json.php');
         const data = (await postFormJson(configUrl, {
-          id: this.config.viewerId,
+          id: String(this.config.viewerId ?? ''),
         })) as LegacyLayersConfigResponse;
 
         if (data.dataset_id) {
@@ -610,7 +683,7 @@ class ZAVConfig {
         this.parseLayersConfig(callbackWhenReady, data);
 
         void postFormJson(Utils.makePath(this.config.ADMIN_PATH, 'findImageGroupList.php'), {
-          id: this.config.viewerId,
+          id: String(this.config.viewerId ?? ''),
         })
           .then((imageGroupListData) => {
             const typedImageGroupListData = imageGroupListData as ImageGroupListResponse;

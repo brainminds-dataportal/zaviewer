@@ -290,6 +290,37 @@ class RegionsManager {
     return RegionsManager.regionsData ? RegionsManager.regionsData.regionById.get(regionId) : undefined;
   }
 
+  static resolveRegionId(...regionIds: Array<string | null | undefined>) {
+    if (!RegionsManager.regionsData) {
+      return regionIds.find((regionId): regionId is string => Boolean(regionId));
+    }
+
+    const candidateIds = Array.from(
+      new Set(
+        regionIds
+          .filter((regionId): regionId is string => typeof regionId === 'string' && regionId.trim().length > 0)
+          .flatMap((regionId) => {
+            const trimmed = regionId.trim();
+            const withoutInstanceSuffix = trimmed.replace(/-\d+$/, '');
+            const withoutSideSuffix = trimmed.replace(/_(L|R)$/i, '');
+            const withoutSideAndInstance = withoutInstanceSuffix.replace(/_(L|R)$/i, '');
+            return [trimmed, withoutInstanceSuffix, withoutSideSuffix, withoutSideAndInstance];
+          }),
+      ),
+    );
+
+    for (const candidateId of candidateIds) {
+      if (RegionsManager.regionsData.regionById.has(candidateId)) {
+        return candidateId;
+      }
+    }
+
+    const upperCandidateIds = new Set(candidateIds.map((candidateId) => candidateId.toUpperCase()));
+    return Array.from(RegionsManager.regionsData.regionById.keys()).find((regionId) =>
+      upperCandidateIds.has(regionId.toUpperCase()),
+    );
+  }
+
   static getRegionCenterSlice(
     regionId: string,
     hasMultiPlanes: boolean = false,
@@ -354,22 +385,21 @@ class RegionsManager {
   }
 
   static _addToSelection(actionGroupId: string, regionId: string, _includeChildren: boolean) {
-    RegionsManager.status.selected.add(regionId);
-    RegionsManager.status.lastSelected = regionId;
-    //do not change expand/collapse state while an highlighting is locked
-    if (!RegionsManager.isHighlightingLocked()) {
-      if (RegionsManager.getLastActionSource() !== actionGroupId) {
-        RegionsManager._clearHighlighting(actionGroupId);
-        RegionsManager._collapseAll();
-      }
-      RegionsManager._expandFromRootTo(regionId);
+    const resolvedRegionId = RegionsManager.resolveRegionId(regionId) ?? regionId;
+    RegionsManager.status.selected.add(resolvedRegionId);
+    RegionsManager.status.lastSelected = resolvedRegionId;
+    if (!RegionsManager.isHighlightingLocked() && RegionsManager.getLastActionSource() !== actionGroupId) {
+      RegionsManager._clearHighlighting(actionGroupId);
+      RegionsManager._collapseAll();
     }
+    RegionsManager._expandFromRootTo(resolvedRegionId);
     RegionsManager._setLastActionSource(actionGroupId);
     RegionsManager.signalListeners();
   }
 
   static _unSelect(actionGroupId: string, regionId: string, _includeChildren: boolean) {
-    RegionsManager.status.selected.delete(regionId);
+    const resolvedRegionId = RegionsManager.resolveRegionId(regionId) ?? regionId;
+    RegionsManager.status.selected.delete(resolvedRegionId);
     RegionsManager.status.lastSelected = Array.from(RegionsManager.status.selected).pop();
     RegionsManager._setLastActionSource(actionGroupId);
     RegionsManager.signalListeners();

@@ -32,8 +32,79 @@ type ViewerPoint = { x: number; y: number };
 type ViewerPointerState = ViewerPoint & { c: number };
 type ViewerPosition = [ViewerPointerState, ViewerPoint, ViewerPoint];
 type ViewerClipRegion = [number, number, number, number];
-type ViewerEventLike = Record<string, any>;
+type UnknownRecord = Record<string, unknown>;
+type ViewerEventLike = {
+  originalEvent?: Event;
+  target?: EventTarget | null;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  buttons?: number;
+  position?: ViewerPoint;
+  preventDefaultAction?: boolean;
+  stopBubbling?: boolean;
+};
 type NumericLookup = Record<number, number>;
+type ViewerMouseTrackerEvent = {
+  originalEvent?: MouseEvent | PointerEvent | TouchEvent;
+  originalTarget?: Element;
+};
+type EditableRegionPath = {
+  simplify(): boolean;
+  exportSVG(): SVGElement;
+  subtract(item: paper.Item, options?: { insert?: boolean }): EditableRegionPath;
+  unite(item: paper.Item, options?: { insert?: boolean }): EditableRegionPath;
+};
+type IIIFTileDefinition = {
+  width: number;
+  height: number;
+  scaleFactors: number[];
+};
+type IIIFPyramidalImageInfo = {
+  width: number;
+  height: number;
+  tiles: IIIFTileDefinition[];
+};
+type OSDFilterFactory = {
+  MORPHOLOGICAL_OPERATION: (size: number, reducer: (left: number, right: number) => number) => unknown;
+  CONTRAST: (contrast: number) => unknown;
+  GAMMA: (gamma: number) => unknown;
+};
+type OSDWithFilters = typeof OpenSeadragon & {
+  Filters: OSDFilterFactory;
+};
+type ViewerTileCacheEntry = {
+  url?: string;
+  exists?: boolean;
+  loaded?: boolean;
+};
+
+type RaphaelElementLike = {
+  id?: string;
+  node: SVGGraphicsElement;
+  items?: RaphaelElementLike[];
+  length?: number;
+  [index: number]: SVGGraphicsElement | undefined;
+  attr(name: string): string;
+  attr(name: string, value: unknown): void;
+  attr(attributes: UnknownRecord): void;
+  click(handler: (event: ViewerEventLike) => void): void;
+  dblclick(handler: (event: ViewerEventLike) => void): void;
+  mouseover(handler: (event: ViewerEventLike) => void): void;
+  mouseout(handler: (event: ViewerEventLike) => void): void;
+};
+
+type RaphaelSetLike = {
+  push(element: RaphaelElementLike): void;
+  remove(): void;
+  exclude(element: Element): void;
+  forEach(callback: (element: RaphaelElementLike) => void): void;
+};
+
+type RaphaelPaperLike = {
+  set(): RaphaelSetLike;
+  importSVG(element: Element): RaphaelElementLike;
+  setTransform(transform: string): void;
+};
 
 type ViewerProcessor = {
   name: string;
@@ -55,7 +126,7 @@ declare global {
   var ZAVProcessings: ZAVProcessingsApi | undefined;
 }
 
-declare const Raphael: any;
+declare const Raphael: (element: HTMLElement) => RaphaelPaperLike;
 
 type ViewerStatus = {
   layerDisplaySettings: LayerDisplaySettings;
@@ -66,6 +137,7 @@ type ViewerStatus = {
   sagittalChosenSlice?: number;
   currentSliceRegions: Map<string, ViewerRegionInfo>;
   regionEventListeners: Record<string, ViewerRegionListener>;
+  regionMouseTrackers: OpenSeadragon.MouseTracker[];
   hasLabelMap: boolean;
   hasROIs: boolean;
   hasCurrentSVG: boolean;
@@ -76,9 +148,10 @@ type ViewerStatus = {
   tileOverlap: number;
   tileFormat: string;
   imageWidth?: number;
+  imageHeight?: number;
   imageHegith?: number;
-  set?: any;
-  paper?: any;
+  set?: RaphaelSetLike;
+  paper?: RaphaelPaperLike;
   labelsg?: SVGGElement;
   roig?: SVGGElement;
   showRegions: boolean;
@@ -93,8 +166,11 @@ type ViewerStatus = {
   regionsOpacity: number;
   hoveredRegion?: string | null;
   hoveredRegionSide?: string | null;
+  hoveredRegionPath?: string | null;
   hoveredROI?: string | null;
   hoveredROILabel?: string | null;
+  measureModeOn?: boolean;
+  clippingModeOn?: boolean;
   processedImage?: HTMLImageElement | null;
   longRunningMessage?: string | null;
   position: ViewerPosition;
@@ -117,6 +193,19 @@ type ViewerStatus = {
   processedRegion?: ViewerClipRegion | null;
   processedTopleftPx?: [number, number] | null;
   processingActive?: boolean;
+  IIPSVR_PATH?: string;
+  iipTileInfos?: {
+    minLevel: number;
+    maxLevel: number;
+    levelScale: NumericLookup;
+    tileWidth: number;
+    tileHeight: number;
+    imageWidth: number;
+    imgeHeight: number;
+    xTilesNumAtMaxLevel: number;
+    yTilesNumAtMaxLevel: number;
+    xTilesNumAtLevel: NumericLookup;
+  };
   prevZoomPerScroll?: number;
   prevZoomPerClick?: number;
   editOrigPathId?: string | null;
@@ -126,17 +215,18 @@ type ViewerStatus = {
   editLivePath?: SVGElement | null;
   editPos?: ViewerPoint | null;
   lastPos?: ViewerPoint | null;
-  editRegionPath?: any;
+  editRegionPath?: EditableRegionPath;
   editBackgNode?: Node | null;
-  editScope?: any;
   acquiringRegionToEdit?: boolean;
   mousemoveHandler?: (event: MouseEvent) => void;
   initExpanded: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
+type ViewerEditEvent = ViewerEventLike & { position: ViewerPoint };
+
 type LegacyViewerConfig = ZAViewerConfig &
-  Record<string, any> & {
+  UnknownRecord & {
     hasPlane: (plane: number | undefined) => boolean;
     firstActivePlane: number;
     showRegions: boolean;
@@ -172,8 +262,8 @@ type LegacyViewerConfig = ZAViewerConfig &
     currentAtlas: number;
     matrix?: number[] | null;
   };
-type LegacyLayerConfig = ViewerLayerConfig & Record<string, any>;
-type LegacyLayerDisplaySetting = LayerDisplaySetting & Record<string, any>;
+type LegacyLayerConfig = ViewerLayerConfig & UnknownRecord;
+type LegacyLayerDisplaySetting = LayerDisplaySetting & UnknownRecord;
 
 type ViewerHistoryParams = {
   activePlane?: number;
@@ -191,18 +281,39 @@ type ViewerRegionInfo = {
   regionId?: string;
   fill?: string;
   stroke?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type ViewerRegionListener = {
   abbrev?: string;
+  regionId?: string;
   side?: string;
-  mouseover: (event: any, target: any) => void;
-  mouseout: (event: any, target: any) => void;
-  click: ((event: any, target: any) => void) | Array<(event: any, target: any) => void>;
-  dblclick?: (event: any, target: any) => void;
-  [key: string]: any;
+  mouseover: (event: ViewerEventLike, target: unknown) => void;
+  mouseout: (event: ViewerEventLike, target: unknown) => void;
+  click: ((event: ViewerEventLike, target: unknown) => void) | Array<(event: ViewerEventLike, target: unknown) => void>;
+  dblclick?: (event: ViewerEventLike, target: unknown) => void;
+  [key: string]: unknown;
 };
+
+function isRaphaelElementLike(item: unknown): item is RaphaelElementLike {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+  const candidate = item as Partial<RaphaelElementLike>;
+  return candidate.node instanceof SVGGraphicsElement && typeof candidate.attr === 'function';
+}
+
+function getRaphaelElements(element: unknown): RaphaelElementLike[] {
+  const raphaelElement = element as RaphaelElementLike;
+  if (typeof raphaelElement.length === 'number' && raphaelElement.length > 0) {
+    const setItems = Array.from(
+      { length: raphaelElement.length },
+      (_unused, index) => raphaelElement[index] as unknown,
+    );
+    return setItems.filter(isRaphaelElementLike);
+  }
+  return raphaelElement.node instanceof SVGGraphicsElement ? [raphaelElement] : [];
+}
 
 /** Class in charge of managing viewer's main display (OSD) and state of related elements */
 class ViewerManager {
@@ -389,13 +500,21 @@ class ViewerManager {
         initialLayer,
         //handler to intercept Set operations and store it as user settings as required
         {
-          set: (target: LegacyLayerDisplaySetting, property: string | symbol, value: any) => {
-            if (typeof property === 'string' && ['enabled', 'contrastEnabled', 'gammaEnabled'].includes(property)) {
+          set: (target: LegacyLayerDisplaySetting, property: string | symbol, value: unknown) => {
+            if (
+              typeof property === 'string' &&
+              ['enabled', 'contrastEnabled', 'gammaEnabled'].includes(property) &&
+              typeof value === 'boolean'
+            ) {
               target[property] = value;
               const itemKey = itemKeyLayerPrefix + property;
               UserSettings.setBoolItem(itemKey, value);
               return true;
-            } else if (typeof property === 'string' && ['opacity', 'contrast', 'gamma'].includes(property)) {
+            } else if (
+              typeof property === 'string' &&
+              ['opacity', 'contrast', 'gamma'].includes(property) &&
+              typeof value === 'number'
+            ) {
               target[property] = value;
               const itemKey = itemKeyLayerPrefix + property;
               UserSettings.setNumItem(itemKey, value);
@@ -521,6 +640,7 @@ class ViewerManager {
 
         /** (reusable) mouse event listeners for region contained in the current slice */
         regionEventListeners: {},
+        regionMouseTrackers: [],
 
         /** currently displayed plane */
         activePlane: overridingPlane ?? ViewerManager.config.firstActivePlane,
@@ -604,36 +724,36 @@ class ViewerManager {
       },
       //handler to intercept Set operations and store it as user settings as required
       {
-        set: (target: ViewerStatus, property: string | symbol, value: any) => {
-          if ('displayAreas' === property) {
+        set: (target: ViewerStatus, property: string | symbol, value: unknown) => {
+          if ('displayAreas' === property && typeof value === 'boolean') {
             target[property] = value;
             UserSettings.setBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionArea, value);
             return true;
-          } else if ('displayBorders' === property) {
+          } else if ('displayBorders' === property && typeof value === 'boolean') {
             target[property] = value;
             UserSettings.setBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionBorder, value);
             return true;
-          } else if ('displayLabels' === property) {
+          } else if ('displayLabels' === property && typeof value === 'boolean') {
             target[property] = value;
             UserSettings.setBoolItem(UserSettings.SettingsKeys.ShowAtlasRegionLabel, value);
             return true;
-          } else if ('displayROIs' === property) {
+          } else if ('displayROIs' === property && typeof value === 'boolean') {
             target[property] = value;
             UserSettings.setBoolItem(UserSettings.SettingsKeys.ShowOverlayROI, value);
             return true;
-          } else if ('useCustomBorders' === property) {
+          } else if ('useCustomBorders' === property && typeof value === 'boolean') {
             target[property] = value;
             UserSettings.setBoolItem(UserSettings.SettingsKeys.UseCustomRegionBorder, value);
             return true;
-          } else if ('customBorderColor' === property) {
+          } else if ('customBorderColor' === property && typeof value === 'string') {
             target[property] = value;
             UserSettings.setStrItem(UserSettings.SettingsKeys.CustomRegionBorderColor, value);
             return true;
-          } else if ('customBorderWidth' === property) {
+          } else if ('customBorderWidth' === property && typeof value === 'number') {
             target[property] = value;
             UserSettings.setNumItem(UserSettings.SettingsKeys.CustomRegionBorderWidth, value);
             return true;
-          } else if ('regionsOpacity' === property) {
+          } else if ('regionsOpacity' === property && typeof value === 'number') {
             target[property] = value;
             UserSettings.setNumItem(UserSettings.SettingsKeys.OpacityAtlasRegionArea, value);
             return true;
@@ -699,11 +819,12 @@ class ViewerManager {
           //Prerequisite: All pages have same image size and tile composition, so pyramidal infos for first image is reused for all
           void getJson(iiifInfoUrl)
             .then((pyramidalImgInfo) => {
-              const tileSources: any[] = [];
+              const typedPyramidalImgInfo = pyramidalImgInfo as IIIFPyramidalImageInfo;
+              const tileSources: unknown[] = [];
 
               that.status.IIPSVR_PATH = (that.config.IIPSERVER_PATH ?? '').replace('?IIIF=', '?FIF=');
 
-              const tileDef = (pyramidalImgInfo as any).tiles[0];
+              const tileDef = typedPyramidalImgInfo.tiles[0];
 
               const minLevel = 0;
               const maxLevel = tileDef.scaleFactors.length - 1;
@@ -725,12 +846,12 @@ class ViewerManager {
                 tileWidth: tileDef.width,
                 tileHeight: tileDef.height,
 
-                imageWidth: (pyramidalImgInfo as any).width,
-                imgeHeight: (pyramidalImgInfo as any).height,
+                imageWidth: typedPyramidalImgInfo.width,
+                imgeHeight: typedPyramidalImgInfo.height,
 
                 //number of tiles along both axis
-                xTilesNumAtMaxLevel: Math.ceil((pyramidalImgInfo as any).width / tileDef.width),
-                yTilesNumAtMaxLevel: Math.ceil((pyramidalImgInfo as any).height / tileDef.height),
+                xTilesNumAtMaxLevel: Math.ceil(typedPyramidalImgInfo.width / tileDef.width),
+                yTilesNumAtMaxLevel: Math.ceil(typedPyramidalImgInfo.height / tileDef.height),
 
                 //number of tiles on X axis at each scale level
                 xTilesNumAtLevel: {} as Record<number, number>,
@@ -772,7 +893,7 @@ class ViewerManager {
         } else {
           //International Image Interoperability Framework (IIIF) protocol (default)
 
-          const tileSources: any[] = [];
+          const tileSources: unknown[] = [];
           if (ViewerManager.config.data) {
             //FIXME use specified plane
             for (let j = 0; j < ViewerManager.config.coronalSlideCount; j++) {
@@ -794,7 +915,7 @@ class ViewerManager {
       //no backend image server
 
       //in case of multiplanes, first layer tiles source for all defined planes are appended in tileSources array
-      const tileSources: any[] = [];
+      const tileSources: unknown[] = [];
       if (ViewerManager.config.data) {
         if (ViewerManager.config.hasAxialPlane) {
           for (let j = 0; j < ViewerManager.config.axialSlideCount; j++) {
@@ -842,7 +963,11 @@ class ViewerManager {
 
         //prerequisite: all page have same image size and tile composition, so pyramidal infos for first image is reused for all
         const that = ViewerManager;
-        void getXmlDocument(tileSources[0])
+        const firstTileSourceUrl = typeof tileSources[0] === 'string' ? tileSources[0] : undefined;
+        if (!firstTileSourceUrl) {
+          return;
+        }
+        void getXmlDocument(firstTileSourceUrl)
           .then((dziInfo) => {
             const imageNodes = dziInfo.getElementsByTagNameNS('http://schemas.microsoft.com/deepzoom/2008', 'Image');
             if (imageNodes.length) {
@@ -934,7 +1059,7 @@ class ViewerManager {
         },
         //necessary for filtering when images are loaded from different origin (using datasrcurl param)
         ViewerManager.config.hasCOSource ? { crossOriginPolicy: 'Anonymous' } : {},
-      ) as any,
+      ) as OpenSeadragon.Options,
     );
 
     console.info('[ZAV debug] OpenSeadragon viewer created', {
@@ -948,7 +1073,7 @@ class ViewerManager {
     ViewerManager.status.hasLabelMap = LabelMapper.initLabelMapper(
       ViewerManager.viewer,
       ViewerManager.status.layerDisplaySettings,
-      ViewerManager.config.color2labelMap,
+      ViewerManager.config.color2labelMap as Parameters<typeof LabelMapper.initLabelMapper>[2],
       (_color, classLabel) => {
         ViewerManager.status.hoveredRegion = classLabel !== 'Background' ? classLabel : null;
         ViewerManager.signalStatusChanged(ViewerManager.status);
@@ -988,7 +1113,7 @@ class ViewerManager {
       }
     });
 
-    ViewerManager.viewer.addHandler('open', (_event: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('open', () => {
       if (!that.viewer.source) {
         return;
       }
@@ -1067,7 +1192,7 @@ class ViewerManager {
     //--------------------------------------------------
     //TODO replace by fixed image
     /** set image displayed in navigator as the one loaded in first layer */
-    ViewerManager.viewer.addHandler('open', (_event: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('open', () => {
       // items are automatically added to navigator when layers are added to viewer,
       // but only first layer at 100% opacity is needed
       const navItemReplaceHnd = (event: OpenSeadragon.AddItemWorldEvent) => {
@@ -1105,8 +1230,8 @@ class ViewerManager {
     //--------------------------------------------------
     //Apply filter on tracer signal once it is fully loaded
 
-    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: { item: any }) => {
-      const tiledImage = addItemEvent.item;
+    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: OpenSeadragon.AddItemWorldEvent) => {
+      const tiledImage = addItemEvent.item as OpenSeadragon.TiledImage;
       //retrieve layer info associated to added tiled image
       for (let i = 0; i < that.viewer.world.getItemCount(); i++) {
         if (that.viewer.world.getItemAt(i) === tiledImage) {
@@ -1133,9 +1258,9 @@ class ViewerManager {
     });
 
     //--------------------------------------------------
-    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: { item: any }) => {
+    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: OpenSeadragon.AddItemWorldEvent) => {
       const i = that.viewer.world.getIndexOfItem(addItemEvent.item);
-      const tiledImage = addItemEvent.item;
+      const tiledImage = addItemEvent.item as OpenSeadragon.TiledImage;
       //retrieve layer info associated to tiled image source of the event
 
       const layers = Object.values(that.status.layerDisplaySettings);
@@ -1160,10 +1285,10 @@ class ViewerManager {
         }
       }
 
-      changeLabelSizeDebounced(undefined);
+      changeLabelSizeDebounced();
     });
 
-    ViewerManager.viewer.addHandler('page', (_zoomEvent: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('page', () => {
       //discard previous custom processing result if any
       that.status.processedImage = null;
     });
@@ -1181,7 +1306,7 @@ class ViewerManager {
       }
     });
 
-    ViewerManager.viewer.addHandler('pan', (_panEvent: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('pan', () => {
       //change must be recorded in browser's history
       that.makeHistoryStep();
     });
@@ -1206,7 +1331,7 @@ class ViewerManager {
       }
     }
 
-    const changeLabelSizeDebounced = _.debounce((_zoomEvent?: ViewerEventLike) => {
+    const changeLabelSizeDebounced = _.debounce(() => {
       if (!ruleToUpdate) {
         return;
       }
@@ -1234,12 +1359,12 @@ class ViewerManager {
       ],
     });
 
-    ViewerManager.viewer.addHandler('resize', (_event: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('resize', () => {
       that.resizeCanvas();
       that.adjustResizeRegionsOverlay(that.status.set);
     });
 
-    ViewerManager.viewer.addHandler('animation', (_event: ViewerEventLike) => {
+    ViewerManager.viewer.addHandler('animation', () => {
       that.adjustResizeRegionsOverlay(that.status.set);
     });
 
@@ -1255,7 +1380,7 @@ class ViewerManager {
       cnv.style.display = 'none';
     }
     ViewerManager.viewer.canvas.appendChild(cnv);
-    ViewerManager.setMeasureMode(ViewerManager.status.measureModeOn);
+    ViewerManager.setMeasureMode(Boolean(ViewerManager.status.measureModeOn));
     ViewerManager.resizeCanvas();
 
     //--------------------------------------------------
@@ -1321,21 +1446,21 @@ class ViewerManager {
             ViewerManager.stopEditingRegion(event);
           }
         },
-        moveHandler: (event: ViewerEventLike) => {
+        moveHandler: (event) => {
           //incremental edit after each move while left button pressed
           if (event.buttons === 1) {
-            ViewerManager.doEdit(event);
+            ViewerManager.doEdit(event as unknown as ViewerEditEvent);
           }
         },
-        pressHandler: (event: ViewerEventLike) => {
+        pressHandler: (event) => {
           //start active editing when left button pressed
           if (event.buttons === 1) {
-            ViewerManager.startEdit(event);
+            ViewerManager.startEdit(event as unknown as ViewerEditEvent);
           }
         },
-        releaseHandler: (event: ViewerEventLike) => {
+        releaseHandler: (event) => {
           //stop active editing when left button is released
-          ViewerManager.suspendEdit(event);
+          ViewerManager.suspendEdit(event as unknown as ViewerEditEvent);
         },
       });
     }
@@ -1352,7 +1477,7 @@ class ViewerManager {
         editGroup.appendChild(ViewerManager.status.editBackgNode);
       }
 
-      ViewerManager.status.editScope = paper.setup([10, 10]);
+      paper.setup([10, 10]);
     }
   }
 
@@ -1458,7 +1583,9 @@ class ViewerManager {
 
       ViewerManager.status.editLivePath = newLivPath;
       //import as Paper object for edit transformations
-      ViewerManager.status.editRegionPath = paper.project.importSVG(newLivPath, { insert: false });
+      ViewerManager.status.editRegionPath = paper.project.importSVG(newLivPath, {
+        insert: false,
+      }) as unknown as EditableRegionPath;
 
       //hide source region while its copy is being edited
       (targetElt as HTMLElement).style.display = 'none';
@@ -1475,7 +1602,7 @@ class ViewerManager {
     }
   }
 
-  static startEdit(e: ViewerEventLike) {
+  static startEdit(e: ViewerEditEvent) {
     ViewerManager.status.editingActive = true;
     ViewerManager.status.editPos = ViewerManager.status.lastPos;
     ViewerManager.doEdit(e, true);
@@ -1527,17 +1654,21 @@ class ViewerManager {
     ViewerManager.signalStatusChanged(ViewerManager.status);
   }
 
-  static suspendEdit(_e: ViewerEventLike) {
+  static suspendEdit(_e: ViewerEditEvent) {
     ViewerManager.status.editingActive = false;
   }
 
-  static doEdit(e: ViewerEventLike, forcedEdit = false) {
+  static doEdit(e: ViewerEditEvent, forcedEdit = false) {
     if (ViewerManager.status.editingActive) {
       const prevPos = ViewerManager.status.editPos;
       //const newPos = this.getSVGPos(e.layerX, e.layerY);
       const newPos = ViewerManager.getSVGPos(e.position.x, e.position.y);
       ViewerManager.status.editPos = newPos;
       if (forcedEdit || (prevPos && (Math.abs(prevPos.x - newPos.x) > 1 || Math.abs(prevPos.y - newPos.y) > 1))) {
+        const editRegionPath = ViewerManager.status.editRegionPath;
+        if (!editRegionPath) {
+          return;
+        }
         const outlined = new paper.Path.Circle(
           new paper.Point(newPos.x, newPos.y),
           ViewerManager.status.editingToolRadius ?? 0,
@@ -1545,8 +1676,8 @@ class ViewerManager {
 
         const united =
           ViewerManager.status.editingTool === 'eraser'
-            ? ViewerManager.status.editRegionPath.subtract(outlined, { insert: false })
-            : ViewerManager.status.editRegionPath.unite(outlined, { insert: false });
+            ? editRegionPath.subtract(outlined, { insert: false })
+            : editRegionPath.unite(outlined, { insert: false });
 
         const newLivPath = united.exportSVG() as SVGElement;
         ViewerManager.status.editRegionPath = united;
@@ -1560,7 +1691,7 @@ class ViewerManager {
     }
   }
 
-  static stopEditingRegion(_event?: ViewerEventLike) {
+  static stopEditingRegion(_event?: unknown) {
     ViewerManager.status.editingActive = false;
     if (ViewerManager.status.editPathId) {
       if (
@@ -1579,11 +1710,16 @@ class ViewerManager {
       ViewerManager.removeEditCursor();
       const newPathId = ViewerManager.status.editPathId;
       ViewerManager.status.editPathId = null;
+      const regionSet = ViewerManager.status.set;
+      const regionPaper = ViewerManager.status.paper;
+      if (!regionSet || !regionPaper) {
+        return;
+      }
 
       //replace exisiting region by edited one
 
       //remove un-edited source region from Raphaël set
-      ViewerManager.status.set.exclude(ViewerManager.status.editRegion);
+      regionSet.exclude(ViewerManager.status.editRegion);
       const regionId = ViewerManager.status.editRegion.getAttribute('bma:regionId');
 
       const origPathId = ViewerManager.status.editRegion.id;
@@ -1596,10 +1732,10 @@ class ViewerManager {
       modifiedRegion.setAttribute('id', newPathId);
 
       //FIXME region order is not conserved, Raphaël will place the newly imported region at the end
-      const newRaphElt = ViewerManager.status.paper.importSVG(modifiedRegion);
-      newRaphElt.attr('fill', ViewerManager.status.editPathFillColor);
-      newRaphElt.attr('stroke', ViewerManager.status.editPathStrokeColor);
-      ViewerManager.status.set.push(newRaphElt);
+      const newRaphElt = regionPaper.importSVG(modifiedRegion);
+      newRaphElt.attr('fill', ViewerManager.status.editPathFillColor ?? '#000000');
+      newRaphElt.attr('stroke', ViewerManager.status.editPathStrokeColor ?? '#000000');
+      regionSet.push(newRaphElt);
 
       //once modified path is added to DOM, restore lost attributes
       const modifiedRegionInDom = ViewerManager.getElementById<SVGElement>(newPathId);
@@ -1702,8 +1838,13 @@ class ViewerManager {
     newPath.setAttribute('stroke', stroke);
 
     //import in Raphael
-    const newRaphElt = ViewerManager.status.paper.importSVG(newPath);
-    ViewerManager.status.set.push(newRaphElt);
+    const regionPaper = ViewerManager.status.paper;
+    const regionSet = ViewerManager.status.set;
+    if (!regionPaper || !regionSet) {
+      return;
+    }
+    const newRaphElt = regionPaper.importSVG(newPath);
+    regionSet.push(newRaphElt);
     //locate DOM element created by Raphael
     const regionInDom = ViewerManager.getElementById<SVGElement>(pathId);
     if (!regionInDom) {
@@ -1766,7 +1907,7 @@ class ViewerManager {
   }
 
   static simplifyEditedRegion() {
-    if (ViewerManager.status.editPathId && ViewerManager.status.editLivePath) {
+    if (ViewerManager.status.editPathId && ViewerManager.status.editLivePath && ViewerManager.status.editRegionPath) {
       if (ViewerManager.status.editRegionPath.simplify()) {
         const newLivPath = ViewerManager.status.editRegionPath.exportSVG() as SVGElement;
 
@@ -1780,7 +1921,7 @@ class ViewerManager {
     listener.dblclick = (e: ViewerEventLike) => {
       if (ViewerManager.status.editPathId) {
         ViewerManager.stopEditingRegion(e);
-      } else {
+      } else if (e.target instanceof Element) {
         ViewerManager.selectEditRegion(e.target);
       }
     };
@@ -1788,8 +1929,8 @@ class ViewerManager {
     const existingClick = listener.click;
     listener.click = [
       ...(Array.isArray(existingClick) ? existingClick : [existingClick]),
-      (e: ViewerEventLike, _raphElt: any) => {
-        if (ViewerManager.status.acquiringRegionToEdit) {
+      (e: ViewerEventLike, _raphElt: unknown) => {
+        if (ViewerManager.status.acquiringRegionToEdit && e.target instanceof Element) {
           ViewerManager.status.acquiringRegionToEdit = false;
           ViewerManager.selectEditRegion(e.target);
         }
@@ -1799,17 +1940,19 @@ class ViewerManager {
     return listener;
   }
 
-  static connectRegionListeners(targetElt: any, regionListener: ViewerRegionListener, pathElt?: any) {
-    if (targetElt.mouseover) {
+  static connectRegionListeners(targetElt: unknown, regionListener: ViewerRegionListener, pathElt?: unknown) {
+    const maybeRaphaelTarget = targetElt as Partial<RaphaelElementLike>;
+    if (typeof maybeRaphaelTarget.mouseover === 'function') {
       //Raphael element
+      const raphaelTarget = targetElt as RaphaelElementLike;
 
-      targetElt.mouseover(function (this: any, e: ViewerEventLike) {
+      raphaelTarget.mouseover(function (this: RaphaelElementLike, e: ViewerEventLike) {
         regionListener.mouseover(e, this);
       });
-      targetElt.mouseout(function (this: any, e: ViewerEventLike) {
+      raphaelTarget.mouseout(function (this: RaphaelElementLike, e: ViewerEventLike) {
         regionListener.mouseout(e, this);
       });
-      targetElt.click(function (this: any, e: ViewerEventLike) {
+      raphaelTarget.click(function (this: RaphaelElementLike, e: ViewerEventLike) {
         if (_.isArray(regionListener.click)) {
           for (const clickListener of regionListener.click) {
             clickListener(e, this);
@@ -1820,35 +1963,50 @@ class ViewerManager {
       });
       if (regionListener.dblclick) {
         const dblclickListener = regionListener.dblclick;
-        targetElt.dblclick(function (this: any, e: ViewerEventLike) {
+        raphaelTarget.dblclick(function (this: RaphaelElementLike, e: ViewerEventLike) {
           dblclickListener(e, this);
         });
       }
     } else {
       //SVG DOM element
+      const targetElement = targetElt as Element & { __zavRegionMouseTracker?: OpenSeadragon.MouseTracker };
+      targetElement.__zavRegionMouseTracker?.destroy();
 
-      targetElt.addEventListener('mouseover', (e: MouseEvent) => {
-        regionListener.mouseover(e, pathElt);
-      });
-      targetElt.addEventListener('mouseout', (e: MouseEvent) => {
-        regionListener.mouseout(e, pathElt);
+      const createViewerEvent = (event: ViewerMouseTrackerEvent): ViewerEventLike => ({
+        originalEvent: event.originalEvent,
+        target: event.originalTarget ?? event.originalEvent?.target ?? targetElement,
+        ctrlKey: Boolean(event.originalEvent?.ctrlKey),
+        shiftKey: Boolean(event.originalEvent?.shiftKey),
+        buttons: event.originalEvent && 'buttons' in event.originalEvent ? event.originalEvent.buttons : 0,
       });
 
-      targetElt.addEventListener('click', (e: MouseEvent) => {
-        if (_.isArray(regionListener.click)) {
-          for (const clickListener of regionListener.click) {
-            clickListener(e, pathElt);
+      const tracker = new OpenSeadragon.MouseTracker({
+        element: targetElement,
+        overHandler: (event) => {
+          regionListener.mouseover(createViewerEvent(event), pathElt);
+        },
+        outHandler: (event) => {
+          regionListener.mouseout(createViewerEvent(event), pathElt);
+        },
+        clickHandler: (event) => {
+          const viewerEvent = createViewerEvent(event);
+          if (_.isArray(regionListener.click)) {
+            for (const clickListener of regionListener.click) {
+              clickListener(viewerEvent, pathElt);
+            }
+          } else {
+            regionListener.click(viewerEvent, pathElt);
           }
-        } else {
-          regionListener.click(e, pathElt);
-        }
+        },
+        dblClickHandler: regionListener.dblclick
+          ? (event) => {
+              regionListener.dblclick?.(createViewerEvent(event), pathElt);
+            }
+          : undefined,
       });
-      if (regionListener.dblclick) {
-        const dblclickListener = regionListener.dblclick;
-        targetElt.addEventListener('dblclick', (e: MouseEvent) => {
-          dblclickListener(e, pathElt);
-        });
-      }
+      tracker.setTracking(true);
+      targetElement.__zavRegionMouseTracker = tracker;
+      ViewerManager.status.regionMouseTrackers.push(tracker);
     }
   }
 
@@ -1906,6 +2064,10 @@ class ViewerManager {
         that.status.hasCurrentSVG = typeof root !== 'undefined';
 
         that.status.currentSliceRegions.clear();
+        for (const tracker of that.status.regionMouseTrackers) {
+          tracker.destroy();
+        }
+        that.status.regionMouseTrackers = [];
         //new set of mouse event listeners
         that.status.regionEventListeners = {};
 
@@ -1914,7 +2076,6 @@ class ViewerManager {
         if (!svgElement) {
           return;
         }
-
         //add group for ROI
         const roig = document.createElementNS(SVGNS, 'g');
         roig.setAttribute('id', 'rois');
@@ -2019,7 +2180,12 @@ class ViewerManager {
             regionPath.setAttribute('id', pathId);
           }
 
-          const newPathElt = that.status.paper.importSVG(regionPath);
+          const regionPaper = that.status.paper;
+          const regionSet = that.status.set;
+          if (!regionPaper || !regionSet) {
+            return;
+          }
+          const newPathElt = regionPaper.importSVG(regionPath);
 
           const isBackgroundElement = regionId === BACKGROUND_PATHID;
           if (isBackgroundElement) {
@@ -2047,7 +2213,7 @@ class ViewerManager {
             that.applyUnselectedPresentation(newPathElt);
           }
 
-          that.status.set.push(newPathElt);
+          regionSet.push(newPathElt);
 
           if (!isBackgroundElement) {
             //once path elements are added to the DOM
@@ -2055,8 +2221,10 @@ class ViewerManager {
             if (modifiedRegionInDom) {
               //restore custom attribute lost when imported in Raphaël
               modifiedRegionInDom.setAttribute('bma:regionId', regionId);
+              modifiedRegionInDom.setAttribute('data-zav-pathid', pathId);
               //make path's stroke width independant of scaling transformations
               modifiedRegionInDom.setAttribute('vector-effect', 'non-scaling-stroke');
+              that.connectRegionListeners(modifiedRegionInDom, that.status.regionEventListeners[pathId], newPathElt);
 
               //add corresponding label, if any
               if (labelSrcGroup) {
@@ -2069,6 +2237,8 @@ class ViewerManager {
 
                   const x = labelSrc.getAttribute('x');
                   const y = labelSrc.getAttribute('y');
+                  labelElt.setAttribute('bma:regionId', regionId);
+                  labelElt.setAttribute('data-zav-pathid', pathId);
                   labelElt.setAttribute('transform', `translate(${x}, ${y})`);
                   labelElt.innerHTML = labelSrc.innerHTML;
                   labelsg.appendChild(labelElt);
@@ -2076,6 +2246,8 @@ class ViewerManager {
                   that.connectRegionListeners(labelElt, that.status.regionEventListeners[pathId], newPathElt);
                 }
               }
+            } else {
+              that.connectRegionListeners(newPathElt, that.status.regionEventListeners[pathId]);
             }
           }
         }
@@ -2131,7 +2303,7 @@ class ViewerManager {
 
         that.regionActionner.setCurrentSliceRegions(
           Array.from(that.status.currentSliceRegions.values())
-            .map((r) => r.abbrev)
+            .map((r) => ViewerManager._resolveTreeRegionId(r))
             .filter((abbrev): abbrev is string => typeof abbrev === 'string'),
         );
 
@@ -2149,13 +2321,85 @@ class ViewerManager {
     return { suffix, side, abbrev };
   }
 
-  static _addNActivateRegion(pathId: string, regionId: string, newPathElt: any) {
+  static _resolveTreeRegionId(regionInfo?: Pick<ViewerRegionInfo, 'abbrev' | 'regionId'> | null) {
+    return RegionsManager.resolveRegionId(regionInfo?.abbrev, regionInfo?.regionId);
+  }
+
+  static _applyViewerRegionSelection(regionId: string, pathId?: string | null, ctrlKey: boolean = false) {
+    const selectedRegionId = RegionsManager.resolveRegionId(regionId);
+    if (!selectedRegionId) {
+      return;
+    }
+
+    if (!ViewerManager.status.showRegions) {
+      return;
+    }
+
+    ViewerManager.unselectRegions();
+    const wasSelected = RegionsManager.isSelected(selectedRegionId);
+
+    if (ctrlKey) {
+      if (wasSelected) {
+        ViewerManager.regionActionner.unSelect(selectedRegionId, false);
+      } else {
+        ViewerManager.regionActionner.addToSelection(selectedRegionId, false);
+      }
+    } else {
+      ViewerManager.regionActionner.replaceSelected(selectedRegionId, false);
+    }
+
+    const resolvedPathId =
+      pathId ??
+      Array.from(ViewerManager.status.currentSliceRegions.entries()).find(
+        ([, info]) => ViewerManager._resolveTreeRegionId(info) === selectedRegionId,
+      )?.[0] ??
+      null;
+
+    if (ctrlKey && wasSelected && ViewerManager.status.lastSelectedPath === resolvedPathId) {
+      ViewerManager.status.lastSelectedPath = null;
+    } else {
+      ViewerManager.status.lastSelectedPath = resolvedPathId;
+    }
+
+    ViewerManager.status.userClickedRegion = true;
+    ViewerManager.selectRegions(RegionsManager.getSelectedRegions());
+  }
+
+  static _getClickedRegionInfo(target: EventTarget | null) {
+    if (!(target instanceof Element)) {
+      return null;
+    }
+
+    const regionElement = target.closest('[bma\\:regionId]');
+    if (!regionElement) {
+      return null;
+    }
+    const regionId = regionElement?.getAttribute('bma:regionId')?.trim();
+    if (!regionId) {
+      return null;
+    }
+
+    const pathId =
+      regionElement.tagName.toLowerCase() === 'path'
+        ? regionElement.getAttribute('id')?.trim()
+        : Array.from(ViewerManager.status.currentSliceRegions.entries()).find(
+            ([, regionInfo]) => regionInfo.regionId === regionId,
+          )?.[0];
+
+    return { regionId, pathId };
+  }
+
+  static _addNActivateRegion(pathId: string, regionId: string, newPathElt: RaphaelElementLike) {
     const that = ViewerManager;
     const { side, abbrev } = ViewerManager._splitRegionId(regionId);
 
-    const pathElt = newPathElt.items[0];
+    const pathElt = newPathElt.items?.[0];
+    if (!pathElt) {
+      return;
+    }
     that.status.currentSliceRegions.set(pathId, {
       abbrev: abbrev,
+      regionId: regionId,
       pathId: pathId,
       fill: pathElt.attr('fill'),
       stroke: pathElt.attr('stroke'),
@@ -2164,57 +2408,40 @@ class ViewerManager {
     //grouped listeners so they can be easily reused
     const regionListener = {
       abbrev: abbrev,
+      regionId: regionId,
       side: side,
 
-      mouseover: (_e: ViewerEventLike, raphElt: any) => {
+      mouseover: (_e: ViewerEventLike, raphElt: unknown) => {
         //highlight border and display info about hovered region
         if (raphElt && that.status.showRegions) {
           that.applyMouseOverPresentation(raphElt);
         }
-        that.status.hoveredRegion = abbrev;
+        that.status.hoveredRegion = ViewerManager._resolveTreeRegionId({ abbrev, regionId }) ?? abbrev;
         that.status.hoveredRegionSide = side;
+        that.status.hoveredRegionPath = pathId;
         that.signalStatusChanged(that.status);
       },
 
-      mouseout: (_e: ViewerEventLike, raphElt: any) => {
+      mouseout: (_e: ViewerEventLike, raphElt: unknown) => {
         //remove highlighted border and info when cursor move out of region
         if (raphElt && that.status.showRegions) {
-          that.applyMouseOutPresentation(raphElt, RegionsManager.isSelected(abbrev));
+          that.applyMouseOutPresentation(
+            raphElt,
+            RegionsManager.isSelected(ViewerManager._resolveTreeRegionId({ abbrev, regionId })),
+          );
         }
         that.status.hoveredRegion = null;
         that.status.hoveredRegionSide = null;
+        that.status.hoveredRegionPath = null;
         that.signalStatusChanged(that.status);
       },
 
-      click: (e: ViewerEventLike, raphElt: any) => {
-        if (that.status.showRegions) {
-          that.unselectRegions();
-          if (e.ctrlKey) {
-            //when Ctrl key is pressed, allow multi-select or toogle of currently selected region
-            if (abbrev && RegionsManager.isSelected(abbrev)) {
-              that.regionActionner.unSelect(abbrev, false);
-              if (that.status.lastSelectedPath === pathId) {
-                that.status.lastSelectedPath = null;
-              } else {
-                that.status.lastSelectedPath = pathId;
-              }
-            } else {
-              if (abbrev) {
-                that.regionActionner.addToSelection(abbrev, false);
-              }
-              that.status.lastSelectedPath = pathId;
-            }
-          } else {
-            if (abbrev) {
-              that.regionActionner.replaceSelected(abbrev, false);
-            }
-            that.status.lastSelectedPath = pathId;
-          }
-          that.status.userClickedRegion = true;
-          that.selectRegions(RegionsManager.getSelectedRegions());
-        } else if (raphElt && e.shiftKey) {
+      click: (e: ViewerEventLike, raphElt: unknown) => {
+        if (raphElt && e.shiftKey && !that.status.showRegions) {
           that.applyMouseOverPresentation(raphElt, true);
           setTimeout(() => that.applyMouseOutPresentation(raphElt), 2500);
+        } else {
+          ViewerManager._applyViewerRegionSelection(regionId, pathId, Boolean(e.ctrlKey));
         }
       },
     };
@@ -2225,14 +2452,12 @@ class ViewerManager {
     if (that.status.editModeOn) {
       that.status.regionEventListeners[pathId] = that.extendRegionListenerForEdit(regionListener);
     }
-
-    that.connectRegionListeners(newPathElt, that.status.regionEventListeners[pathId]);
   }
 
   /**
    * @private
    */
-  static adjustResizeRegionsOverlay(_el: any) {
+  static adjustResizeRegionsOverlay(_el: unknown) {
     if (ViewerManager.viewer.world.getItemCount()) {
       const zoom = ViewerManager.viewer.world
         .getItemAt(0)
@@ -2271,11 +2496,11 @@ class ViewerManager {
   static updateRegionsVisibility() {
     if (ViewerManager.status.set) {
       if (!ViewerManager.status.showRegions) {
-        ViewerManager.status.set.forEach((el: any) => {
+        ViewerManager.status.set.forEach((el) => {
           ViewerManager.applyHiddenPresentation(el);
         });
       } else {
-        ViewerManager.status.set.forEach((el: any) => {
+        ViewerManager.status.set.forEach((el) => {
           if (el.id !== BACKGROUND_PATHID) {
             ViewerManager.applyUnselectedPresentation(el);
           }
@@ -2289,7 +2514,11 @@ class ViewerManager {
    * @private
    */
   static hideDelineation() {
-    ViewerManager.status.set.forEach((el: any) => {
+    const regionSet = ViewerManager.status.set;
+    if (!regionSet) {
+      return;
+    }
+    regionSet.forEach((el) => {
       ViewerManager.applyHiddenPresentation(el);
     });
   }
@@ -2298,10 +2527,10 @@ class ViewerManager {
     if (ViewerManager.status.set) {
       const selectedRegions = RegionsManager.getSelectedRegions();
       const that = ViewerManager;
-      ViewerManager.status.set.forEach((el: any) => {
-        if (el.id !== BACKGROUND_PATHID) {
+      ViewerManager.status.set.forEach((el) => {
+        if (el.id && el.id !== BACKGROUND_PATHID) {
           const regionInfo = that.status.currentSliceRegions.get(el.id);
-          const abbrev = regionInfo ? regionInfo.abbrev : null;
+          const abbrev = regionInfo ? ViewerManager._resolveTreeRegionId(regionInfo) : null;
           if (abbrev && selectedRegions.includes(abbrev)) {
             that.applySelectedPresentation(el);
           } else {
@@ -2420,28 +2649,31 @@ class ViewerManager {
     }
   }
 
-  static applyMouseOverPresentation(element: any, forcedBorder = false) {
-    const el = element.length ? element[0] : element;
-    const color = el.node.getAttribute('fill');
+  static applyMouseOverPresentation(element: unknown, forcedBorder = false) {
+    const [el] = getRaphaelElements(element);
+    if (!el) {
+      return;
+    }
+    const color = el.node.getAttribute('fill') ?? '#000000';
     const fillOpacity =
       !ViewerManager.status.displayAreas || ViewerManager.status.regionsOpacity < 0.05
         ? 0
         : ViewerManager.status.regionsOpacity + (ViewerManager.status.regionsOpacity > 0.6 ? -0.4 : 0.4);
     const strokeOpacity = forcedBorder || ViewerManager.status.displayBorders ? 1 : 0;
-    element.attr({
+    (element as RaphaelElementLike).attr({
       'fill-opacity': fillOpacity,
       'stroke-opacity': strokeOpacity,
       'stroke-width': '4px',
       stroke: color,
     });
-    (element.length ? element : [element]).forEach((e: any) => {
+    getRaphaelElements(element).forEach((e) => {
       e.node.classList.add('delin-high');
       e.node.classList.remove('delin-NOThigh');
     });
   }
 
-  static applyMouseOutPresentation(element: any, isSelected?: boolean) {
-    (element.length ? element : [element]).forEach((e: any) => {
+  static applyMouseOutPresentation(element: unknown, isSelected?: boolean) {
+    getRaphaelElements(element).forEach((e) => {
       e.node.classList.remove('delin-high');
       e.node.classList.add('delin-NOThigh');
     });
@@ -2452,26 +2684,29 @@ class ViewerManager {
     }
   }
 
-  static applySelectedPresentation(element: any) {
+  static applySelectedPresentation(element: unknown) {
     const fillOpacity =
       !ViewerManager.status.displayAreas || ViewerManager.status.regionsOpacity < 0.05
         ? 0
         : ViewerManager.status.regionsOpacity + (ViewerManager.status.regionsOpacity > 0.6 ? -0.4 : 0.4);
     const strokeOpacity = ViewerManager.status.showRegions ? 0.7 : 0;
-    element.attr({
+    (element as RaphaelElementLike).attr({
       'fill-opacity': fillOpacity,
       'stroke-opacity': strokeOpacity,
       'stroke-width': '3px',
       stroke: '#0000ff',
     });
-    (element.length ? element : [element]).forEach((e: any) => {
+    getRaphaelElements(element).forEach((e) => {
       e.node.classList.add('delin-select');
       e.node.classList.remove('delin-NOTselect');
     });
   }
 
-  static applyUnselectedPresentation(element: any) {
-    const el = element.length ? element[0] : element;
+  static applyUnselectedPresentation(element: unknown) {
+    const [el] = getRaphaelElements(element);
+    if (!el) {
+      return;
+    }
     const color =
       ViewerManager.status.displayBorders && ViewerManager.status.useCustomBorders
         ? ViewerManager.status.customBorderColor
@@ -2479,20 +2714,20 @@ class ViewerManager {
     const fillOpacity = ViewerManager.status.displayAreas ? ViewerManager.status.regionsOpacity : 0;
     const strokeOpacity = ViewerManager.status.displayBorders ? 0.5 : 0;
     const strokeWidth = `${ViewerManager.status.useCustomBorders ? ViewerManager.status.customBorderWidth : 2}px`;
-    element.attr({
+    (element as RaphaelElementLike).attr({
       'fill-opacity': fillOpacity,
       'stroke-opacity': strokeOpacity,
       'stroke-width': strokeWidth,
       stroke: color,
     });
-    (element.length ? element : [element]).forEach((e: any) => {
+    getRaphaelElements(element).forEach((e) => {
       e.node.classList.remove('delin-select');
       e.node.classList.add('delin-NOTselect');
     });
   }
 
-  static applyHiddenPresentation(element: any) {
-    element.attr({
+  static applyHiddenPresentation(element: unknown) {
+    (element as RaphaelElementLike).attr({
       'fill-opacity': 0,
       'stroke-opacity': 0,
     });
@@ -2505,7 +2740,7 @@ class ViewerManager {
   static unselectRegions() {
     if (ViewerManager.status.set) {
       const that = ViewerManager;
-      ViewerManager.status.set.forEach((el: any) => {
+      ViewerManager.status.set.forEach((el) => {
         if (el.id !== BACKGROUND_PATHID) {
           that.applyUnselectedPresentation(el);
         }
@@ -2522,9 +2757,12 @@ class ViewerManager {
       const that = ViewerManager;
 
       // apply presentation for selected regions
-      ViewerManager.status.set.forEach((el: any) => {
+      ViewerManager.status.set.forEach((el) => {
+        if (!el.id) {
+          return;
+        }
         const regionInfo = that.status.currentSliceRegions.get(el.id);
-        const abbrev = regionInfo ? regionInfo.abbrev : null;
+        const abbrev = regionInfo ? ViewerManager._resolveTreeRegionId(regionInfo) : null;
         if (nameList.includes(abbrev)) {
           that.applySelectedPresentation(el);
         }
@@ -2540,20 +2778,27 @@ class ViewerManager {
 
   static centerOnRegions(nameList: Array<string | null | undefined>) {
     const that = ViewerManager;
+    const regionSet = ViewerManager.status.set;
+    if (!regionSet) {
+      return;
+    }
     //how to choose a center?
     let newX = 0;
     let newY = 0;
     let snCount = 0;
     for (let k = 0; k < nameList.length; k++) {
       //try to find the nodes -> slow way!
-      ViewerManager.status.set.forEach((el: any) => {
+      regionSet.forEach((el) => {
         const subNode = el[0];
+        if (!el.id) {
+          return;
+        }
         const regionInfo = that.status.currentSliceRegions.get(el.id);
-        if (regionInfo && regionInfo.abbrev === nameList[k]) {
+        if (subNode && regionInfo && ViewerManager._resolveTreeRegionId(regionInfo) === nameList[k]) {
           snCount++;
           const bbox = subNode.getBBox();
-          newX += (bbox.x2 - bbox.width / 2) / that.config.dzWidth;
-          newY += (that.config.dzDiff + bbox.y2 - bbox.height / 2) / that.config.dzHeight;
+          newX += (bbox.x + bbox.width / 2) / that.config.dzWidth;
+          newY += (that.config.dzDiff + bbox.y + bbox.height / 2) / that.config.dzHeight;
         }
       });
     }
@@ -2716,10 +2961,10 @@ class ViewerManager {
   /**
    * @public
    */
-  static goToPlaneSlice(plane: number, chosenSlice: number, regionsToCenterOn?: any, force = false) {
+  static goToPlaneSlice(plane: number, chosenSlice: number, regionsToCenterOn?: string[] | null, force = false) {
     //TODO use plane
 
-    const focusRoi = regionsToCenterOn && typeof regionsToCenterOn === 'object' && regionsToCenterOn.roiId;
+    const focusRoi = false;
     if (
       force ||
       plane !== ViewerManager.status.activePlane ||
@@ -2752,7 +2997,7 @@ class ViewerManager {
     }
   }
 
-  static goToSlice(chosenSlice: number, regionsToCenterOn: any = null, force = false) {
+  static goToSlice(chosenSlice: number, regionsToCenterOn: string[] | null = null, force = false) {
     ViewerManager.goToPlaneSlice(ViewerManager.status.activePlane, chosenSlice, regionsToCenterOn, force);
   }
 
@@ -2948,7 +3193,10 @@ class ViewerManager {
 
   static getRegionsSVGEditUrl(extraParams?: Record<string, string | number | undefined>) {
     const _sliceNum = ViewerManager.getCurrentPlaneChosenSlice();
-    const url = new URL(Utils.makePath(ViewerManager.config.ADMIN_PATH, 'SVG.php'), window.location.href);
+    const url = new URL(
+      Utils.makePath(ViewerManager.config.ADMIN_PATH as string | undefined, 'SVG.php'),
+      window.location.href,
+    );
     const params: Record<string, string> = ViewerManager.config.viewerId
       ? {
           dataset: ViewerManager.config.viewerId,
@@ -2973,10 +3221,10 @@ class ViewerManager {
     } else {
       const sliceNum = ViewerManager.getCurrentPlaneChosenSlice();
       const svgurl = Utils.makePath(
-        ViewerManager.config.PUBLISH_PATH,
-        ViewerManager.config.svgFolderName,
+        ViewerManager.config.PUBLISH_PATH as string | undefined,
+        ViewerManager.config.svgFolderName as string | undefined,
         ViewerManager.config.hasMultiPlanes
-          ? ZAVConfig.getPlaneName(ViewerManager.status.activePlane as any)
+          ? ZAVConfig.getPlaneName(ViewerManager.status.activePlane as Parameters<typeof ZAVConfig.getPlaneName>[0])
           : undefined,
         `Anno_${sliceNum}.svg${ViewerManager.config.dataVersionTag ? ViewerManager.config.dataVersionTag : ''}`,
       );
@@ -2987,9 +3235,9 @@ class ViewerManager {
   static getFileTileSourceUrl(slideNum: number, key: string, ext: string, plane: number | null) {
     //if no plane param is specified (= single plane mode), returned plane label will be undefined, thus the url won't contain reference to any plane
     return Utils.makePath(
-      ViewerManager.config.dataRootPath,
+      ViewerManager.config.dataRootPath as string | undefined,
       key,
-      plane == null ? undefined : ZAVConfig.getPlaneName(plane as any),
+      plane == null ? undefined : ZAVConfig.getPlaneName(plane as Parameters<typeof ZAVConfig.getPlaneName>[0]),
       String(slideNum) + ext,
     );
   }
@@ -3014,7 +3262,7 @@ class ViewerManager {
       '/' +
       key +
       (ViewerManager.config.hasMultiPlanes
-        ? `/${ZAVConfig.getPlaneName(ViewerManager.status.activePlane as any)}`
+        ? `/${ZAVConfig.getPlaneName(ViewerManager.status.activePlane as Parameters<typeof ZAVConfig.getPlaneName>[0])}`
         : '') +
       '/' +
       slideNum +
@@ -3043,10 +3291,11 @@ class ViewerManager {
    * @param {*} y : y index of the tile
    */
   static getIIPTileUrl(slideNum: number, key: string, ext: string, level: number, x: number, y: number) {
-    const xTilesNum = Math.ceil(
-      ViewerManager.status.iipTileInfos.xTilesNumAtMaxLevel *
-        (ViewerManager.status.iipTileInfos.levelScale[level] ?? 1),
-    );
+    const tileInfos = ViewerManager.status.iipTileInfos;
+    if (!tileInfos) {
+      return '';
+    }
+    const xTilesNum = Math.ceil(tileInfos.xTilesNumAtMaxLevel * (tileInfos.levelScale[level] ?? 1));
     const layerDispSettings = ViewerManager.status.layerDisplaySettings[key];
     return (
       ViewerManager.status.IIPSVR_PATH +
@@ -3071,16 +3320,20 @@ class ViewerManager {
     if (ViewerManager.config.hasBackend) {
       const layerDispSettings = ViewerManager.status.layerDisplaySettings[key];
       if (layerDispSettings.useIIProtocol) {
+        const tileInfos = ViewerManager.status.iipTileInfos;
+        if (!tileInfos) {
+          return undefined;
+        }
         return {
-          width: ViewerManager.status.iipTileInfos.imageWidth,
-          height: ViewerManager.status.iipTileInfos.imgeHeight,
-          tileWidth: ViewerManager.status.iipTileInfos.tileWidth,
-          tileHeight: ViewerManager.status.iipTileInfos.tileHeight,
+          width: tileInfos.imageWidth,
+          height: tileInfos.imgeHeight,
+          tileWidth: tileInfos.tileWidth,
+          tileHeight: tileInfos.tileHeight,
 
           overlap: 1,
 
-          maxLevel: ViewerManager.status.iipTileInfos.maxLevel,
-          minLevel: ViewerManager.status.iipTileInfos.minLevel,
+          maxLevel: tileInfos.maxLevel,
+          minLevel: tileInfos.minLevel,
           getTileUrl: (level: number, x: number, y: number) =>
             ViewerManager.getIIPTileUrl(ViewerManager.getPageNumForCurrentSlice() ?? 0, key, ext, level, x, y),
         };
@@ -3108,8 +3361,12 @@ class ViewerManager {
    * Called once 1rst layer is opened to add other layers
    */
   static addLayer(key: string, _name: string, ext: string) {
+    const tileSource = ViewerManager.getTileSourceDef(key, ext);
+    if (!tileSource) {
+      return;
+    }
     var options = {
-      tileSource: ViewerManager.getTileSourceDef(key, ext),
+      tileSource,
       opacity: ViewerManager.getLayerOpacity(key),
       success: (_event: ViewerEventLike) => ViewerManager.setAllFilters(),
 
@@ -3148,11 +3405,11 @@ class ViewerManager {
 
   /** reset filters : the plugin API allows only to set all processors for all tiled images at once  */
   static setAllFilters() {
-    const filters: any[] = [];
-    const osdFilters = (OpenSeadragon as any).Filters;
+    const filters: Array<{ items: OpenSeadragon.TiledImage; processors: unknown[] }> = [];
+    const osdFilters = (OpenSeadragon as OSDWithFilters).Filters;
     let tracerNum = 0;
     Object.values(ViewerManager.status.layerDisplaySettings).forEach((layer) => {
-      const processors: any[] = [];
+      const processors: unknown[] = [];
 
       if (layer.isTracer) {
         //change filters only if dilation kernel size changed
@@ -3164,10 +3421,10 @@ class ViewerManager {
       } else {
         if (!layer.useIIProtocol) {
           if (layer.contrastEnabled) {
-            processors.push(osdFilters.CONTRAST(layer.contrast));
+            processors.push(osdFilters.CONTRAST(layer.contrast ?? 1));
           }
           if (layer.gammaEnabled) {
-            processors.push(osdFilters.GAMMA(layer.gamma));
+            processors.push(osdFilters.GAMMA(layer.gamma ?? 1));
           }
         }
       }
@@ -3181,7 +3438,7 @@ class ViewerManager {
       }
     });
     ViewerManager.viewer.setFilterOptions({
-      filters: filters,
+      filters: filters as unknown as NonNullable<Parameters<OpenSeadragon.Viewer['setFilterOptions']>[0]>['filters'],
     });
   }
 
@@ -3199,9 +3456,10 @@ class ViewerManager {
         }
       ).tilesMatrix,
     ).forEach(([level, levelTiles]) => {
-      Object.entries(levelTiles as Record<string, Record<string, any>>).forEach(([x, xTiles]) => {
-        Object.entries(xTiles as Record<string, any>).forEach(([y, tile]) => {
-          const newTileUrl = tiledImageSource.getTileUrl(parseInt(level, 10), parseInt(x, 10), parseInt(y, 10));
+      Object.entries(levelTiles as Record<string, Record<string, ViewerTileCacheEntry>>).forEach(([x, xTiles]) => {
+        Object.entries(xTiles).forEach(([y, tile]) => {
+          const resolvedTileUrl = tiledImageSource.getTileUrl(parseInt(level, 10), parseInt(x, 10), parseInt(y, 10));
+          const newTileUrl = typeof resolvedTileUrl === 'function' ? resolvedTileUrl() : resolvedTileUrl;
           if (tile.url !== newTileUrl) {
             tile.exists = true;
             tile.loaded = false;
@@ -3306,8 +3564,23 @@ class ViewerManager {
     if (!posCanvas) {
       return;
     }
-    const viewerWithOverlays = ViewerManager.viewer as OpenSeadragon.Viewer & { currentOverlays?: unknown[] };
-    if ((viewerWithOverlays.currentOverlays?.length ?? 0) === 0 || posCanvas.style.display === 'none') {
+
+    if (!ViewerManager.status.measureModeOn && !ViewerManager.status.clippingModeOn) {
+      const clickedRegion = ViewerManager._getClickedRegionInfo(event.target);
+      if (clickedRegion) {
+        ViewerManager._applyViewerRegionSelection(clickedRegion.regionId, clickedRegion.pathId, event.ctrlKey);
+        return;
+      }
+    }
+
+    if (posCanvas.style.display === 'none') {
+      if (ViewerManager.status.hoveredRegion) {
+        ViewerManager._applyViewerRegionSelection(
+          ViewerManager.status.hoveredRegion,
+          ViewerManager.status.hoveredRegionPath,
+          event.ctrlKey,
+        );
+      }
       return;
     }
 
@@ -4056,7 +4329,7 @@ class ViewerManager {
                   //we rely on OSD events to detect when the promise can be resolved
 
                   //event handler to detect when panning has been performed
-                  ViewerManager.viewer.addOnceHandler('pan', (_pannedEvent: ViewerEventLike) => {
+                  ViewerManager.viewer.addOnceHandler('pan', () => {
                     let resolveDeferred = false;
 
                     //attach a single event handler on the first visible layer not fully loaded
@@ -4216,7 +4489,7 @@ class ViewerManager {
   }
 
   /** get params from location and check that they are well-formed  */
-  static getParamsFromLocation(location: Location | string | Record<string, any>): ViewerHistoryParams {
+  static getParamsFromLocation(location: Location | string | Record<string, unknown>): ViewerHistoryParams {
     const confParams: ViewerHistoryParams = {};
     const hashLocation =
       typeof location === 'string'

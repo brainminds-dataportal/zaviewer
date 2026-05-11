@@ -251,7 +251,11 @@ const App = (props: AppProps) => {
 
             {RegionsManager.isReady() ? (
               <React.Suspense fallback={<div>Loading...</div>}>
-                <RegionTreePanel regionsStatus={regionsStatus} hasMultiPlanes={config?.hasMultiPlanes} />
+                <RegionTreePanel
+                  regionsStatus={regionsStatus}
+                  hasMultiPlanes={config?.hasMultiPlanes}
+                  isVisible={isRegionPanelExpanded}
+                />
               </React.Suspense>
             ) : null}
           </div>

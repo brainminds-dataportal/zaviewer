@@ -2,6 +2,7 @@ $handle-width: 13px;
 $content-margin-left: 3px;
 $collapsed-content-width: 38px;
 $drawer-handle-color: #2b2b2b;
+$drawer-handle-hover-color: #646464;
 
 .zav-Drawer {
     position: fixed;
@@ -36,6 +37,12 @@ $drawer-handle-color: #2b2b2b;
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-color 120ms ease-in-out;
+}
+
+.zav-Drawer_handle:hover,
+.zav-Drawer_handle:focus-visible {
+    background: $drawer-handle-hover-color;
 }
 
 .zav-Drawer_handleIcon {
@@ -46,10 +53,6 @@ $drawer-handle-color: #2b2b2b;
     height: 24px;
     border-radius: 4px;
     color: inherit;
-}
-
-.zav-Drawer_handle:hover .zav-Drawer_handleIcon {
-    background: #646464;
 }
 
 .zav-Drawer_expandedCont {

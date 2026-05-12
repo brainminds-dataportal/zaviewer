@@ -327,6 +327,7 @@ class ViewerManager {
   static regionActionner: ReturnType<typeof RegionsManager.getActionner>;
   static eventSource: OpenSeadragon.EventSource;
   static pendingInitialAtlasFit: boolean;
+  static initialHistorySynced: boolean;
   static roiInfosRequest: Promise<IROIsPayload | null> | undefined;
 
   private constructor() {}
@@ -434,7 +435,13 @@ class ViewerManager {
 
     ViewerManager.history = history;
     //some continuous operations must not be recorded immediately in history (e.g. zooming, paning)
-    ViewerManager.makeHistoryStep = _.debounce(ViewerManager.makeActualHistoryStep, 500);
+    ViewerManager.initialHistorySynced = false;
+    ViewerManager.makeHistoryStep = _.debounce((explicitParams?: Record<string, unknown>) => {
+      if (typeof explicitParams === 'undefined' && ViewerManager.trySyncInitialHistoryStep()) {
+        return;
+      }
+      ViewerManager.makeActualHistoryStep(explicitParams);
+    }, 500);
 
     ViewerManager.history.listen(({ location, action }: Update) => {
       //reset viewer only when navigating the history with Back and Forth buttons
@@ -1187,6 +1194,7 @@ class ViewerManager {
         delete initHistoryParams.imageZoom;
       }
       that.applyChangeFromHistory(initHistoryParams);
+      that.trySyncInitialHistoryStep();
     });
 
     //--------------------------------------------------
@@ -2275,6 +2283,7 @@ class ViewerManager {
 
             that.viewer.viewport.fitBounds(that.viewer.viewport.imageToViewportRectangle(imageRect), true);
             that.pendingInitialAtlasFit = false;
+            that.trySyncInitialHistoryStep();
 
             debugInfo('Applied initial atlas fit', {
               atlasBounds,
@@ -4450,7 +4459,7 @@ class ViewerManager {
   }
 
   //record current viewer state in browser history
-  static makeActualHistoryStep(explicitParams?: Record<string, unknown>) {
+  static getActualHistoryStepParams(explicitParams?: Record<string, unknown>) {
     let stepParams: Record<string, unknown>;
     //explicitely specified params override live values
     if (explicitParams) {
@@ -4489,8 +4498,51 @@ class ViewerManager {
         });
       }
     }
+    return stepParams;
+  }
+
+  static hasViewerHistoryParams(params: ViewerHistoryParams) {
+    return (
+      typeof params.activePlane !== 'undefined' ||
+      typeof params.sliceNum !== 'undefined' ||
+      typeof params.imageZoom !== 'undefined' ||
+      typeof params.center !== 'undefined'
+    );
+  }
+
+  static hasCompleteHistoryStepParams(params: Record<string, unknown>) {
+    return ['z', 'x', 'y', 's', 'a'].every((key) => typeof params[key] !== 'undefined');
+  }
+
+  static trySyncInitialHistoryStep() {
+    if (ViewerManager.initialHistorySynced) {
+      return false;
+    }
+
+    const currentLocationParams = ViewerManager.getParamsFromCurrLocation();
+    if (ViewerManager.hasViewerHistoryParams(currentLocationParams)) {
+      ViewerManager.initialHistorySynced = true;
+      return false;
+    }
+
+    if (ViewerManager.pendingInitialAtlasFit) {
+      return false;
+    }
+
+    const stepParams = ViewerManager.getActualHistoryStepParams();
+    if (!ViewerManager.hasCompleteHistoryStepParams(stepParams)) {
+      return false;
+    }
+
+    Utils.pushHistoryStep(ViewerManager.history, stepParams, ['px', 'rs'], 'replace');
+    ViewerManager.initialHistorySynced = true;
+    return true;
+  }
+
+  static makeActualHistoryStep(explicitParams?: Record<string, unknown>, mode: 'push' | 'replace' = 'push') {
+    const stepParams = ViewerManager.getActualHistoryStepParams(explicitParams);
     //omitted param: expanded right panel, region selection
-    Utils.pushHistoryStep(ViewerManager.history, stepParams, ['px', 'rs']);
+    Utils.pushHistoryStep(ViewerManager.history, stepParams, ['px', 'rs'], mode);
   }
 
   static getParamsFromCurrLocation(): ViewerHistoryParams {

@@ -13,6 +13,7 @@ import { type IROIsPayload, RoiInfos } from './RoiInfo';
 import UserSettings from './UserSettings';
 import Utils from './Utils';
 import { ScalebarLocation, ScalebarType } from './vendor/openseadragon-scalebar';
+import Raphael from './vendor/setupRaphael';
 import {
   buildActualHistoryStepParams,
   hasCompleteHistoryStepParams,
@@ -192,8 +193,6 @@ type RaphaelPaperLike = {
   importSVG(element: Element): RaphaelElementLike;
   setTransform(transform: string): void;
 };
-
-declare const Raphael: (element: HTMLElement) => RaphaelPaperLike;
 
 type ViewerStatus = {
   layerDisplaySettings: LayerDisplaySettings;
@@ -1630,8 +1629,10 @@ class ViewerManager {
    *
    */
   static addSVGData(svgName: string, overlayElement: HTMLElement) {
-    ViewerManager.status.paper = Raphael(overlayElement);
-    ViewerManager.status.set = ViewerManager.status.paper.set();
+    const createRaphaelPaper = Raphael as unknown as (element: HTMLElement) => RaphaelPaperLike;
+    const paper = createRaphaelPaper(overlayElement);
+    ViewerManager.status.paper = paper;
+    ViewerManager.status.set = paper.set();
     //clear the set if necessary
     ViewerManager.status.set.remove();
 

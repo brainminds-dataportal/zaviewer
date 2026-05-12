@@ -395,9 +395,9 @@ npm run build
 
 The production-ready output is produced in the `dist/` folder.
 
-This folder contains the built `index.html`, the standard Vite-generated `assets/` directory, and root-level static resources copied from `public/` such as `img/` and `vendors/`.
+This folder contains the built `index.html`, the standard Vite-generated `assets/` directory, and root-level static resources copied from `public/` such as `img/`.
 
-Most third-party browser libraries are now bundled from `dependencies`; `public/vendors/` is mainly reserved for the remaining custom Raphael-based files and license texts that still need to stay as standalone scripts. The backend/admin assets live in the repository root `admin/`, and custom processing / nginx helper files live in the repository root `extension/`; neither is part of the Vite build output.
+Most third-party browser libraries, including Raphaël, are bundled from `dependencies`; the remaining repository-root static assets live in `admin/` and `extension/`, and neither is part of the Vite build output.
 
 <br/><br/>
 

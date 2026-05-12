@@ -11,6 +11,7 @@ import App from './components/App';
 import { GuidedTour } from './components/GuidedTour';
 import Utils from './Utils';
 import { setupOpenSeadragon } from './vendor/setupOpenSeadragon';
+import { setupRaphael } from './vendor/setupRaphael';
 
 declare global {
   interface Window {
@@ -43,6 +44,7 @@ const getConfigParams = () => {
 };
 
 setupOpenSeadragon();
+setupRaphael();
 
 const parentContainer = document.getElementById('root');
 if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {

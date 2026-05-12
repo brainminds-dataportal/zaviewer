@@ -205,6 +205,7 @@ const QuickActionButtonsComponent = (props: QuickActionButtonsProps) => {
                       onClick={() => onShiftToSlice(-1)}
                     />
                     <div
+                      className="zav-QActSlicePopupSlider"
                       onPointerDownCapture={startSliceSliderInteraction}
                       onPointerUpCapture={endSliceSliderInteraction}
                       onPointerCancelCapture={endSliceSliderInteraction}

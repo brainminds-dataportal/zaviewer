@@ -42,7 +42,18 @@ type ViewerEventLike = {
   buttons?: number;
   position?: ViewerPoint;
   preventDefaultAction?: boolean;
+  stopHandlers?: boolean;
   stopBubbling?: boolean;
+};
+type ViewerTrackerHandlerName = 'scrollHandler' | 'clickHandler' | 'dragHandler' | 'keyHandler';
+type ViewerTrackerEventMap = {
+  scrollHandler: Parameters<NonNullable<OpenSeadragon.MouseTracker['scrollHandler']>>[0];
+  clickHandler: Parameters<NonNullable<OpenSeadragon.MouseTracker['clickHandler']>>[0];
+  dragHandler: Parameters<NonNullable<OpenSeadragon.MouseTracker['dragHandler']>>[0];
+  keyHandler: Parameters<NonNullable<OpenSeadragon.MouseTracker['keyHandler']>>[0];
+};
+type ViewerWithInnerTracker = OpenSeadragon.Viewer & {
+  innerTracker: OpenSeadragon.MouseTracker;
 };
 type NumericLookup = Record<number, number>;
 type ViewerMouseTrackerEvent = {
@@ -408,6 +419,24 @@ class ViewerManager {
     }
 
     ViewerManager.viewer.setMouseNavEnabled(enabled);
+  }
+
+  static hookViewerTrackerHandler<Name extends ViewerTrackerHandlerName>(
+    viewer: ViewerWithInnerTracker,
+    handlerName: Name,
+    hookHandler: (event: ViewerTrackerEventMap[Name] & ViewerEventLike) => unknown,
+  ) {
+    const tracker = viewer.innerTracker;
+    const originalHandler = tracker[handlerName] as ((event: ViewerTrackerEventMap[Name]) => unknown) | null;
+
+    tracker[handlerName] = ((event: ViewerTrackerEventMap[Name]) => {
+      const hookedEvent = event as ViewerTrackerEventMap[Name] & ViewerEventLike;
+      let result = hookHandler(hookedEvent);
+      if (originalHandler && !hookedEvent.stopHandlers) {
+        result = originalHandler(hookedEvent);
+      }
+      return !hookedEvent.stopBubbling && result;
+    }) as OpenSeadragon.MouseTracker[Name];
   }
 
   static refreshViewerCanvas() {
@@ -1392,19 +1421,11 @@ class ViewerManager {
     }
 
     //--------------------------------------------------
-    const viewerWithHooks = ViewerManager.viewer as OpenSeadragon.Viewer & {
-      addViewerInputHook(config: {
-        hooks: Array<{ tracker: string; handler: string; hookHandler: (event: ViewerEventLike) => void }>;
-      }): void;
-    };
-    viewerWithHooks.addViewerInputHook({
-      hooks: [
-        { tracker: 'viewer', handler: 'scrollHandler', hookHandler: ViewerManager.onViewerScroll },
-        { tracker: 'viewer', handler: 'clickHandler', hookHandler: ViewerManager.onViewerClick },
-        { tracker: 'viewer', handler: 'dragHandler', hookHandler: ViewerManager.onViewerDrag.bind(ViewerManager) },
-        { tracker: 'viewer', handler: 'keyHandler', hookHandler: ViewerManager.onViewerKey },
-      ],
-    });
+    const viewerWithInnerTracker = ViewerManager.viewer as ViewerWithInnerTracker;
+    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'scrollHandler', ViewerManager.onViewerScroll);
+    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'clickHandler', ViewerManager.onViewerClick);
+    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'dragHandler', ViewerManager.onViewerDrag);
+    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'keyHandler', ViewerManager.onViewerKey);
 
     ViewerManager.viewer.addHandler('resize', () => {
       that.resizeCanvas();

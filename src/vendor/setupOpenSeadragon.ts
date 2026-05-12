@@ -1,7 +1,6 @@
 import OpenSeadragon from 'openseadragon';
 import './openseadragon-filtering-compat';
 import './openseadragon-scalebar';
-import '@openseadragon-imaging/openseadragon-viewerinputhook';
 
 type LegacyWindow = Window &
   typeof globalThis & {
@@ -35,7 +34,7 @@ function patchReferenceStripFocus(osd: typeof OpenSeadragon) {
   });
 }
 
-export async function setupLegacyVendors() {
+export function setupOpenSeadragon() {
   const legacyWindow = window as LegacyWindow;
   legacyWindow.OpenSeadragon = OpenSeadragon;
 

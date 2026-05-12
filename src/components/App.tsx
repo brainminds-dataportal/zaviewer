@@ -62,6 +62,8 @@ const App = (props: AppProps) => {
           RegionsManager.init(
             payload,
             (newRegionsStatus) => {
+              ViewerManager.notifyRegionsTreeReady();
+
               if (needsExtraInit.current && preselected) {
                 //Perform the focus on selected region center only once
                 needsExtraInit.current = false;

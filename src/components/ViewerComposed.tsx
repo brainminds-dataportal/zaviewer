@@ -71,6 +71,9 @@ type ViewerComposedState = {
   isToolbarExpanded: boolean;
   activePlane?: number;
   chosenSlice?: number;
+  axialChosenSlice?: number;
+  coronalChosenSlice?: number;
+  sagittalChosenSlice?: number;
   layerDisplaySettings?: LayerDisplaySettings;
   hoveredRegion?: string | null;
   hoveredRegionSide?: string | null;
@@ -449,6 +452,9 @@ const ViewerComposed = (props: ViewerComposedProps) => {
               <SubViewPanel
                 activePlane={viewerState.activePlane as Plane | undefined}
                 chosenSlice={viewerState.chosenSlice}
+                axialChosenSlice={viewerState.axialChosenSlice}
+                coronalChosenSlice={viewerState.coronalChosenSlice}
+                sagittalChosenSlice={viewerState.sagittalChosenSlice}
                 isToolbarExpanded={viewerState.isToolbarExpanded}
                 config={props.config}
               />

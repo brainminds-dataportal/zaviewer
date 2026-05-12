@@ -12,6 +12,7 @@ type Plane = Parameters<typeof ZAVConfig.getPlaneLabel>[0];
 const AXIAL_PLANE = ZAVConfig.AXIAL as Plane;
 const CORONAL_PLANE = ZAVConfig.CORONAL as Plane;
 const SAGITTAL_PLANE = ZAVConfig.SAGITTAL as Plane;
+type PlaneSlices = Partial<Record<Plane, number>>;
 
 type AxisArrowProps = {
   pX: number;
@@ -27,6 +28,7 @@ type SubViewOrthoPlanBarProps = {
   size: number;
   scale: number;
   config: ZAViewerConfig;
+  chosenSlices: PlaneSlices;
 };
 
 type SubViewProps = {
@@ -34,6 +36,7 @@ type SubViewProps = {
   viewPlane: Plane;
   config: ZAViewerConfig;
   size?: number;
+  chosenSlices: PlaneSlices;
 };
 
 type SubViewPanelProps = {
@@ -41,6 +44,9 @@ type SubViewPanelProps = {
   chosenSlice?: number;
   isToolbarExpanded?: boolean;
   config?: ZAViewerConfig;
+  axialChosenSlice?: number;
+  coronalChosenSlice?: number;
+  sagittalChosenSlice?: number;
 };
 
 const getSubviewHolderOuterSize = (size: number, isActive: boolean) => {
@@ -49,12 +55,12 @@ const getSubviewHolderOuterSize = (size: number, isActive: boolean) => {
   return size + 2 * border + 2 * gap;
 };
 
-const getPlaneSlicePercentOffset = (plane: Plane) => {
+const getPlaneSlicePercentOffset = (plane: Plane, chosenSlices: PlaneSlices) => {
   const planeSlideCount = ViewerManager.getPlaneSlideCount(plane) ?? 0;
   if (!Number.isFinite(planeSlideCount) || planeSlideCount <= 1) {
     return 0;
   }
-  const chosenSlice = ViewerManager.getPlaneChosenSlice(plane);
+  const chosenSlice = chosenSlices[plane];
   const safeChosenSlice = typeof chosenSlice === 'number' && Number.isFinite(chosenSlice) ? chosenSlice : 0;
   return safeChosenSlice / (planeSlideCount - 1);
 };
@@ -100,13 +106,13 @@ const AxisArrow = ({ pX, pY, arrowlen, axisLabel, horizontal }: AxisArrowProps) 
   );
 };
 
-const SubViewOrthoPlanBar = ({ vertical, viewPlane, size, scale, config }: SubViewOrthoPlanBarProps) => {
+const SubViewOrthoPlanBar = ({ vertical, viewPlane, size, scale, config, chosenSlices }: SubViewOrthoPlanBarProps) => {
   const markerLineWidth = 1;
 
   if (vertical) {
     const orthoVertical = ZAVConfig.getPlaneOrthoVertical(viewPlane);
     if (config.hasPlane(orthoVertical)) {
-      const orthoVSlicePct = getPlaneSlicePercentOffset(orthoVertical);
+      const orthoVSlicePct = getPlaneSlicePercentOffset(orthoVertical, chosenSlices);
       const hRange = config.getSubviewHRange(viewPlane);
       const hOffset = config.hasMultiPlanes
         ? scale * (config.subviewSize - (hRange.min + hRange.len * orthoVSlicePct))
@@ -125,7 +131,7 @@ const SubViewOrthoPlanBar = ({ vertical, viewPlane, size, scale, config }: SubVi
   } else {
     const orthoHorizontal = ZAVConfig.getPlaneOrthoHorizontal(viewPlane);
     if (config.hasPlane(orthoHorizontal)) {
-      const orthoHSlicePct = getPlaneSlicePercentOffset(orthoHorizontal);
+      const orthoHSlicePct = getPlaneSlicePercentOffset(orthoHorizontal, chosenSlices);
       const vRange = config.getSubviewVRange(viewPlane);
       const vOffset = scale * (config.subviewSize - (vRange.min + vRange.len * orthoHSlicePct));
       return (
@@ -257,6 +263,7 @@ const SubView = (props: SubViewProps) => {
         size={size}
         scale={scale}
         config={props.config}
+        chosenSlices={props.chosenSlices}
       />
     );
     verticalArrow = (
@@ -276,6 +283,7 @@ const SubView = (props: SubViewProps) => {
         size={size}
         scale={scale}
         config={props.config}
+        chosenSlices={props.chosenSlices}
       />
     );
     horizontalArrow = (
@@ -294,7 +302,7 @@ const SubView = (props: SubViewProps) => {
           props.config.PUBLISH_PATH,
           props.config.subviewFolderName,
           ZAVConfig.getPlaneName(props.viewPlane),
-          `${ViewerManager.getPlaneChosenSlice(props.viewPlane)}.jpg`,
+          `${props.chosenSlices[props.viewPlane] ?? 0}.jpg`,
         );
       } else {
         imageUrl = Utils.makePath(props.config.PUBLISH_PATH, props.config.subviewFolderName, '/subview.jpg');
@@ -353,6 +361,12 @@ const SubView = (props: SubViewProps) => {
 
 const getActivePlaneFromProps = (props: SubViewPanelProps): Plane =>
   (props.activePlane ?? ViewerManager.getActivePlane()) as Plane;
+
+const getChosenSlicesFromProps = (props: SubViewPanelProps): PlaneSlices => ({
+  [AXIAL_PLANE]: props.axialChosenSlice,
+  [CORONAL_PLANE]: props.coronalChosenSlice,
+  [SAGITTAL_PLANE]: props.sagittalChosenSlice,
+});
 
 const getCurrentSliceFromProps = (props: SubViewPanelProps) => {
   const activePlane = getActivePlaneFromProps(props);
@@ -415,6 +429,7 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
   );
 
   const activePlane = getActivePlaneFromProps(props);
+  const chosenSlices = getChosenSlicesFromProps(props);
   const planeSlideCount = props.config ? (ViewerManager.getPlaneSlideCount(activePlane) ?? 1001) : 1001;
   const maxSliceNum = Math.max(Number.isFinite(planeSlideCount) ? planeSlideCount - 1 : 1000, 0);
   const clampedDisplayedSlice = Math.min(
@@ -442,7 +457,13 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
             innerLabelChecked={ZAVConfig.getPlaneLabel(AXIAL_PLANE)}
             onChange={() => onChangePlane(AXIAL_PLANE)}
           />
-          <SubView activePlane={props.activePlane} viewPlane={AXIAL_PLANE} config={props.config} size={subViewSize} />
+          <SubView
+            activePlane={props.activePlane}
+            viewPlane={AXIAL_PLANE}
+            config={props.config}
+            size={subViewSize}
+            chosenSlices={chosenSlices}
+          />
         </div>,
       );
 
@@ -457,7 +478,13 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
             onChange={() => onChangePlane(CORONAL_PLANE)}
           />
 
-          <SubView activePlane={props.activePlane} viewPlane={CORONAL_PLANE} config={props.config} size={subViewSize} />
+          <SubView
+            activePlane={props.activePlane}
+            viewPlane={CORONAL_PLANE}
+            config={props.config}
+            size={subViewSize}
+            chosenSlices={chosenSlices}
+          />
         </div>,
       );
 
@@ -476,6 +503,7 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
             viewPlane={SAGITTAL_PLANE}
             config={props.config}
             size={subViewSize}
+            chosenSlices={chosenSlices}
           />
         </div>,
       );
@@ -483,7 +511,13 @@ const SubViewPanelComponent = (props: SubViewPanelProps) => {
     } else {
       const subviewPlane = ZAVConfig.getPreferredSubviewForPlane(props.activePlane);
       subviews.push(
-        <SubView key={subviewPlane} activePlane={props.activePlane} viewPlane={subviewPlane} config={props.config} />,
+        <SubView
+          key={subviewPlane}
+          activePlane={props.activePlane}
+          viewPlane={subviewPlane}
+          config={props.config}
+          chosenSlices={chosenSlices}
+        />,
       );
       justifyMode = 'center';
     }
@@ -546,6 +580,9 @@ const SubViewPanel = React.memo(
   (prevProps, nextProps) =>
     prevProps.activePlane === nextProps.activePlane &&
     prevProps.chosenSlice === nextProps.chosenSlice &&
+    prevProps.axialChosenSlice === nextProps.axialChosenSlice &&
+    prevProps.coronalChosenSlice === nextProps.coronalChosenSlice &&
+    prevProps.sagittalChosenSlice === nextProps.sagittalChosenSlice &&
     prevProps.isToolbarExpanded === nextProps.isToolbarExpanded &&
     prevProps.config === nextProps.config,
 );

@@ -179,6 +179,8 @@ type LegacyViewerConfig = {
   dzHeight: number;
   dzLayerWidth: number;
   dzLayerHeight: number;
+  baseMinImageZoom: number;
+  baseMaxImageZoom: number;
   minImageZoom: number;
   maxImageZoom: number;
   initialPage: number;
@@ -523,6 +525,8 @@ class ZAVConfig {
 
       dzLayerWidth: 1000,
       dzLayerHeight: 1000,
+      baseMinImageZoom: 0.648,
+      baseMaxImageZoom: 28.026,
 
       setPlaneSizes: function (plane: Plane | null) {
         switch (plane) {
@@ -549,8 +553,8 @@ class ZAVConfig {
         this.dzLayerWidth = imageSize;
         this.dzLayerHeight = imageSize;
         //zooming limits proportional to image resolution
-        this.minImageZoom = (this.minImageZoom / imageSize) * 1000;
-        this.maxImageZoom = (this.maxImageZoom / imageSize) * 1000;
+        this.minImageZoom = (this.baseMinImageZoom / imageSize) * 1000;
+        this.maxImageZoom = (this.baseMaxImageZoom / imageSize) * 1000;
       },
 
       //FIXME magic values

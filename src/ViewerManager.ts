@@ -1,24 +1,111 @@
 import Color from 'color';
 import type { BrowserHistory, Location, Update } from 'history';
 import OpenSeadragon from 'openseadragon';
-
 import paper from 'paper';
 import _ from 'underscore';
-import CustomFilters from './CustomFilters';
-import { debugDebug, debugError, debugInfo, debugWarn } from './common/debugLog';
+
+import { debugError, debugInfo, debugWarn } from './common/debugLog';
 import { getJson, getOptionalJson, getXmlDocument } from './common/http';
-import type {
-  LayerDisplaySetting,
-  LayerDisplaySettings,
-  ViewerLayerConfig,
-  ZAViewerConfig,
-} from './components/ViewerPanelTypes';
+import type { LayerDisplaySettings, ViewerLayerConfig, ZAViewerConfig } from './components/ViewerPanelTypes';
 import LabelMapper from './LabelMapper';
 import RegionsManager from './RegionsManager';
 import { type IROIsPayload, RoiInfos } from './RoiInfo';
 import UserSettings from './UserSettings';
 import Utils from './Utils';
 import { ScalebarLocation, ScalebarType } from './vendor/openseadragon-scalebar';
+import {
+  buildActualHistoryStepParams,
+  hasCompleteHistoryStepParams,
+  hasViewerHistoryParams,
+} from './viewer/viewerHistory';
+import {
+  addLayer as addViewerLayer,
+  adjustTracerLayerDilation,
+  applyLayerDilationChange,
+  setAllFilters as applyViewerFilters,
+  getFileTileSourceUrl as buildFileTileSourceUrl,
+  getFileTileUrl as buildFileTileUrl,
+  getIIIFTileSourceUrl as buildIIIFTileSourceUrl,
+  getIIPTileUrl as buildIIPTileUrl,
+  getTileSourceDef as buildTileSourceDef,
+  getLayerOpacity as getViewerLayerOpacity,
+  refreshLayersEffectiveOpacity as refreshViewerLayersEffectiveOpacity,
+  resetTiledImageCache as resetViewerTiledImageCache,
+} from './viewer/viewerLayers';
+import { getPhysicalPoint, getPhysicalPointXY } from './viewer/viewerMeasurement';
+import {
+  boundViewportStateToPlane,
+  createCenteredViewportForPlane,
+  getHistoryStepParamsFromViewport,
+  getPlaneImageSize,
+  getPlaneImageZoomBounds,
+  normalizeViewportState,
+  type ViewerHistoryParams,
+  type ViewerNavigationRequest,
+  type ViewerNavigationState,
+  type ViewerViewportState,
+} from './viewer/viewerNavigation';
+import {
+  getCandidatePlaneSlices,
+  getRegionsSVGUrlForPlaneSlice,
+  hasCurrentSliceAtlasRegions,
+} from './viewer/viewerOverlay';
+import {
+  imageDataToImage as convertImageDataToImage,
+  getSelectedProcessor as getCurrentSelectedProcessor,
+  getProcessor as getViewerProcessor,
+  getProcessors as getViewerProcessors,
+  getSelectedProcessorIndex as getViewerSelectedProcessorIndex,
+  hasProcessingsModule as hasViewerProcessingsModule,
+  hasProcessors as hasViewerProcessors,
+  performProcessing as runViewerProcessing,
+  setSelectedProcessorIndex as setViewerSelectedProcessorIndex,
+} from './viewer/viewerProcessing';
+import {
+  buildEditCursorSVG,
+  getSvgEditPosition,
+  renameEditedRegion,
+  createSvgForRegions as requestCreateSvgForRegions,
+  saveSvgRegion,
+} from './viewer/viewerRegionEditing';
+import {
+  clearRegionMouseTrackers as clearViewerRegionMouseTrackers,
+  connectRegionListeners as connectViewerRegionListeners,
+  destroyRegionMouseTracker as destroyViewerRegionMouseTracker,
+  extendRegionListenerForEdit as extendViewerRegionListenerForEdit,
+} from './viewer/viewerRegionInteractions';
+import {
+  applyHiddenPresentation as applyViewerHiddenPresentation,
+  applyMouseOutPresentation as applyViewerMouseOutPresentation,
+  applyMouseOverPresentation as applyViewerMouseOverPresentation,
+  applySelectedPresentation as applyViewerSelectedPresentation,
+  applyUnselectedPresentation as applyViewerUnselectedPresentation,
+  getClickedRegionInfo,
+  getRegionCenterPoint,
+  getResolvedCurrentSliceTreeRegions,
+  resolveTreeRegionId,
+  splitRegionId,
+} from './viewer/viewerRegions';
+import { bindViewerRuntimeBindings } from './viewer/viewerRuntimeBindings';
+import {
+  createInitialLayerDisplaySettings,
+  createInitialNavigationBootstrap,
+  getInitialPlaneAndSlice,
+} from './viewer/viewerSession';
+import { bindViewerStartupEvents, createViewerOptions } from './viewer/viewerStartup';
+import { startSvgOverlayFlow } from './viewer/viewerSvgOverlayFlow';
+import {
+  drawProcessingResult as drawViewportProcessingResult,
+  getZoomFactor as getViewerZoomFactor,
+  goHome as goViewerHome,
+  isClipSelected as isViewerClipSelected,
+  isSelectClipModeOn as isViewerSelectClipModeOn,
+  isZoomEnabled as isViewerZoomEnabled,
+  setSelectClip as setViewerSelectClip,
+  setZoomEnabled as setViewerZoomEnabled,
+  setZoomFactor as setViewerZoomFactor,
+} from './viewer/viewerViewportControls';
+import { bindViewerWorldItemHandlers } from './viewer/viewerWorldBindings';
 import ZAVConfig from './ZAVConfig';
 
 export const VIEWER_ID = 'openseadragon1';
@@ -56,10 +143,6 @@ type ViewerWithInnerTracker = OpenSeadragon.Viewer & {
   innerTracker: OpenSeadragon.MouseTracker;
 };
 type NumericLookup = Record<number, number>;
-type ViewerMouseTrackerEvent = {
-  originalEvent?: MouseEvent | PointerEvent | TouchEvent;
-  originalTarget?: Element;
-};
 type RegionMouseTracker = OpenSeadragon.MouseTracker & {
   __zavDestroyed?: boolean;
 };
@@ -82,20 +165,6 @@ type IIIFPyramidalImageInfo = {
   height: number;
   tiles: IIIFTileDefinition[];
 };
-type OSDFilterFactory = {
-  MORPHOLOGICAL_OPERATION: (size: number, reducer: (left: number, right: number) => number) => unknown;
-  CONTRAST: (contrast: number) => unknown;
-  GAMMA: (gamma: number) => unknown;
-};
-type OSDWithFilters = typeof OpenSeadragon & {
-  Filters?: OSDFilterFactory;
-};
-type ViewerTileCacheEntry = {
-  url?: string;
-  exists?: boolean;
-  loaded?: boolean;
-};
-
 type RaphaelElementLike = {
   id?: string;
   node: SVGGraphicsElement;
@@ -124,32 +193,13 @@ type RaphaelPaperLike = {
   setTransform(transform: string): void;
 };
 
-type ViewerProcessor = {
-  name: string;
-  inputSize?: {
-    constraint?: string;
-    width?: number;
-    height?: number;
-  };
-  processImageData: (imageData: ImageData) => Promise<ImageData | HTMLImageElement>;
-};
-
-type ZAVProcessingsApi = {
-  nbProcessors: () => number;
-  getProcessors: () => ViewerProcessor[];
-  imageDataToImage: (imageData: ImageData) => HTMLImageElement | Promise<HTMLImageElement>;
-};
-
-declare global {
-  var ZAVProcessings: ZAVProcessingsApi | undefined;
-}
-
 declare const Raphael: (element: HTMLElement) => RaphaelPaperLike;
 
 type ViewerStatus = {
   layerDisplaySettings: LayerDisplaySettings;
   activePlane: number;
   chosenSlice: number;
+  activatedPlanes: Set<number>;
   axialChosenSlice?: number;
   coronalChosenSlice?: number;
   sagittalChosenSlice?: number;
@@ -270,7 +320,10 @@ type LegacyViewerConfig = ZAViewerConfig &
     sagittalSliceStep: number;
     minImageZoom: number;
     maxImageZoom: number;
+    baseMinImageZoom: number;
+    baseMaxImageZoom: number;
     imageSize: number;
+    anyImageSize: number;
     dzWidth: number;
     dzHeight: number;
     dzDiff: number;
@@ -282,17 +335,6 @@ type LegacyViewerConfig = ZAViewerConfig &
     matrix?: number[] | null;
   };
 type LegacyLayerConfig = ViewerLayerConfig & UnknownRecord;
-type LegacyLayerDisplaySetting = LayerDisplaySetting & UnknownRecord;
-
-type ViewerHistoryParams = {
-  activePlane?: number;
-  sliceNum?: number;
-  imageZoom?: number;
-  center?: OpenSeadragon.Point;
-  protocol?: string;
-  editMode?: boolean;
-  initPanelExpanded?: boolean;
-};
 
 type ViewerRegionInfo = {
   pathId: string;
@@ -314,26 +356,6 @@ type ViewerRegionListener = {
   [key: string]: unknown;
 };
 
-function isRaphaelElementLike(item: unknown): item is RaphaelElementLike {
-  if (!item || typeof item !== 'object') {
-    return false;
-  }
-  const candidate = item as Partial<RaphaelElementLike>;
-  return candidate.node instanceof SVGGraphicsElement && typeof candidate.attr === 'function';
-}
-
-function getRaphaelElements(element: unknown): RaphaelElementLike[] {
-  const raphaelElement = element as RaphaelElementLike;
-  if (typeof raphaelElement.length === 'number' && raphaelElement.length > 0) {
-    const setItems = Array.from(
-      { length: raphaelElement.length },
-      (_unused, index) => raphaelElement[index] as unknown,
-    );
-    return setItems.filter(isRaphaelElementLike);
-  }
-  return raphaelElement.node instanceof SVGGraphicsElement ? [raphaelElement] : [];
-}
-
 /** Class in charge of managing viewer's main display (OSD) and state of related elements */
 class ViewerManager {
   static viewer: OpenSeadragon.Viewer;
@@ -347,8 +369,23 @@ class ViewerManager {
   static pendingInitialAtlasFit: boolean;
   static initialHistorySynced: boolean;
   static roiInfosRequest: Promise<IROIsPayload | null> | undefined;
+  static atlasSlicePresenceCache = new Map<string, boolean>();
+  static pendingCurrentSliceTreeRegions?: string[];
+  static navigationState: ViewerNavigationState;
 
   private constructor() {}
+
+  private static syncNavigationStateToStatus() {
+    if (!ViewerManager.status || !ViewerManager.navigationState) {
+      return;
+    }
+    ViewerManager.status.activePlane = ViewerManager.navigationState.activePlane;
+    ViewerManager.status.axialChosenSlice = ViewerManager.navigationState.chosenSlices[ZAVConfig.AXIAL];
+    ViewerManager.status.coronalChosenSlice = ViewerManager.navigationState.chosenSlices[ZAVConfig.CORONAL];
+    ViewerManager.status.sagittalChosenSlice = ViewerManager.navigationState.chosenSlices[ZAVConfig.SAGITTAL];
+    ViewerManager.status.chosenSlice =
+      ViewerManager.getPlaneChosenSlice(ViewerManager.navigationState.activePlane) ?? 0;
+  }
 
   static get VIEWER_ID() {
     return VIEWER_ID;
@@ -363,26 +400,13 @@ class ViewerManager {
   }
 
   static destroyRegionMouseTracker(targetElement: RegionTrackedElement | null | undefined) {
-    if (!targetElement) {
-      return;
-    }
-
-    const tracker = targetElement.__zavRegionMouseTracker;
-    if (!tracker || tracker.__zavDestroyed) {
-      targetElement.__zavRegionMouseTracker = undefined;
-      return;
-    }
-
-    tracker.__zavDestroyed = true;
-    targetElement.__zavRegionMouseTracker = undefined;
-    tracker.destroy();
+    destroyViewerRegionMouseTracker(targetElement);
   }
 
   static clearRegionMouseTrackers() {
-    for (const targetElement of ViewerManager.status.regionTrackedElements) {
-      ViewerManager.destroyRegionMouseTracker(targetElement);
-    }
-    ViewerManager.status.regionTrackedElements = [];
+    ViewerManager.status.regionTrackedElements = clearViewerRegionMouseTrackers(
+      ViewerManager.status.regionTrackedElements,
+    );
   }
 
   static getCurrentRegionOverlay() {
@@ -397,6 +421,46 @@ class ViewerManager {
 
   static getRightPanelWidth() {
     return ViewerManager.getElementById<HTMLElement>('ZAV-rightPanel')?.getBoundingClientRect().width ?? 0;
+  }
+
+  private static refreshScalebar() {
+    if (!ViewerManager.viewer?.scalebar) {
+      return;
+    }
+    const pixelsPerMeter = ViewerManager.config.matrix?.[0] ? 1000 / ViewerManager.config.matrix[0] : null;
+    ViewerManager.viewer.scalebar({
+      type: pixelsPerMeter ? ScalebarType.MAP : ScalebarType.NONE,
+      pixelsPerMeter,
+      minWidth: '150px',
+      location: ScalebarLocation.BOTTOM_LEFT,
+      xOffset: 5,
+      yOffset: 10,
+      stayInsideImage: false,
+      color: 'rgb(255, 0, 0, 0.65)',
+      fontColor: 'rgb(255,255,255)',
+      backgroundColor: 'rgba(100,100, 100, 0.25)',
+      fontSize: '10px',
+      barThickness: 2,
+    });
+  }
+
+  private static getCurrentTiledImage() {
+    return ViewerManager.viewer?.world?.getItemAt(0) ?? null;
+  }
+
+  private static getCurrentImageZoom() {
+    return ViewerManager.viewer.viewport.viewportToImageZoom(ViewerManager.viewer.viewport.getZoom(true));
+  }
+
+  private static getCurrentImageSize() {
+    const imageWidth = ViewerManager.getCurrentTiledImage()?.source?.dimensions?.x;
+    return typeof imageWidth === 'number' && Number.isFinite(imageWidth) && imageWidth > 0
+      ? imageWidth
+      : getPlaneImageSize(ViewerManager.config, ViewerManager.getActivePlane());
+  }
+
+  private static getCurrentImageCenter() {
+    return ViewerManager.viewer.viewport.viewportToImageCoordinates(ViewerManager.viewer.viewport.getCenter(true));
   }
 
   static refreshNavigator() {
@@ -521,93 +585,16 @@ class ViewerManager {
     /** viewer specific event bus */
     ViewerManager.eventSource = new OpenSeadragon.EventSource();
 
-    //layers initial display values
-    const initLayerDisplaySettings: LayerDisplaySettings = {};
-    Object.entries(ViewerManager.config.data as Record<string, LegacyLayerConfig>).forEach(([key, value], i) => {
-      //FIXME should use another method than name to identify tracer signal layer
-      const metadata = value.metadata ?? key;
-      const isTracer = metadata.includes('nn_tracer');
-
-      const isLabelMap = typeof value.colortable !== 'undefined';
-
-      const itemKeyLayerPrefix = UserSettings.getLayerKeyPrefix(config.viewerId ?? VIEWER_ID, key);
-
-      const useIIProtocol = value.protocol === 'IIP';
-
-      const initContrast = Number.parseFloat(String(value.contrast ?? 1.0));
-      const initGamma = Number.parseFloat(String(value.gamma ?? 1.0));
-
-      const initialLayer: LegacyLayerDisplaySetting = {
-        key: key,
-        enabled: UserSettings.getBoolItem(`${itemKeyLayerPrefix}enabled`, true) ?? true,
-        initOpacity: value.opacity ? Number.parseInt(String(value.opacity), 10) : 100,
-        opacity:
-          UserSettings.getNumItem(
-            `${itemKeyLayerPrefix}opacity`,
-            value.opacity ? Number.parseInt(String(value.opacity), 10) : 100,
-          ) ?? (value.opacity ? Number.parseInt(String(value.opacity), 10) : 100),
-        name: metadata,
-        index: i,
-        isTracer: isTracer,
-        enhanceSignal: false,
-        manualEnhancing: false,
-        dilation: 0,
-        manualDilation: 0,
-        autoDilation: 0,
-
-        isLabelMap: isLabelMap,
-
-        defaultProtocol: value.protocol || 'IIIF',
-        useIIProtocol: useIIProtocol,
-
-        contrastEnabled:
-          UserSettings.getBoolItem(`${itemKeyLayerPrefix}contrastEnabled`, initContrast !== 1.0) ?? false,
-        initContrast: initContrast,
-        contrast: UserSettings.getNumItem(`${itemKeyLayerPrefix}contrast`, initContrast) ?? initContrast,
-        gammaEnabled: UserSettings.getBoolItem(`${itemKeyLayerPrefix}gammaEnabled`, initGamma !== 1.0) ?? false,
-        initGamma: initGamma,
-        gamma: UserSettings.getNumItem(`${itemKeyLayerPrefix}gamma`, initGamma) ?? initGamma,
-      };
-
-      initLayerDisplaySettings[key] = new Proxy(
-        initialLayer,
-        //handler to intercept Set operations and store it as user settings as required
-        {
-          set: (target: LegacyLayerDisplaySetting, property: string | symbol, value: unknown) => {
-            if (
-              typeof property === 'string' &&
-              ['enabled', 'contrastEnabled', 'gammaEnabled'].includes(property) &&
-              typeof value === 'boolean'
-            ) {
-              target[property] = value;
-              const itemKey = itemKeyLayerPrefix + property;
-              UserSettings.setBoolItem(itemKey, value);
-              return true;
-            } else if (
-              typeof property === 'string' &&
-              ['opacity', 'contrast', 'gamma'].includes(property) &&
-              typeof value === 'number'
-            ) {
-              target[property] = value;
-              const itemKey = itemKeyLayerPrefix + property;
-              UserSettings.setNumItem(itemKey, value);
-              return true;
-            } else {
-              return Reflect.set(target, property, value);
-            }
-          },
-        },
-      );
-    });
+    const initLayerDisplaySettings = createInitialLayerDisplaySettings(ViewerManager.config, VIEWER_ID);
 
     //params retrieved from initial location
     const overridingConf = ViewerManager.getParamsFromCurrLocation();
-    ViewerManager.pendingInitialAtlasFit = !overridingConf.center;
-    // should use overrinf configuration only if it make sens with current data
-    const overridingPlane =
-      typeof overridingConf.activePlane !== 'undefined' && ViewerManager.config.hasPlane(overridingConf.activePlane)
-        ? overridingConf.activePlane
-        : null;
+    const { navigationState, pendingInitialAtlasFit } = createInitialNavigationBootstrap(
+      ViewerManager.config,
+      overridingConf,
+    );
+    ViewerManager.pendingInitialAtlasFit = pendingInitialAtlasFit;
+    ViewerManager.navigationState = navigationState;
 
     /** dynamic state of the viewer */
     ViewerManager.status = new Proxy(
@@ -718,26 +705,16 @@ class ViewerManager {
         regionTrackedElements: [],
 
         /** currently displayed plane */
-        activePlane: overridingPlane ?? ViewerManager.config.firstActivePlane,
+        activePlane: ViewerManager.navigationState.activePlane,
 
         /** currently displayed slice on active plane */
         chosenSlice: 0,
+        activatedPlanes: new Set([ViewerManager.navigationState.activePlane]),
 
         /** currently selected slice for each plane */
-        axialChosenSlice:
-          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.AXIAL
-            ? overridingConf.sliceNum
-            : ViewerManager.config.axialChosenSlice,
-
-        coronalChosenSlice:
-          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.CORONAL
-            ? overridingConf.sliceNum
-            : ViewerManager.config.coronalChosenSlice,
-
-        sagittalChosenSlice:
-          typeof overridingConf.sliceNum !== 'undefined' && overridingPlane === ZAVConfig.SAGITTAL
-            ? overridingConf.sliceNum
-            : ViewerManager.config.sagittalChosenSlice,
+        axialChosenSlice: ViewerManager.navigationState.chosenSlices[ZAVConfig.AXIAL],
+        coronalChosenSlice: ViewerManager.navigationState.chosenSlices[ZAVConfig.CORONAL],
+        sagittalChosenSlice: ViewerManager.navigationState.chosenSlices[ZAVConfig.SAGITTAL],
 
         /** set to true when measuring tool is activated  */
         measureModeOn: false,
@@ -838,7 +815,7 @@ class ViewerManager {
         },
       },
     );
-    ViewerManager.status.chosenSlice = ViewerManager.getCurrentPlaneChosenSlice() ?? 0;
+    ViewerManager.syncNavigationStateToStatus();
 
     ViewerManager.setupTileSources(overridingConf);
   }
@@ -1092,12 +1069,15 @@ class ViewerManager {
 
   static init2ndStage(overridingConf: ViewerHistoryParams) {
     const that = ViewerManager;
-
-    const initialPage = ViewerManager.config.initialPage;
+    const { initialPlane, initialSlice } = getInitialPlaneAndSlice(ViewerManager.config, overridingConf);
+    ViewerManager.config.setPlaneSizes(initialPlane);
+    const initialPage = ViewerManager.getPageNumForPlaneSlice(initialPlane, initialSlice);
 
     debugInfo('init2ndStage', {
       viewerId: VIEWER_ID,
       initialPage: initialPage,
+      initialPlane,
+      initialSlice,
       tileSourceCount: ViewerManager.status?.tileSources?.length,
       firstTileSource: ViewerManager.status?.tileSources?.[0],
       navigatorId: NAVIGATOR_ID,
@@ -1105,35 +1085,13 @@ class ViewerManager {
     });
 
     ViewerManager.viewer = OpenSeadragon(
-      Object.assign(
-        {
-          id: VIEWER_ID,
-          tileSources: ViewerManager.status.tileSources,
-          initialPage: initialPage,
-          minZoomLevel: 0,
-          minZoomImageRatio: 0.5,
-          maxZoomLevel: 16,
-          maxImageCacheCount: 2000,
-          sequenceMode: true,
-          preserveViewport: true,
-          showHomeControl: false,
-          showZoomControl: false,
-          showSequenceControl: false,
-          showNavigator: true,
-          navigatorId: NAVIGATOR_ID,
-          showReferenceStrip: false,
-          showFullPageControl: false,
-          gestureSettingsMouse: {
-            clickToZoom: false,
-            scrollToZoom: true,
-          },
-          //keep image size (and zoom) when container/window is resized
-          preserveImageSizeOnResize: true,
-          autoResize: true,
-        },
-        //necessary for filtering when images are loaded from different origin (using datasrcurl param)
-        ViewerManager.config.hasCOSource ? { crossOriginPolicy: 'Anonymous' } : {},
-      ) as OpenSeadragon.Options,
+      createViewerOptions({
+        viewerId: VIEWER_ID,
+        navigatorId: NAVIGATOR_ID,
+        tileSources: ViewerManager.status.tileSources,
+        initialPage,
+        hasCOSource: ViewerManager.config.hasCOSource,
+      }),
     );
 
     debugInfo('OpenSeadragon viewer created', {
@@ -1154,332 +1112,55 @@ class ViewerManager {
       },
     );
 
-    if (ViewerManager.config.matrix) {
-      const pixelsPerMeter = 1000 / ViewerManager.config.matrix[0];
-      ViewerManager.viewer.scalebar({
-        type: ScalebarType.MAP,
-        pixelsPerMeter: pixelsPerMeter,
-        minWidth: '150px',
-        location: ScalebarLocation.BOTTOM_LEFT,
-        xOffset: 5,
-        yOffset: 10,
-        stayInsideImage: false,
-        color: 'rgb(255, 0, 0, 0.65)',
-        fontColor: 'rgb(255,255,255)',
-        backgroundColor: 'rgba(100,100, 100, 0.25)',
-        fontSize: '10px',
-        barThickness: 2,
-      });
-    }
+    ViewerManager.refreshScalebar();
 
-    ViewerManager.viewer.addHandler('add-overlay', (event: { element: HTMLElement }) => {
-      //add overlay is called for each page change
-      //Reference 1): http://chrishewett.com/blog/openseadragon-svg-overlays/
-      if (that.config.svgFolderName !== '') {
-        //load region delineations in the dedicated overlay
-        if (event.element.id === 'svgDelineationOverlay') {
-          if (that.config.hasDelineation) {
-            that.status.hasCurrentSVG = false;
-            that.status.currentRegionOverlay = event.element;
-            const svgPath = that.getRegionsSVGUrl();
-            that.addSVGData(svgPath, event.element);
-          }
-        }
-      }
+    bindViewerStartupEvents({
+      viewer: ViewerManager.viewer,
+      config: ViewerManager.config,
+      status: ViewerManager.status,
+      overridingConf,
+      setupViewerOverlaysAndLayers: (dimensions) => ViewerManager.setupViewerOverlaysAndLayers(dimensions),
+      bindViewerCanvasMousemoveHandler: () => ViewerManager.bindViewerCanvasMousemoveHandler(),
+      applyInitialOpenState: (conf) => ViewerManager.applyInitialOpenState(conf as ViewerHistoryParams),
+      getRegionsSVGUrl: () => that.getRegionsSVGUrl(),
+      addSVGData: (svgPath, overlayElement) => that.addSVGData(svgPath, overlayElement),
     });
 
-    ViewerManager.viewer.addHandler('open', () => {
-      if (!that.viewer.source) {
-        return;
-      }
-      const dimensions = that.viewer.source.dimensions;
-
-      if (that.status.editModeOn) {
-        /** overlay to hold currently edited region */
-        const editOverlay = document.createElement('div');
-        editOverlay.className = 'overlay';
-        editOverlay.id = 'svgEditOverlay';
-        editOverlay.style.zIndex = '0';
-
-        that.viewer.addOverlay({
-          element: editOverlay,
-          location: that.viewer.viewport.imageToViewportRectangle(
-            new OpenSeadragon.Rect(0, 0, dimensions.x, dimensions.y),
-          ),
-        });
-      }
-
-      /** overlay to hold region delineations (triggers 'add-overlay' event) */
-      const regionOverlay = document.createElement('div');
-      regionOverlay.className = 'overlay';
-      regionOverlay.id = 'svgDelineationOverlay';
-
-      that.viewer.addOverlay({
-        element: regionOverlay,
-        location: that.viewer.viewport.imageToViewportRectangle(
-          new OpenSeadragon.Rect(0, 0, dimensions.x, dimensions.y),
-        ),
-      });
-
-      const layers = Object.entries(that.config.layers as Record<string, LegacyLayerConfig>);
-      layers.forEach(([key, value]) => {
-        if (value.index !== 0) {
-          that.addLayer(key, String(value.name ?? key), String(value.ext ?? ''));
-        } else {
-          that.setLayerOpacity(key);
-          //Ensure filters are applied for single layer instances
-          if (layers.length === 1) {
-            that.setAllFilters();
-          }
-        }
-      });
-
-      if (that.status.mousemoveHandler) {
-        that.viewer.canvas.removeEventListener('mousemove', that.status.mousemoveHandler);
-      }
-      that.status.mousemoveHandler = that.mousemoveHandler.bind(that);
-      that.viewer.canvas.addEventListener('mousemove', that.status.mousemoveHandler);
+    bindViewerWorldItemHandlers({
+      viewer: ViewerManager.viewer,
+      status: ViewerManager.status,
+      eventSource: that.eventSource,
+      setAllFilters: () => that.setAllFilters(),
     });
 
-    //--------------------------------------------------
-    /** quickfix: ensure that whole image is visible at startup */
-    ViewerManager.viewer.addOnceHandler('open', () => {
-      const containerSize = that.viewer.viewport.getContainerSize();
-      //FIXME id is a  constant
-      const rightPanelWidth = ViewerManager.getRightPanelWidth();
-
-      const coveredPart = rightPanelWidth / containerSize.x;
-      const uncoveredBounds = new OpenSeadragon.Rect(0, 0, 1 + coveredPart + 0.05, 1);
-      that.viewer.viewport.fitBounds(uncoveredBounds);
-
-      //restore state according to history provided at init
-      const initHistoryParams = { ...overridingConf };
-      if (!initHistoryParams.center && initHistoryParams.imageZoom) {
-        debugInfo('Ignoring initial zoom without valid center', {
-          imageZoom: initHistoryParams.imageZoom,
-          overridingConf,
-        });
-        delete initHistoryParams.imageZoom;
-      }
-      that.applyChangeFromHistory(initHistoryParams);
-      that.trySyncInitialHistoryStep();
-    });
-
-    //--------------------------------------------------
-    //TODO replace by fixed image
-    /** set image displayed in navigator as the one loaded in first layer */
-    ViewerManager.viewer.addHandler('open', () => {
-      // items are automatically added to navigator when layers are added to viewer,
-      // but only first layer at 100% opacity is needed
-      const navItemReplaceHnd = (event: OpenSeadragon.AddItemWorldEvent) => {
-        const userData = (event.userData ?? {}) as { replaced?: number; removed?: number };
-        if (that.viewer.navigator.world.getItemCount() === 1 && (userData.replaced ?? 0) === 0) {
-          const tiledImage = that.viewer.navigator.world.getItemAt(0);
-          //replace first item in navigator view by a clone with forced 100% opacity
-          const options = {
-            tileSource: event.item.source,
-            originalTiledImage: tiledImage,
-            opacity: 1,
-            replace: true,
-            index: 0,
-          };
-          userData.replaced = 1;
-          that.viewer.navigator.addTiledImage(options);
-        } else if (that.viewer.navigator.world.getItemCount() > 1) {
-          //remove any extra items from the navigator
-          userData.removed = (userData.removed ?? 0) + 1;
-          that.viewer.navigator.world.removeItem(
-            that.viewer.navigator.world.getItemAt(that.viewer.navigator.world.getItemCount() - 1),
-          );
-        }
-
-        //
-        if (userData.replaced === 1 && userData.removed === _.size(that.config.layers) - 1) {
-          //remove current handler once replacement/removal has been performed
-          that.viewer.navigator.world.removeHandler('add-item', navItemReplaceHnd);
-        }
-      };
-
-      that.viewer.navigator.world.addHandler('add-item', navItemReplaceHnd, { replaced: 0, removed: 0 });
-    });
-
-    //--------------------------------------------------
-    //Apply filter on tracer signal once it is fully loaded
-
-    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: OpenSeadragon.AddItemWorldEvent) => {
-      const tiledImage = addItemEvent.item as OpenSeadragon.TiledImage;
-      //retrieve layer info associated to added tiled image
-      for (let i = 0; i < that.viewer.world.getItemCount(); i++) {
-        if (that.viewer.world.getItemAt(i) === tiledImage) {
-          const layer = _.findWhere(that.status.layerDisplaySettings, { index: i });
-
-          //if this tiled image corresponds to tracer signal
-          if (layer?.isTracer) {
-            //handler to set filter on once the image is fully loaded
-            const hnd = (fullyLoadedChangeEvent: { fullyLoaded?: boolean }) => {
-              //this handler is called anytime the fullyLoaded status changes
-              if (fullyLoadedChangeEvent.fullyLoaded) {
-                // apply filter
-                that.setAllFilters();
-
-                //
-                tiledImage.removeHandler('fully-loaded-change', hnd);
-              }
-            };
-            tiledImage.addHandler('fully-loaded-change', hnd);
-          }
-          break;
-        }
-      }
-    });
-
-    //--------------------------------------------------
-    ViewerManager.viewer.world.addHandler('add-item', (addItemEvent: OpenSeadragon.AddItemWorldEvent) => {
-      const i = that.viewer.world.getIndexOfItem(addItemEvent.item);
-      const tiledImage = addItemEvent.item as OpenSeadragon.TiledImage;
-      //retrieve layer info associated to tiled image source of the event
-
-      const layers = Object.values(that.status.layerDisplaySettings);
-      const layer = i < layers.length ? layers[i] : undefined;
-      if (layer) {
-        //signal loading started for current tiledImage
-        that.eventSource.raiseEvent('zav-layer-loading', { layer: layer.key });
-
-        //register event handler to track loaded state (loaded state will change after panning & zomming)
-        tiledImage.addHandler('fully-loaded-change', (fullyLoadedChangeEvent: { fullyLoaded?: boolean }) => {
-          if (fullyLoadedChangeEvent.fullyLoaded) {
-            that.eventSource.raiseEvent('zav-layer-loaded', { layer: layer.key });
-          } else {
-            that.eventSource.raiseEvent('zav-layer-loading', { layer: layer.key });
+    bindViewerRuntimeBindings({
+      viewer: ViewerManager.viewer,
+      eventSource: ViewerManager.eventSource,
+      status: ViewerManager.status,
+      hookViewerTrackerHandler: ViewerManager.hookViewerTrackerHandler.bind(ViewerManager),
+      onViewerScroll: (event) => ViewerManager.onViewerScroll(event as unknown as ViewerEventLike),
+      onViewerClick: (event) => ViewerManager.onViewerClick(event as unknown as ViewerEventLike),
+      onViewerDrag: (event) => ViewerManager.onViewerDrag(event as unknown as ViewerEventLike),
+      onViewerKey: (event) => ViewerManager.onViewerKey(event as unknown as ViewerEventLike),
+      makeHistoryStep: () => that.makeHistoryStep(),
+      adjustFiltersAfterZoom: (zoom) => that.adjustFiltersAfterZoom(zoom),
+      getZoomFactor: () => ViewerManager.getZoomFactor(),
+      refreshScalebar: () => ViewerManager.refreshScalebar(),
+      resizeCanvas: () => that.resizeCanvas(),
+      adjustResizeRegionsOverlay: (set) => that.adjustResizeRegionsOverlay(set),
+      getRegionSet: () => that.status.set,
+      setMeasureMode: (active) => ViewerManager.setMeasureMode(active),
+      pointerupHandler: ViewerManager.pointerupHandler.bind(ViewerManager),
+      pointerdownHandler: ViewerManager.pointerdownHandler.bind(ViewerManager),
+      signalStatusChanged: (status) => ViewerManager.signalStatusChanged(status as ViewerStatus),
+      onExternalRegionSelection: () => {
+        RegionsManager.addListeners((_regionsStatus) => {
+          if (RegionsManager.getLastActionSource() !== VIEWER_ACTIONSOURCEID) {
+            ViewerManager.unselectRegions();
+            ViewerManager.selectRegions(RegionsManager.getSelectedRegions());
           }
         });
-
-        //if tiledImage is already loaded by then, event handler might not be called...
-        if (tiledImage.getFullyLoaded()) {
-          //... thus, signal loading finished for current tiledImage
-          that.eventSource.raiseEvent('zav-layer-loaded', { layer: layer.key });
-        }
-      }
-
-      changeLabelSizeDebounced();
-    });
-
-    ViewerManager.viewer.addHandler('page', () => {
-      //discard previous custom processing result if any
-      that.status.processedImage = null;
-    });
-
-    ViewerManager.viewer.addHandler('zoom', (zoomEvent: { zoom: number }) => {
-      //change must be recorded in browser's history
-      that.makeHistoryStep();
-
-      //some filter might need to be adjusted after zoom changed
-      that.adjustFiltersAfterZoom(zoomEvent.zoom);
-
-      //reset hoveredRegion when using labelMap
-      if (that.status.hasLabelMap) {
-        that.status.hoveredRegion = undefined;
-      }
-    });
-
-    ViewerManager.viewer.addHandler('pan', () => {
-      //change must be recorded in browser's history
-      that.makeHistoryStep();
-    });
-
-    //--------------------------------------------------
-    //Adjust label text size depending on zoom level
-
-    //first retrieve CSS rule to be updated
-    let ruleToUpdate: CSSStyleRule | undefined;
-    for (const sheet of document.styleSheets) {
-      try {
-        if (sheet.cssRules.length > 0) {
-          //region's text-label css rule is the first rule of its sheet (inlined within document head)
-          const rule = sheet.cssRules[0];
-          if (rule instanceof CSSStyleRule && rule.selectorText === '.zav-region-label') {
-            ruleToUpdate = rule;
-            break;
-          }
-        }
-      } catch (_e) {
-        //SecurityError maybe raised when accessing cross-origin stylesheet, which can be disregarded
-      }
-    }
-
-    const changeLabelSizeDebounced = _.debounce(() => {
-      if (!ruleToUpdate) {
-        return;
-      }
-      const pf = 100 / ViewerManager.getZoomFactor();
-      ruleToUpdate.style.setProperty('font-size', `${pf * 15}px`);
-      ruleToUpdate.style.setProperty('stroke-width', `${pf * 2.0}px`);
-    }, 150);
-
-    if (ruleToUpdate) {
-      ViewerManager.viewer.addHandler('zoom', changeLabelSizeDebounced);
-    }
-
-    //--------------------------------------------------
-    const viewerWithInnerTracker = ViewerManager.viewer as ViewerWithInnerTracker;
-    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'scrollHandler', ViewerManager.onViewerScroll);
-    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'clickHandler', ViewerManager.onViewerClick);
-    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'dragHandler', ViewerManager.onViewerDrag);
-    ViewerManager.hookViewerTrackerHandler(viewerWithInnerTracker, 'keyHandler', ViewerManager.onViewerKey);
-
-    ViewerManager.viewer.addHandler('resize', () => {
-      that.resizeCanvas();
-      that.adjustResizeRegionsOverlay(that.status.set);
-    });
-
-    ViewerManager.viewer.addHandler('animation', () => {
-      that.adjustResizeRegionsOverlay(that.status.set);
-    });
-
-    //--------------------------------------------------
-
-    ViewerManager.viewer.canvas.addEventListener('click', ViewerManager.pointerupHandler.bind(ViewerManager));
-    ViewerManager.viewer.canvas.addEventListener('pointerdown', ViewerManager.pointerdownHandler.bind(ViewerManager));
-    ViewerManager.viewer.canvas.addEventListener('mousedown', ViewerManager.pointerdownHandler.bind(ViewerManager));
-
-    var cnv = document.createElement('canvas');
-    cnv.id = 'poscanvas';
-    if (ViewerManager.status.showRegions) {
-      cnv.style.display = 'none';
-    }
-    ViewerManager.viewer.canvas.appendChild(cnv);
-    ViewerManager.setMeasureMode(Boolean(ViewerManager.status.measureModeOn));
-    ViewerManager.resizeCanvas();
-
-    //--------------------------------------------------
-    ViewerManager.eventSource.addHandler('zav-layer-loading', (event: { layer: string }) => {
-      ViewerManager.status.layerDisplaySettings[event.layer].loading = true;
-      if (ViewerManager.status.isAllLoaded) {
-        ViewerManager.eventSource.raiseEvent('zav-alllayers-loading', {});
-      }
-      ViewerManager.status.isAllLoaded = false;
-      ViewerManager.signalStatusChanged(ViewerManager.status);
-    });
-    ViewerManager.eventSource.addHandler('zav-layer-loaded', (event: { layer: string }) => {
-      ViewerManager.status.layerDisplaySettings[event.layer].loading = false;
-      const isAllLoaded = !_.findKey(ViewerManager.status.layerDisplaySettings, (val: LayerDisplaySetting) =>
-        Boolean((val as LegacyLayerDisplaySetting).loading),
-      );
-      if (isAllLoaded && !ViewerManager.status.isAllLoaded) {
-        ViewerManager.eventSource.raiseEvent('zav-alllayers-loaded', {});
-      }
-      ViewerManager.status.isAllLoaded = isAllLoaded;
-      ViewerManager.signalStatusChanged(ViewerManager.status);
-    });
-    //all layers loaded
-    ViewerManager.eventSource.addHandler('zav-alllayers-loaded', (_event: ViewerEventLike) => {});
-    //--------------------------------------------------
-
-    RegionsManager.addListeners((_regionsStatus) => {
-      if (RegionsManager.getLastActionSource() !== VIEWER_ACTIONSOURCEID) {
-        ViewerManager.unselectRegions();
-        ViewerManager.selectRegions(RegionsManager.getSelectedRegions());
-      }
+      },
     });
   }
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1550,44 +1231,16 @@ class ViewerManager {
   }
 
   static getEditCursorSVG(tool: string) {
-    //
-    const brushRadius = ViewerManager.status.editingToolRadius ?? 0;
-    const brushBorder = 8;
-    const color = Color(ViewerManager.status.editPathFillColor ?? '#000000');
-    const invcolor = color.negate();
     const zoom = ViewerManager.viewer.world
       .getItemAt(0)
       .viewportToImageZoom(ViewerManager.viewer.viewport.getZoom(true));
-    const scaledWidth = 2 * brushRadius * zoom;
-
-    const eraserOn = tool === 'eraser';
-    const strokeDash = eraserOn ? 'stroke-dasharray="1 1"' : '';
-    const fillColor = eraserOn ? invcolor : color;
-    const strokeColor = eraserOn ? 'silver' : invcolor;
-
-    return `url('data:image/svg+xml;utf8,
-<svg
- width="${scaledWidth}" 
- height="${scaledWidth}" 
- viewBox="0 0 ${2 * (brushRadius + brushBorder)} ${2 * (brushRadius + brushBorder)}" 
- xmlns="${SVGNS}" 
- style="background-color: transparent;"
- >
-  <g>
-    <circle 
-     cx="${brushRadius + brushBorder}" 
-     cy="${brushRadius + brushBorder}" 
-     r="${brushRadius}" 
-     stroke="${strokeColor}" 
-     stroke-width="${brushBorder}" 
-     fill="${fillColor}" 
-     fill-opacity="0.55"
-     ${strokeDash}
-    />
-  </g>
-</svg>
-') ${scaledWidth / 2} ${scaledWidth / 2}, crosshair
-`.replace(/\n/g, '');
+    return buildEditCursorSVG({
+      brushRadius: ViewerManager.status.editingToolRadius ?? 0,
+      fillColor: ViewerManager.status.editPathFillColor ?? '#000000',
+      tool,
+      imageZoom: zoom,
+      svgNs: SVGNS,
+    });
   }
 
   //set up specific mouse cursor for edit
@@ -1608,7 +1261,7 @@ class ViewerManager {
     const zoom = ViewerManager.viewer.world
       .getItemAt(0)
       .viewportToImageZoom(ViewerManager.viewer.viewport.getZoom(true));
-    return { x: Math.round(x / zoom), y: Math.round(y / zoom) };
+    return getSvgEditPosition(x, y, zoom);
   }
 
   static startEditRegionPath(pathId: string) {
@@ -1681,22 +1334,15 @@ class ViewerManager {
     if (!oldPathId) {
       return;
     }
-
-    const regionInfo = ViewerManager.status.currentSliceRegions.get(oldPathId);
-    if (!regionInfo) {
+    const newPathId = renameEditedRegion({
+      currentSliceRegions: ViewerManager.status.currentSliceRegions,
+      oldPathId,
+      newRegionId,
+      splitRegionId: (regionId) => ViewerManager._splitRegionId(regionId),
+    });
+    if (!newPathId) {
       return;
     }
-    ViewerManager.status.currentSliceRegions.delete(oldPathId);
-
-    const sepIndex = oldPathId.lastIndexOf('-');
-    const pathIdSuffix = oldPathId.substr(sepIndex);
-    const newPathId = newRegionId + pathIdSuffix;
-
-    const { abbrev } = ViewerManager._splitRegionId(newRegionId);
-    regionInfo.pathId = newPathId;
-    regionInfo.abbrev = abbrev;
-    regionInfo.regionId = newRegionId;
-    ViewerManager.status.currentSliceRegions.set(newPathId, regionInfo);
     ViewerManager.status.editPathId = newPathId;
 
     ViewerManager.signalStatusChanged(ViewerManager.status);
@@ -1849,34 +1495,8 @@ class ViewerManager {
 
   static createOrUpdateSVGRegion(regionInDom: Element, create: boolean, origPathId?: string) {
     const pathId = regionInDom.getAttribute('id');
-    const regionId = regionInDom.getAttribute('bma:regionId');
-
     const url = ViewerManager.getRegionsSVGEditUrl({ region: pathId ?? undefined });
-    fetch(url, {
-      method: 'PUT',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        mode: create ? 'cr' : 'up',
-        //original path id in case of id modification
-        pathId: origPathId ? origPathId : pathId,
-        regionId: regionId,
-        pathSVG: regionInDom.outerHTML,
-      }),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return Promise.resolve(response.json());
-        } else {
-          throw new Error(`${response.status} - ${response.statusText}`);
-        }
-      })
-      .catch((_error) => {
-        //FIXME alert user
-        console.error(`Error when saving region path ${pathId}`);
-      });
+    void saveSvgRegion({ url, regionInDom, create, origPathId });
   }
 
   static updateSVGRegion(regionInDom: Element, origPathId?: string) {
@@ -1933,32 +1553,12 @@ class ViewerManager {
 
   static createSVGForRegions() {
     const url = ViewerManager.getRegionsSVGEditUrl();
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        width: ViewerManager.status.imageWidth,
-        height: ViewerManager.status.imageHeight,
-      }),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return Promise.resolve(response.json());
-        } else {
-          throw new Error(`${response.status} - ${response.statusText}`);
-        }
-      })
-      .then((_data) => {
-        //Reload (newly created) SVG
-        ViewerManager.shiftToSlice(0, true);
-      })
-      .catch((error) => {
-        //FIXME alert user
-        console.error(`Error while creating new SVG:${error}`);
-      });
+    void requestCreateSvgForRegions({
+      url,
+      width: ViewerManager.status.imageWidth,
+      height: ViewerManager.status.imageHeight,
+      onCreated: () => ViewerManager.shiftToSlice(0, true),
+    });
   }
 
   static startEditingClickedRegion() {
@@ -1981,98 +1581,24 @@ class ViewerManager {
   }
 
   static extendRegionListenerForEdit(listener: ViewerRegionListener) {
-    listener.dblclick = (e: ViewerEventLike) => {
-      if (ViewerManager.status.editPathId) {
-        ViewerManager.stopEditingRegion(e);
-      } else if (e.target instanceof Element) {
-        ViewerManager.selectEditRegion(e.target);
-      }
-    };
-
-    const existingClick = listener.click;
-    listener.click = [
-      ...(Array.isArray(existingClick) ? existingClick : [existingClick]),
-      (e: ViewerEventLike, _raphElt: unknown) => {
-        if (ViewerManager.status.acquiringRegionToEdit && e.target instanceof Element) {
-          ViewerManager.status.acquiringRegionToEdit = false;
-          ViewerManager.selectEditRegion(e.target);
-        }
+    return extendViewerRegionListenerForEdit(listener, {
+      isEditingRegion: () => Boolean(ViewerManager.status.editPathId),
+      stopEditingRegion: (event) => ViewerManager.stopEditingRegion(event),
+      selectEditRegion: (target) => ViewerManager.selectEditRegion(target),
+      isAcquiringRegionToEdit: () => Boolean(ViewerManager.status.acquiringRegionToEdit),
+      setAcquiringRegionToEdit: (active) => {
+        ViewerManager.status.acquiringRegionToEdit = active;
       },
-    ];
-
-    return listener;
+    });
   }
 
   static connectRegionListeners(targetElt: unknown, regionListener: ViewerRegionListener, pathElt?: unknown) {
-    const maybeRaphaelTarget = targetElt as Partial<RaphaelElementLike>;
-    if (typeof maybeRaphaelTarget.mouseover === 'function') {
-      //Raphael element
-      const raphaelTarget = targetElt as RaphaelElementLike;
-
-      raphaelTarget.mouseover(function (this: RaphaelElementLike, e: ViewerEventLike) {
-        regionListener.mouseover(e, this);
-      });
-      raphaelTarget.mouseout(function (this: RaphaelElementLike, e: ViewerEventLike) {
-        regionListener.mouseout(e, this);
-      });
-      raphaelTarget.click(function (this: RaphaelElementLike, e: ViewerEventLike) {
-        if (_.isArray(regionListener.click)) {
-          for (const clickListener of regionListener.click) {
-            clickListener(e, this);
-          }
-        } else {
-          regionListener.click(e, this);
-        }
-      });
-      if (regionListener.dblclick) {
-        const dblclickListener = regionListener.dblclick;
-        raphaelTarget.dblclick(function (this: RaphaelElementLike, e: ViewerEventLike) {
-          dblclickListener(e, this);
-        });
-      }
-    } else {
-      //SVG DOM element
-      const targetElement = targetElt as RegionTrackedElement;
-      ViewerManager.destroyRegionMouseTracker(targetElement);
-
-      const createViewerEvent = (event: ViewerMouseTrackerEvent): ViewerEventLike => ({
-        originalEvent: event.originalEvent,
-        target: event.originalTarget ?? event.originalEvent?.target ?? targetElement,
-        ctrlKey: Boolean(event.originalEvent?.ctrlKey),
-        shiftKey: Boolean(event.originalEvent?.shiftKey),
-        buttons: event.originalEvent && 'buttons' in event.originalEvent ? event.originalEvent.buttons : 0,
-      });
-
-      const tracker = new OpenSeadragon.MouseTracker({
-        element: targetElement,
-        overHandler: (event) => {
-          regionListener.mouseover(createViewerEvent(event), pathElt);
-        },
-        outHandler: (event) => {
-          regionListener.mouseout(createViewerEvent(event), pathElt);
-        },
-        clickHandler: (event) => {
-          const viewerEvent = createViewerEvent(event);
-          if (_.isArray(regionListener.click)) {
-            for (const clickListener of regionListener.click) {
-              clickListener(viewerEvent, pathElt);
-            }
-          } else {
-            regionListener.click(viewerEvent, pathElt);
-          }
-        },
-        dblClickHandler: regionListener.dblclick
-          ? (event) => {
-              regionListener.dblclick?.(createViewerEvent(event), pathElt);
-            }
-          : undefined,
-      }) as RegionMouseTracker;
-      tracker.setTracking(true);
-      targetElement.__zavRegionMouseTracker = tracker;
-      if (!ViewerManager.status.regionTrackedElements.includes(targetElement)) {
-        ViewerManager.status.regionTrackedElements.push(targetElement);
-      }
-    }
+    connectViewerRegionListeners({
+      targetElt,
+      regionListener,
+      pathElt,
+      regionTrackedElements: ViewerManager.status.regionTrackedElements,
+    });
   }
 
   static changeEditingTool(newTool: string) {
@@ -2115,280 +1641,82 @@ class ViewerManager {
     ViewerManager.createEditSVGElement();
 
     const that = ViewerManager;
-
-    //load SVG
-    void getXmlDocument(svgName, 'image/svg+xml').then((svgFile) => {
-      // process retrieved data only if it's the last one requested to ensure current slice SVG is loaded
-      if (
+    startSvgOverlayFlow({
+      svgName,
+      overlayElement,
+      svgNs: SVGNS,
+      backgroundPathId: BACKGROUND_PATHID,
+      getPaper: () => that.status.paper ?? null,
+      getRegionSet: () => that.status.set ?? null,
+      isRequestCurrent: () =>
         svgName === that.status.currentSVGName &&
         overlayElement === that.status.currentRegionOverlay &&
-        overlayElement.isConnected
-      ) {
-        const root = svgFile.getElementsByTagName('svg')[0];
-        if (!root) {
-          that.status.hasCurrentSVG = false;
-          return;
-        }
-        that.status.hasCurrentSVG = typeof root !== 'undefined';
-
-        that.status.currentSliceRegions.clear();
-        that.clearRegionMouseTrackers();
-        //new set of mouse event listeners
-        that.status.regionEventListeners = {};
-
-        let hasBackground = false;
-        const svgElement = overlayElement.getElementsByTagName('svg')[0];
-        if (!svgElement) {
-          return;
-        }
-        //add group for ROI
-        const roig = document.createElementNS(SVGNS, 'g');
-        roig.setAttribute('id', 'rois');
-        that.status.roig = roig;
-
-        //ROIs from the source SVG
-        const ROISrcGroup = root.getElementById('rois');
-        that.status.hasROIs = ROISrcGroup != null;
-
-        const ROIListener = {
-          mouseover: (roiID: string | undefined, roiLabel: string | undefined) => {
-            that.status.hoveredROI = roiID;
-            that.status.hoveredROILabel = roiLabel;
-            that.signalStatusChanged(that.status);
-          },
-
-          mouseout: () => {
-            that.status.hoveredROI = null;
-            that.status.hoveredROILabel = null;
-            that.signalStatusChanged(that.status);
-          },
-        };
-
-        if (that.status.hasROIs) {
-          void ViewerManager.ensureRoiInfosLoaded().catch((error) => {
-            console.error(error);
-          });
-
-          //import ROI's SVG path elements
-          if (!ROISrcGroup) {
-            return;
-          }
-          const rois_paths = ROISrcGroup.getElementsByTagName('path');
-          for (let i = 0; i < rois_paths.length; i++) {
-            const roiPath = rois_paths[i];
-            const roiElt = document.createElementNS(SVGNS, 'path');
-
-            let roiID: string | undefined;
-            let roiLabel: string | undefined;
-            //copy all attributes except ID and class
-            for (let j = 0; j < roiPath.attributes.length; j++) {
-              const attr = roiPath.attributes[j];
-              if (attr.name !== 'id' && attr.name !== 'class' && attr.name !== 'zav:roi-label') {
-                roiElt.setAttribute(attr.name, attr.value);
-              }
-              if (attr.name === 'zav:roi-id') {
-                roiID = attr.value;
-                //duplicate id without custom ns to access with css selector
-                roiElt.setAttribute('zav-roi-id', roiID);
-              } else if (attr.name === 'zav:roi-label') {
-                roiLabel = attr.value;
-              }
-            }
-
-            //get color from ROIs descriptor file
-            const roiInfo = roiID ? RoiInfos.getRoiById(roiID) : null;
-            if (roiInfo) {
-              roiLabel = roiInfo.roiLabel;
-              roiElt.setAttribute('fill', roiInfo.fill);
-            }
-            roiElt.setAttribute('class', 'zav-roi');
-            roiElt.setAttribute('vector-effect', 'non-scaling-stroke');
-
-            //attach listener to track ROI hover
-            roiElt.addEventListener('mouseover', () => ROIListener.mouseover(roiID, roiLabel));
-            roiElt.addEventListener('mouseout', ROIListener.mouseout);
-
-            roig.appendChild(roiElt);
-          }
-
-          const defs = document.createElementNS(SVGNS, 'defs');
-          svgElement.appendChild(defs);
-        }
-
-        //add group for region labels
-        const labelsg = document.createElementNS(SVGNS, 'g');
-        labelsg.setAttribute('id', 'region_labels');
-        that.status.labelsg = labelsg;
-
-        //labels from the source SVG
-        const labelSrcGroup = root.getElementById('region-labels');
-        that.status.hasRegionLabels = labelSrcGroup != null;
-
-        const regionSrcGroup = root.getElementsByTagName('g')[0];
-        if (!regionSrcGroup) {
-          return;
-        }
-        const region_paths = regionSrcGroup.getElementsByTagName('path');
-        for (let i = 0; i < region_paths.length; i++) {
-          const regionPath = region_paths[i];
-          const sourceRegionId = regionPath.getAttribute('bma:regionId');
-          let regionId = sourceRegionId ? sourceRegionId.trim() : null;
-          let pathId: string;
-          if (regionId) {
-            //when a specific attribute holding region id exists, SVG path's id is garanteed to be unique
-            pathId = regionPath.getAttribute('id')?.trim() ?? `${regionId}-${i}`;
-          } else {
-            //Legacy SVG : regionId is specified in the id attribute of the path
-            regionId = regionPath.getAttribute('id')?.trim() ?? '';
-            //append ordinal number to ensure unique id (case of non-contiguous regions)
-            pathId = regionId + (regionId === BACKGROUND_PATHID ? '' : `-${i}`);
-            regionPath.setAttribute('id', pathId);
-          }
-
-          const regionPaper = that.status.paper;
-          const regionSet = that.status.set;
-          if (!regionPaper || !regionSet) {
-            return;
-          }
-          const newPathElt = regionPaper.importSVG(regionPath);
-
-          const isBackgroundElement = regionId === BACKGROUND_PATHID;
-          if (isBackgroundElement) {
-            //background elements
-            newPathElt.id = pathId;
-            newPathElt.attr('fill-opacity', 0.0);
-
-            //unselect all when click on the background element
-            newPathElt.click((_e: ViewerEventLike) => {
-              if (that.status.showRegions) {
-                that.unselectRegions();
-                that.regionActionner.unSelectAll();
-                that.status.lastSelectedPath = null;
-              }
-            });
-
-            //Create Background path in the SVG dedicated to edition
-            that.createEditSVGBackground(regionPath);
-            hasBackground = true;
-          } else {
-            newPathElt.id = pathId;
-
-            that._addNActivateRegion(pathId, regionId, newPathElt);
-
-            that.applyUnselectedPresentation(newPathElt);
-          }
-
-          regionSet.push(newPathElt);
-
-          if (!isBackgroundElement) {
-            //once path elements are added to the DOM
-            const modifiedRegionInDom = svgElement.getElementById(pathId);
-            if (modifiedRegionInDom) {
-              //restore custom attribute lost when imported in Raphaël
-              modifiedRegionInDom.setAttribute('bma:regionId', regionId);
-              modifiedRegionInDom.setAttribute('data-zav-pathid', pathId);
-              //make path's stroke width independant of scaling transformations
-              modifiedRegionInDom.setAttribute('vector-effect', 'non-scaling-stroke');
-              that.connectRegionListeners(modifiedRegionInDom, that.status.regionEventListeners[pathId], newPathElt);
-
-              //add corresponding label, if any
-              if (labelSrcGroup) {
-                const labelSrc = root.getElementById(`lbl-${pathId}`);
-                if (labelSrc) {
-                  const labelElt = document.createElementNS(SVGNS, 'text');
-                  labelElt.setAttribute('class', 'zav-region-label');
-                  //labelElt.setAttribute("x", center.x);
-                  //labelElt.setAttribute("y", center.y);
-
-                  const x = labelSrc.getAttribute('x');
-                  const y = labelSrc.getAttribute('y');
-                  labelElt.setAttribute('bma:regionId', regionId);
-                  labelElt.setAttribute('data-zav-pathid', pathId);
-                  labelElt.setAttribute('transform', `translate(${x}, ${y})`);
-                  labelElt.innerHTML = labelSrc.innerHTML;
-                  labelsg.appendChild(labelElt);
-
-                  that.connectRegionListeners(labelElt, that.status.regionEventListeners[pathId], newPathElt);
-                }
-              }
-            } else {
-              that.connectRegionListeners(newPathElt, that.status.regionEventListeners[pathId]);
-            }
-          }
-        }
-        if (!hasBackground) {
-          console.warn(`SVG without background: Region rendering and edition will likely fail! ${svgName}`);
-        }
-
-        //append region labels' group
-        const regionsGroup = svgElement.getElementsByTagName('g')[0];
-
-        regionsGroup.appendChild(roig);
-        that.applyROIPresentation();
-
-        regionsGroup.appendChild(labelsg);
-        that.applyLabelPresentation();
-
-        if (that.pendingInitialAtlasFit && that.viewer && regionsGroup) {
-          const atlasBounds = regionsGroup.getBBox();
-          if (atlasBounds.width > 0 && atlasBounds.height > 0) {
-            const containerSize = that.viewer.viewport.getContainerSize();
-            const rightPanelWidth = document.getElementById('ZAV-rightPanel')?.getBoundingClientRect().width || 0;
-            const coveredPart = containerSize.x > 0 ? rightPanelWidth / containerSize.x : 0;
-            const marginRatio = 0.08;
-            const extraRightWidth = (atlasBounds.width * coveredPart) / Math.max(1 - coveredPart, 0.1);
-            const imageRect = new OpenSeadragon.Rect(
-              atlasBounds.x - (atlasBounds.width * marginRatio) / 2,
-              ViewerManager.config.dzDiff + atlasBounds.y - (atlasBounds.height * marginRatio) / 2,
-              atlasBounds.width * (1 + marginRatio) + extraRightWidth,
-              atlasBounds.height * (1 + marginRatio),
-            );
-
-            that.viewer.viewport.fitBounds(that.viewer.viewport.imageToViewportRectangle(imageRect), true);
-            that.pendingInitialAtlasFit = false;
-            that.trySyncInitialHistoryStep();
-
-            debugInfo('Applied initial atlas fit', {
-              atlasBounds,
-              imageRect,
-              coveredPart,
-            });
-          }
-        }
-
-        that.eventSource.raiseEvent('zav-regions-created', { svgUrl: svgName });
-
-        that.adjustResizeRegionsOverlay(that.status.set);
-
-        //restore presentation of regions selected in previous slice
-        that.selectRegions(RegionsManager.getSelectedRegions());
-
-        if (!that.status.showRegions) {
-          that.hideDelineation();
-        }
-
-        that.regionActionner.setCurrentSliceRegions(
-          Array.from(that.status.currentSliceRegions.values())
-            .map((r) => ViewerManager._resolveTreeRegionId(r))
-            .filter((abbrev): abbrev is string => typeof abbrev === 'string'),
-        );
-
+        overlayElement.isConnected,
+      clearCurrentSliceRegions: () => that.status.currentSliceRegions.clear(),
+      clearRegionMouseTrackers: () => that.clearRegionMouseTrackers(),
+      setRegionEventListeners: (listeners) => {
+        that.status.regionEventListeners = listeners as Record<string, ViewerRegionListener>;
+      },
+      setCurrentRoiGroup: (group) => {
+        that.status.roig = group;
+      },
+      setCurrentLabelGroup: (group) => {
+        that.status.labelsg = group;
+      },
+      setHasCurrentSvg: (hasSvg) => {
+        that.status.hasCurrentSVG = hasSvg;
+      },
+      setHasROIs: (hasROIs) => {
+        that.status.hasROIs = hasROIs;
+      },
+      setHasRegionLabels: (hasRegionLabels) => {
+        that.status.hasRegionLabels = hasRegionLabels;
+      },
+      setHoveredROI: (roiId, roiLabel) => {
+        that.status.hoveredROI = roiId;
+        that.status.hoveredROILabel = roiLabel;
         that.signalStatusChanged(that.status);
-      }
+      },
+      isShowingRegions: () => that.status.showRegions,
+      getPendingInitialAtlasFit: () => that.pendingInitialAtlasFit,
+      markInitialAtlasFitApplied: () => {
+        that.pendingInitialAtlasFit = false;
+      },
+      getViewer: () => that.viewer,
+      getDzDiff: () => ViewerManager.config.dzDiff,
+      getRightPanelWidth: () => ViewerManager.getRightPanelWidth(),
+      ensureRoiInfosLoaded: async () => {
+        await ViewerManager.ensureRoiInfosLoaded();
+      },
+      connectRegionListeners: (targetElt, regionListener, pathElt) =>
+        that.connectRegionListeners(targetElt, regionListener as ViewerRegionListener, pathElt),
+      addAndActivateRegion: (pathId, regionId, newPathElt) =>
+        that._addNActivateRegion(pathId, regionId, newPathElt as unknown as RaphaelElementLike),
+      applyUnselectedPresentation: (element) => that.applyUnselectedPresentation(element),
+      createEditSVGBackground: (srcBackNode) => that.createEditSVGBackground(srcBackNode),
+      unselectAllFromBackground: () => {
+        that.unselectRegions();
+        that.regionActionner.unSelectAll();
+        that.status.lastSelectedPath = null;
+      },
+      applyROIPresentation: () => that.applyROIPresentation(),
+      applyLabelPresentation: () => that.applyLabelPresentation(),
+      adjustResizeRegionsOverlay: () => that.adjustResizeRegionsOverlay(that.status.set),
+      selectRegions: (regions) => that.selectRegions(regions),
+      hideDelineation: () => that.hideDelineation(),
+      syncCurrentSliceRegionsToRegionTree: () => that.syncCurrentSliceRegionsToRegionTree(),
+      trySyncInitialHistoryStep: () => that.trySyncInitialHistoryStep(),
+      raiseRegionsCreated: () => that.eventSource.raiseEvent('zav-regions-created', { svgUrl: svgName }),
+      signalStatusChanged: () => that.signalStatusChanged(that.status),
     });
   }
 
   static _splitRegionId(regionId: string) {
-    //extract hemisphere side from region id
-    const suffix = regionId ? regionId.substring(regionId.length - 2) : '';
-    const side = suffix === '_L' ? '(left)' : suffix === '_R' ? '(right)' : '';
-    //region abbreviation without hemisphere side
-    const abbrev = side ? regionId.substring(0, regionId.length - 2) : regionId;
-    return { suffix, side, abbrev };
+    return splitRegionId(regionId);
   }
 
   static _resolveTreeRegionId(regionInfo?: Pick<ViewerRegionInfo, 'abbrev' | 'regionId'> | null) {
-    return RegionsManager.resolveRegionId(regionInfo?.abbrev, regionInfo?.regionId);
+    return resolveTreeRegionId(regionInfo);
   }
 
   static _applyViewerRegionSelection(regionId: string, pathId?: string | null, ctrlKey: boolean = false) {
@@ -2432,27 +1760,7 @@ class ViewerManager {
   }
 
   static _getClickedRegionInfo(target: EventTarget | null) {
-    if (!(target instanceof Element)) {
-      return null;
-    }
-
-    const regionElement = target.closest('[bma\\:regionId]');
-    if (!regionElement) {
-      return null;
-    }
-    const regionId = regionElement?.getAttribute('bma:regionId')?.trim();
-    if (!regionId) {
-      return null;
-    }
-
-    const pathId =
-      regionElement.tagName.toLowerCase() === 'path'
-        ? regionElement.getAttribute('id')?.trim()
-        : Array.from(ViewerManager.status.currentSliceRegions.entries()).find(
-            ([, regionInfo]) => regionInfo.regionId === regionId,
-          )?.[0];
-
-    return { regionId, pathId };
+    return getClickedRegionInfo(target, ViewerManager.status.currentSliceRegions);
   }
 
   static _addNActivateRegion(pathId: string, regionId: string, newPathElt: RaphaelElementLike) {
@@ -2715,87 +2023,23 @@ class ViewerManager {
   }
 
   static applyMouseOverPresentation(element: unknown, forcedBorder = false) {
-    const [el] = getRaphaelElements(element);
-    if (!el) {
-      return;
-    }
-    const color = el.node.getAttribute('fill') ?? '#000000';
-    const fillOpacity =
-      !ViewerManager.status.displayAreas || ViewerManager.status.regionsOpacity < 0.05
-        ? 0
-        : ViewerManager.status.regionsOpacity + (ViewerManager.status.regionsOpacity > 0.6 ? -0.4 : 0.4);
-    const strokeOpacity = forcedBorder || ViewerManager.status.displayBorders ? 1 : 0;
-    (element as RaphaelElementLike).attr({
-      'fill-opacity': fillOpacity,
-      'stroke-opacity': strokeOpacity,
-      'stroke-width': '4px',
-      stroke: color,
-    });
-    getRaphaelElements(element).forEach((e) => {
-      e.node.classList.add('delin-high');
-      e.node.classList.remove('delin-NOThigh');
-    });
+    applyViewerMouseOverPresentation(element, ViewerManager.status, forcedBorder);
   }
 
   static applyMouseOutPresentation(element: unknown, isSelected?: boolean) {
-    getRaphaelElements(element).forEach((e) => {
-      e.node.classList.remove('delin-high');
-      e.node.classList.add('delin-NOThigh');
-    });
-    if (isSelected) {
-      ViewerManager.applySelectedPresentation(element);
-    } else {
-      ViewerManager.applyUnselectedPresentation(element);
-    }
+    applyViewerMouseOutPresentation(element, isSelected, ViewerManager.status);
   }
 
   static applySelectedPresentation(element: unknown) {
-    const fillOpacity =
-      !ViewerManager.status.displayAreas || ViewerManager.status.regionsOpacity < 0.05
-        ? 0
-        : ViewerManager.status.regionsOpacity + (ViewerManager.status.regionsOpacity > 0.6 ? -0.4 : 0.4);
-    const strokeOpacity = ViewerManager.status.showRegions ? 0.7 : 0;
-    (element as RaphaelElementLike).attr({
-      'fill-opacity': fillOpacity,
-      'stroke-opacity': strokeOpacity,
-      'stroke-width': '3px',
-      stroke: '#0000ff',
-    });
-    getRaphaelElements(element).forEach((e) => {
-      e.node.classList.add('delin-select');
-      e.node.classList.remove('delin-NOTselect');
-    });
+    applyViewerSelectedPresentation(element, ViewerManager.status);
   }
 
   static applyUnselectedPresentation(element: unknown) {
-    const [el] = getRaphaelElements(element);
-    if (!el) {
-      return;
-    }
-    const color =
-      ViewerManager.status.displayBorders && ViewerManager.status.useCustomBorders
-        ? ViewerManager.status.customBorderColor
-        : (el.node.getAttribute('fill') ?? '#000000');
-    const fillOpacity = ViewerManager.status.displayAreas ? ViewerManager.status.regionsOpacity : 0;
-    const strokeOpacity = ViewerManager.status.displayBorders ? 0.5 : 0;
-    const strokeWidth = `${ViewerManager.status.useCustomBorders ? ViewerManager.status.customBorderWidth : 2}px`;
-    (element as RaphaelElementLike).attr({
-      'fill-opacity': fillOpacity,
-      'stroke-opacity': strokeOpacity,
-      'stroke-width': strokeWidth,
-      stroke: color,
-    });
-    getRaphaelElements(element).forEach((e) => {
-      e.node.classList.remove('delin-select');
-      e.node.classList.add('delin-NOTselect');
-    });
+    applyViewerUnselectedPresentation(element, ViewerManager.status);
   }
 
   static applyHiddenPresentation(element: unknown) {
-    (element as RaphaelElementLike).attr({
-      'fill-opacity': 0,
-      'stroke-opacity': 0,
-    });
+    applyViewerHiddenPresentation(element);
   }
 
   /**
@@ -2842,35 +2086,19 @@ class ViewerManager {
   }
 
   static centerOnRegions(nameList: Array<string | null | undefined>) {
-    const that = ViewerManager;
     const regionSet = ViewerManager.status.set;
     if (!regionSet) {
       return;
     }
-    //how to choose a center?
-    let newX = 0;
-    let newY = 0;
-    let snCount = 0;
-    for (let k = 0; k < nameList.length; k++) {
-      //try to find the nodes -> slow way!
-      regionSet.forEach((el) => {
-        const subNode = el[0];
-        if (!el.id) {
-          return;
-        }
-        const regionInfo = that.status.currentSliceRegions.get(el.id);
-        if (subNode && regionInfo && ViewerManager._resolveTreeRegionId(regionInfo) === nameList[k]) {
-          snCount++;
-          const bbox = subNode.getBBox();
-          newX += (bbox.x + bbox.width / 2) / that.config.dzWidth;
-          newY += (that.config.dzDiff + bbox.y + bbox.height / 2) / that.config.dzHeight;
-        }
-      });
-    }
-    if (snCount > 0) {
-      newX /= snCount;
-      newY /= snCount;
-      const windowPoint = new OpenSeadragon.Point(newX, newY);
+    const windowPoint = getRegionCenterPoint({
+      regionSet,
+      currentSliceRegions: ViewerManager.status.currentSliceRegions,
+      nameList,
+      dzWidth: ViewerManager.config.dzWidth,
+      dzHeight: ViewerManager.config.dzHeight,
+      dzDiff: ViewerManager.config.dzDiff,
+    });
+    if (windowPoint) {
       ViewerManager.viewer.viewport.panTo(windowPoint);
       ViewerManager.viewer.viewport.zoomTo(1.1);
     }
@@ -2892,32 +2120,271 @@ class ViewerManager {
     return ViewerManager.status ? ViewerManager.status.currentSliceRegions : null;
   }
 
-  static switchPlane(newPlane: number) {
-    //allow switching to another plane only if it exits!
-    if (ViewerManager.config.hasPlane(newPlane)) {
-      ViewerManager.status.activePlane = newPlane;
-      ViewerManager.config.setPlaneSizes(ViewerManager.status.activePlane);
-      ViewerManager.status.chosenSlice = ViewerManager.getCurrentPlaneChosenSlice() ?? 0;
+  private static getResolvedCurrentSliceTreeRegions() {
+    return getResolvedCurrentSliceTreeRegions(ViewerManager.status.currentSliceRegions);
+  }
 
-      ViewerManager.viewer.goToPage(ViewerManager.getPageNumForCurrentSlice());
-      ViewerManager.claerPosition();
-      return true;
-    } else {
-      return false;
+  private static syncCurrentSliceRegionsToRegionTree(regions = ViewerManager.getResolvedCurrentSliceTreeRegions()) {
+    ViewerManager.pendingCurrentSliceTreeRegions = regions;
+    if (!RegionsManager.isReady()) {
+      return;
+    }
+    ViewerManager.regionActionner.setCurrentSliceRegions(regions);
+    ViewerManager.pendingCurrentSliceTreeRegions = undefined;
+  }
+
+  static notifyRegionsTreeReady() {
+    if (!RegionsManager.isReady()) {
+      return;
+    }
+
+    ViewerManager.syncCurrentSliceRegionsToRegionTree(
+      ViewerManager.pendingCurrentSliceTreeRegions ?? ViewerManager.getResolvedCurrentSliceTreeRegions(),
+    );
+
+    if (ViewerManager.status?.hasCurrentSVG) {
+      ViewerManager.selectRegions(RegionsManager.getSelectedRegions());
+      ViewerManager.signalStatusChanged(ViewerManager.status);
     }
   }
 
+  private static getLiveViewportState(): ViewerViewportState | null {
+    if (!ViewerManager.viewer?.viewport) {
+      return null;
+    }
+
+    const liveViewport: ViewerViewportState = {
+      viewportZoom: ViewerManager.viewer.viewport.getZoom(true),
+      imageZoom: ViewerManager.getCurrentImageZoom(),
+      center: ViewerManager.getCurrentImageCenter(),
+    };
+
+    return liveViewport.center || typeof liveViewport.imageZoom !== 'undefined' ? liveViewport : null;
+  }
+
+  private static getViewportHistoryParamsForSync(preferredParams?: ViewerHistoryParams | null) {
+    if (preferredParams?.center || typeof preferredParams?.imageZoom !== 'undefined') {
+      return normalizeViewportState(preferredParams);
+    }
+
+    const liveViewportParams = ViewerManager.getLiveViewportState();
+    if (liveViewportParams) {
+      return liveViewportParams;
+    }
+
+    const locationParams = ViewerManager.getParamsFromCurrLocation();
+    if (locationParams.center || typeof locationParams.imageZoom !== 'undefined') {
+      return normalizeViewportState(locationParams);
+    }
+
+    return null;
+  }
+
+  private static applyViewportHistoryParams(viewportParams?: ViewerViewportState | null) {
+    if (typeof viewportParams?.viewportZoom !== 'undefined') {
+      ViewerManager.viewer.viewport.zoomTo(viewportParams.viewportZoom, undefined, true);
+    } else if (typeof viewportParams?.imageZoom !== 'undefined') {
+      const viewportZoom = ViewerManager.viewer.viewport.imageToViewportZoom(viewportParams.imageZoom);
+      ViewerManager.viewer.viewport.zoomTo(viewportZoom, undefined, true);
+    }
+    if (viewportParams?.viewportCenter) {
+      ViewerManager.viewer.viewport.panTo(viewportParams.viewportCenter, true);
+    } else if (viewportParams?.center) {
+      const refPoint = ViewerManager.viewer.viewport.imageToViewportCoordinates(viewportParams.center);
+      ViewerManager.viewer.viewport.panTo(refPoint, true);
+    }
+  }
+
+  private static scheduleViewportHistorySync(navigationVersion: number, viewportParams?: ViewerViewportState | null) {
+    if (!viewportParams?.center && typeof viewportParams?.imageZoom === 'undefined') {
+      return;
+    }
+
+    let applied = false;
+    const applyIfCurrent = () => {
+      if (applied) {
+        return;
+      }
+      applied = true;
+      setTimeout(() => {
+        if (navigationVersion !== ViewerManager.navigationState.pendingVersion) {
+          return;
+        }
+        ViewerManager.applyViewportHistoryParams(viewportParams);
+        ViewerManager.refreshScalebar();
+      }, 50);
+    };
+
+    ViewerManager.viewer.addOnceHandler('open', () => {
+      applyIfCurrent();
+    });
+    ViewerManager.viewer.addOnceHandler('page', () => {
+      applyIfCurrent();
+    });
+  }
+
+  private static applyNavigationState(request: ViewerNavigationRequest) {
+    const normalizedViewport = normalizeViewportState(request.viewport);
+    const currentSlice = ViewerManager.getPlaneChosenSlice(request.plane) ?? 0;
+    const requestedSlice = ViewerManager.checkNSetChosenSlice(request.plane, request.slice);
+    const planeChanged = request.plane !== ViewerManager.getActivePlane();
+    const sliceChanged = requestedSlice !== currentSlice;
+    const shouldNavigate = Boolean(request.force) || planeChanged || sliceChanged;
+    const shouldApplyViewport = request.applyViewport !== false;
+    const boundedViewport = boundViewportStateToPlane(ViewerManager.config, request.plane, normalizedViewport);
+    const navigationVersion = shouldNavigate
+      ? ViewerManager.navigationState.pendingVersion + 1
+      : ViewerManager.navigationState.pendingVersion;
+
+    if (!shouldNavigate) {
+      if (request.onRegionsCreated) {
+        request.onRegionsCreated();
+      }
+      if (shouldApplyViewport) {
+        ViewerManager.applyViewportHistoryParams(boundedViewport);
+      }
+      if (request.syncHistory) {
+        ViewerManager.makeActualHistoryStep({
+          s: requestedSlice,
+          a: request.plane,
+          ...getHistoryStepParamsFromViewport(boundedViewport),
+        });
+      }
+      ViewerManager.signalStatusChanged(ViewerManager.status);
+      return;
+    }
+
+    ViewerManager.navigationState.activePlane = request.plane;
+    ViewerManager.status.activatedPlanes.add(request.plane);
+    ViewerManager.config.setPlaneSizes(request.plane);
+    ViewerManager.refreshScalebar();
+    ViewerManager.navigationState.pendingVersion = navigationVersion;
+    ViewerManager.syncNavigationStateToStatus();
+
+    if (request.onRegionsCreated) {
+      ViewerManager.eventSource.addOnceHandler('zav-regions-created', () => {
+        request.onRegionsCreated?.();
+      });
+    }
+
+    if (shouldApplyViewport) {
+      ViewerManager.scheduleViewportHistorySync(navigationVersion, boundedViewport);
+    }
+    ViewerManager.viewer.goToPage(ViewerManager.getPageNumForCurrentSlice());
+    ViewerManager.claerPosition();
+
+    if (request.syncHistory) {
+      ViewerManager.makeActualHistoryStep({
+        s: requestedSlice,
+        a: request.plane,
+        ...getHistoryStepParamsFromViewport(boundedViewport),
+      });
+    }
+    ViewerManager.signalStatusChanged(ViewerManager.status);
+  }
+
+  private static bindViewerCanvasMousemoveHandler() {
+    if (ViewerManager.status.mousemoveHandler) {
+      ViewerManager.viewer.canvas.removeEventListener('mousemove', ViewerManager.status.mousemoveHandler);
+    }
+    ViewerManager.status.mousemoveHandler = ViewerManager.mousemoveHandler.bind(ViewerManager);
+    ViewerManager.viewer.canvas.addEventListener('mousemove', ViewerManager.status.mousemoveHandler);
+  }
+
+  private static setupViewerOverlaysAndLayers(dimensions: OpenSeadragon.Point) {
+    if (ViewerManager.status.editModeOn) {
+      const editOverlay = document.createElement('div');
+      editOverlay.className = 'overlay';
+      editOverlay.id = 'svgEditOverlay';
+      editOverlay.style.zIndex = '0';
+
+      ViewerManager.viewer.addOverlay({
+        element: editOverlay,
+        location: ViewerManager.viewer.viewport.imageToViewportRectangle(
+          new OpenSeadragon.Rect(0, 0, dimensions.x, dimensions.y),
+        ),
+      });
+    }
+
+    const regionOverlay = document.createElement('div');
+    regionOverlay.className = 'overlay';
+    regionOverlay.id = 'svgDelineationOverlay';
+
+    ViewerManager.viewer.addOverlay({
+      element: regionOverlay,
+      location: ViewerManager.viewer.viewport.imageToViewportRectangle(
+        new OpenSeadragon.Rect(0, 0, dimensions.x, dimensions.y),
+      ),
+    });
+
+    const layers = Object.entries(ViewerManager.config.layers as Record<string, LegacyLayerConfig>);
+    layers.forEach(([key, value]) => {
+      if (value.index !== 0) {
+        ViewerManager.addLayer(key, String(value.name ?? key), String(value.ext ?? ''));
+      } else {
+        ViewerManager.setLayerOpacity(key);
+        if (layers.length === 1) {
+          ViewerManager.setAllFilters();
+        }
+      }
+    });
+  }
+
+  private static applyInitialOpenState(overridingConf: ViewerHistoryParams) {
+    const containerSize = ViewerManager.viewer.viewport.getContainerSize();
+    const rightPanelWidth = ViewerManager.getRightPanelWidth();
+    const coveredPart = rightPanelWidth / containerSize.x;
+    const uncoveredBounds = new OpenSeadragon.Rect(0, 0, 1 + coveredPart + 0.05, 1);
+    ViewerManager.viewer.viewport.fitBounds(uncoveredBounds);
+
+    const initHistoryParams = { ...overridingConf };
+    if (!initHistoryParams.center && initHistoryParams.imageZoom) {
+      debugInfo('Ignoring initial zoom without valid center', {
+        imageZoom: initHistoryParams.imageZoom,
+        overridingConf,
+      });
+      delete initHistoryParams.imageZoom;
+    }
+    const initialPlane = initHistoryParams.activePlane ?? ViewerManager.getActivePlane();
+    const initialSlice =
+      typeof initHistoryParams.sliceNum !== 'undefined'
+        ? initHistoryParams.sliceNum
+        : (ViewerManager.getPlaneChosenSlice(initialPlane) ?? 0);
+    ViewerManager.scheduleInitialPlaneAtlasSliceAdjustment(initialPlane, initialSlice);
+    setTimeout(() => {
+      ViewerManager.applyChangeFromHistory(initHistoryParams);
+      ViewerManager.trySyncInitialHistoryStep();
+    }, 50);
+  }
+
   static getActivePlane() {
-    return ViewerManager.status?.activePlane ?? ViewerManager.config?.firstActivePlane ?? ZAVConfig.AXIAL;
+    return (
+      ViewerManager.navigationState?.activePlane ??
+      ViewerManager.status?.activePlane ??
+      ViewerManager.config?.firstActivePlane ??
+      ZAVConfig.AXIAL
+    );
   }
 
   static activatePlane(newPlane: number) {
-    if (newPlane !== ViewerManager.status.activePlane) {
-      ViewerManager.switchPlane(newPlane);
-
-      //change must be recorded (immediately) in browser's history
-      ViewerManager.makeActualHistoryStep({ s: ViewerManager.status.chosenSlice, a: ViewerManager.status.activePlane });
-      ViewerManager.signalStatusChanged(ViewerManager.status);
+    if (newPlane !== ViewerManager.getActivePlane()) {
+      const shouldAdjustInitialSlice = !ViewerManager.status.activatedPlanes.has(newPlane);
+      const initialSlice = ViewerManager.getPlaneChosenSlice(newPlane) ?? 0;
+      const viewportParams = createCenteredViewportForPlane(
+        ViewerManager.config,
+        newPlane,
+        ViewerManager.getLiveViewportState(),
+        ViewerManager.viewer.viewport.getHomeBounds().getCenter(),
+      );
+      if (shouldAdjustInitialSlice) {
+        ViewerManager.scheduleInitialPlaneAtlasSliceAdjustment(newPlane, initialSlice);
+      }
+      ViewerManager.applyNavigationState({
+        plane: newPlane,
+        slice: initialSlice,
+        viewport: viewportParams,
+        syncHistory: true,
+      });
     }
   }
 
@@ -2957,6 +2424,9 @@ class ViewerManager {
   }
 
   static getPlaneChosenSlice(plane: number) {
+    if (ViewerManager.navigationState) {
+      return ViewerManager.navigationState.chosenSlices[plane] ?? 0;
+    }
     if (!ViewerManager.status) {
       return 0;
     }
@@ -2972,7 +2442,7 @@ class ViewerManager {
   }
 
   static getPageNumForCurrentPlaneSlice(sliceNum: number) {
-    return ViewerManager.getPageNumForPlaneSlice(ViewerManager.status.activePlane, sliceNum);
+    return ViewerManager.getPageNumForPlaneSlice(ViewerManager.getActivePlane(), sliceNum);
   }
 
   static getPageNumForPlaneSlice(plane: number, sliceNum: number) {
@@ -2999,7 +2469,8 @@ class ViewerManager {
         } else if (chosenSlice < 0) {
           chosenSlice = 0;
         }
-        ViewerManager.status.axialChosenSlice = chosenSlice;
+        ViewerManager.navigationState.chosenSlices[ZAVConfig.AXIAL] = chosenSlice;
+        ViewerManager.syncNavigationStateToStatus();
         return chosenSlice;
 
       case ZAVConfig.CORONAL:
@@ -3008,7 +2479,8 @@ class ViewerManager {
         } else if (chosenSlice < 0) {
           chosenSlice = 0;
         }
-        ViewerManager.status.coronalChosenSlice = chosenSlice;
+        ViewerManager.navigationState.chosenSlices[ZAVConfig.CORONAL] = chosenSlice;
+        ViewerManager.syncNavigationStateToStatus();
         return chosenSlice;
 
       case ZAVConfig.SAGITTAL:
@@ -3017,7 +2489,8 @@ class ViewerManager {
         } else if (chosenSlice < 0) {
           chosenSlice = 0;
         }
-        ViewerManager.status.sagittalChosenSlice = chosenSlice;
+        ViewerManager.navigationState.chosenSlices[ZAVConfig.SAGITTAL] = chosenSlice;
+        ViewerManager.syncNavigationStateToStatus();
         return chosenSlice;
     }
     return chosenSlice;
@@ -3027,69 +2500,54 @@ class ViewerManager {
    * @public
    */
   static goToPlaneSlice(plane: number, chosenSlice: number, regionsToCenterOn?: string[] | null, force = false) {
-    //TODO use plane
-
     const focusRoi = false;
-    if (
-      force ||
-      plane !== ViewerManager.status.activePlane ||
-      chosenSlice !== ViewerManager.getCurrentPlaneChosenSlice() ||
-      focusRoi
-    ) {
-      ViewerManager.status.activePlane = plane;
-      chosenSlice = ViewerManager.checkNSetChosenSlice(plane, chosenSlice);
-      ViewerManager.status.chosenSlice = chosenSlice;
-
-      //asynchronous focus the view on specified regions of interest
-      if (regionsToCenterOn) {
-        const that = ViewerManager;
-        ViewerManager.eventSource.addOnceHandler('zav-regions-created', (_event: ViewerEventLike) => {
+    const onRegionsCreated = regionsToCenterOn
+      ? () => {
           if (focusRoi) {
-            that.centerOnROI(focusRoi);
+            ViewerManager.centerOnROI(focusRoi);
           } else {
-            that.centerOnRegions(regionsToCenterOn);
+            ViewerManager.centerOnRegions(regionsToCenterOn);
           }
-        });
-      }
-
-      const pageNum = ViewerManager.getPageNumForCurrentSlice();
-      ViewerManager.viewer.goToPage(pageNum);
-
-      //change must be recorded (immediately) in browser's history
-      ViewerManager.makeActualHistoryStep({ s: chosenSlice, a: ViewerManager.status.activePlane });
-
-      ViewerManager.signalStatusChanged(ViewerManager.status);
-    }
+        }
+      : null;
+    ViewerManager.applyNavigationState({
+      plane,
+      slice: chosenSlice,
+      viewport: regionsToCenterOn ? null : ViewerManager.getViewportHistoryParamsForSync(),
+      applyViewport: plane !== ViewerManager.getActivePlane(),
+      force,
+      syncHistory: true,
+      onRegionsCreated,
+    });
   }
 
   static goToSlice(chosenSlice: number, regionsToCenterOn: string[] | null = null, force = false) {
-    ViewerManager.goToPlaneSlice(ViewerManager.status.activePlane, chosenSlice, regionsToCenterOn, force);
+    ViewerManager.goToPlaneSlice(ViewerManager.getActivePlane(), chosenSlice, regionsToCenterOn, force);
   }
 
   static shiftToSlice(increment: number, force = false) {
+    const activePlane = ViewerManager.getActivePlane();
     ViewerManager.goToPlaneSlice(
-      ViewerManager.status.activePlane,
-      ViewerManager.status.chosenSlice + increment,
+      activePlane,
+      (ViewerManager.getPlaneChosenSlice(activePlane) ?? 0) + increment,
       null,
       force,
     );
   }
 
   static changeSlices(slicesByPlane: Record<string, number>) {
+    const activePlane = ViewerManager.getActivePlane();
     //for all planes but the active one
     for (const [p, slice] of Object.entries(slicesByPlane)) {
       const plane = parseInt(p, 10);
-      if (plane !== ViewerManager.status.activePlane) {
+      if (plane !== activePlane) {
         ViewerManager.checkNSetChosenSlice(plane, slice);
       }
     }
 
     //eventually change active plane's slice
-    if (_.has(slicesByPlane, String(ViewerManager.status.activePlane))) {
-      ViewerManager.goToPlaneSlice(
-        ViewerManager.status.activePlane,
-        slicesByPlane[String(ViewerManager.status.activePlane)] ?? 0,
-      );
+    if (_.has(slicesByPlane, String(activePlane))) {
+      ViewerManager.goToPlaneSlice(activePlane, slicesByPlane[String(activePlane)] ?? 0);
     } else {
       ViewerManager.signalStatusChanged(ViewerManager.status);
     }
@@ -3097,24 +2555,15 @@ class ViewerManager {
 
   //get point in physical space coordinates from specified image coordinates
   static getPoint(x: number, y: number) {
-    const tx = ViewerManager.config.imageSize - x;
-    const ty = ViewerManager.config.imageSize - y;
-    const planeSlice = ViewerManager.getPlaneChosenSlice(ViewerManager.status.activePlane) ?? 0;
-    const point = [tx, planeSlice * ViewerManager.getPlaneSliceStep(ViewerManager.status.activePlane), ty, 1];
-    //return multiplyMatrixAndPoint(point);
-    const result = [0, 0, 0, 0];
-    const matrix = ViewerManager.config.matrix ?? [];
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
-        result[i] += (matrix[i * 4 + j] ?? 0) * point[j];
-      }
-    }
-    return result;
+    const activePlane = ViewerManager.getActivePlane();
+    const planeSlice = ViewerManager.getPlaneChosenSlice(activePlane) ?? 0;
+    return getPhysicalPoint(ViewerManager.config, planeSlice, ViewerManager.getPlaneSliceStep(activePlane), x, y);
   }
 
   static getPointXY(x: number, y: number) {
-    var pos = ViewerManager.getPoint(x, y);
-    return { x: pos[0], y: pos[2] };
+    const activePlane = ViewerManager.getActivePlane();
+    const planeSlice = ViewerManager.getPlaneChosenSlice(activePlane) ?? 0;
+    return getPhysicalPointXY(ViewerManager.config, planeSlice, ViewerManager.getPlaneSliceStep(activePlane), x, y);
   }
 
   static mousemoveHandler(event: MouseEvent) {
@@ -3125,9 +2574,7 @@ class ViewerManager {
       return;
     }
     var rect = ViewerManager.viewer.canvas.getBoundingClientRect();
-    var zoom =
-      ViewerManager.viewer.viewport.getZoom(true) *
-      (ViewerManager.viewer.canvas.clientWidth / ViewerManager.config.imageSize);
+    var zoom = ViewerManager.getCurrentImageZoom();
     // update current position of pointer in local (DOM content) coordinates
     ViewerManager.status.position[0].x = event.clientX;
     ViewerManager.status.position[0].y = event.clientY;
@@ -3179,13 +2626,7 @@ class ViewerManager {
   }
 
   static getLayerOpacity(key: string) {
-    var opacity = 0;
-    if (ViewerManager.config.layers[key]) {
-      if (ViewerManager.status.layerDisplaySettings[key].enabled) {
-        opacity = ViewerManager.status.layerDisplaySettings[key].opacity / 100;
-      }
-    }
-    return opacity;
+    return getViewerLayerOpacity(ViewerManager.config, ViewerManager.status, key);
   }
 
   /**
@@ -3197,35 +2638,7 @@ class ViewerManager {
    *   (Assuming that there's no transparent color in the layer images, except for tracer layer)
    */
   static refreshLayersEffectiveOpacity(startLayerKey: string) {
-    const opacities: string[] = [];
-    let hasOpaqueLayerAbove = false;
-
-    let skip = true;
-    Object.keys(ViewerManager.config.layers)
-      // from top to bottom
-      .reverse()
-      // iterate over layers
-      .forEach((currentLayerKey) => {
-        const isStartingLayer = currentLayerKey === startLayerKey;
-        const currentlayer = ViewerManager.status.layerDisplaySettings[currentLayerKey];
-
-        //skip computing opacity for layer above the specified one
-        skip = skip && !isStartingLayer;
-
-        if (!skip) {
-          //effective opacity is set to 0 when layer is disabled or covered by another layer above it
-          currentlayer.effectiveOpacity = !hasOpaqueLayerAbove && currentlayer.enabled ? currentlayer.opacity / 100 : 0;
-          opacities.push(currentLayerKey);
-        }
-
-        //check if the current layer is hidding the one below
-        if (!hasOpaqueLayerAbove) {
-          //layeris enabled and fully opaque and not a tracer layer (which has alpha values),
-          hasOpaqueLayerAbove = !currentlayer.isTracer && currentlayer.enabled && currentlayer.opacity === 100;
-        }
-      });
-
-    return opacities;
+    return refreshViewerLayersEffectiveOpacity(ViewerManager.config, ViewerManager.status, startLayerKey);
   }
 
   static setLayerOpacity(key: string) {
@@ -3284,66 +2697,109 @@ class ViewerManager {
     if (ViewerManager.status.editModeOn) {
       return ViewerManager.getRegionsSVGEditUrl(extraParams);
     } else {
-      const sliceNum = ViewerManager.getCurrentPlaneChosenSlice();
-      const svgurl = Utils.makePath(
-        ViewerManager.config.PUBLISH_PATH as string | undefined,
-        ViewerManager.config.svgFolderName as string | undefined,
-        ViewerManager.config.hasMultiPlanes
-          ? ZAVConfig.getPlaneName(ViewerManager.status.activePlane as Parameters<typeof ZAVConfig.getPlaneName>[0])
-          : undefined,
-        `Anno_${sliceNum}.svg${ViewerManager.config.dataVersionTag ? ViewerManager.config.dataVersionTag : ''}`,
+      return ViewerManager.getRegionsSVGUrlForPlaneSlice(
+        ViewerManager.status.activePlane,
+        ViewerManager.getCurrentPlaneChosenSlice() ?? 0,
       );
-      return svgurl;
     }
   }
 
+  static getRegionsSVGUrlForPlaneSlice(plane: number, sliceNum: number) {
+    return getRegionsSVGUrlForPlaneSlice(ViewerManager.config, plane, sliceNum);
+  }
+
+  static hasCurrentSliceAtlasRegions(svgFile: XMLDocument) {
+    return hasCurrentSliceAtlasRegions(svgFile, BACKGROUND_PATHID);
+  }
+
+  static async planeSliceHasAtlasRegions(plane: number, sliceNum: number) {
+    const cacheKey = `${plane}:${sliceNum}`;
+    const cached = ViewerManager.atlasSlicePresenceCache.get(cacheKey);
+    if (typeof cached === 'boolean') {
+      return cached;
+    }
+
+    const svgFile = await getXmlDocument(ViewerManager.getRegionsSVGUrlForPlaneSlice(plane, sliceNum), 'image/svg+xml');
+    const hasRegions = ViewerManager.hasCurrentSliceAtlasRegions(svgFile);
+    ViewerManager.atlasSlicePresenceCache.set(cacheKey, hasRegions);
+    return hasRegions;
+  }
+
+  static async findNearestPlaneSliceWithAtlasRegions(plane: number, sliceNum: number) {
+    const planeSlideCount = ViewerManager.getPlaneSlideCount(plane) ?? 0;
+    const maxDistance = Math.max(sliceNum, planeSlideCount - sliceNum - 1);
+
+    for (let distance = 1; distance <= maxDistance; distance++) {
+      const candidateSlices = getCandidatePlaneSlices(planeSlideCount, sliceNum, distance);
+      if (candidateSlices.length === 0) {
+        continue;
+      }
+
+      const candidates = await Promise.all(
+        candidateSlices.map(async (candidateSlice) => ({
+          sliceNum: candidateSlice,
+          hasRegions: await ViewerManager.planeSliceHasAtlasRegions(plane, candidateSlice),
+        })),
+      );
+      const matchedCandidate = candidates.find((candidate) => candidate.hasRegions);
+      if (matchedCandidate) {
+        return matchedCandidate.sliceNum;
+      }
+    }
+
+    return undefined;
+  }
+
+  static scheduleInitialPlaneAtlasSliceAdjustment(plane: number, initialSlice: number) {
+    if (
+      ViewerManager.status.editModeOn ||
+      !ViewerManager.config.hasDelineation ||
+      !ViewerManager.config.svgFolderName
+    ) {
+      return;
+    }
+
+    ViewerManager.eventSource.addOnceHandler('zav-regions-created', () => {
+      if (ViewerManager.status.activePlane !== plane || ViewerManager.getPlaneChosenSlice(plane) !== initialSlice) {
+        return;
+      }
+      if (ViewerManager.status.currentSliceRegions.size > 0) {
+        return;
+      }
+
+      void ViewerManager.findNearestPlaneSliceWithAtlasRegions(plane, initialSlice)
+        .then((replacementSlice) => {
+          if (
+            typeof replacementSlice === 'number' &&
+            ViewerManager.status.activePlane === plane &&
+            ViewerManager.getPlaneChosenSlice(plane) === initialSlice
+          ) {
+            ViewerManager.goToPlaneSlice(plane, replacementSlice, null, true);
+          }
+        })
+        .catch((error) => {
+          debugWarn('Failed to adjust initial plane slice to a non-empty atlas slice', {
+            plane,
+            initialSlice,
+            error,
+          });
+        });
+    });
+  }
+
   static getFileTileSourceUrl(slideNum: number, key: string, ext: string, plane: number | null) {
-    //if no plane param is specified (= single plane mode), returned plane label will be undefined, thus the url won't contain reference to any plane
-    return Utils.makePath(
-      ViewerManager.config.dataRootPath as string | undefined,
-      key,
-      plane == null ? undefined : ZAVConfig.getPlaneName(plane as Parameters<typeof ZAVConfig.getPlaneName>[0]),
-      String(slideNum) + ext,
-    );
+    return buildFileTileSourceUrl(ViewerManager.config, slideNum, key, ext, plane);
   }
 
   /**
    * compute url to retrieve a specific tile stored in file folders (no backend image server)
    */
   static getFileTileUrl(slideNum: number, key: string, _ext: string, level: number, x: number, y: number) {
-    switch (ViewerManager.status.activePlane) {
-      case ZAVConfig.AXIAL:
-        slideNum -= ViewerManager.config.axialFirstIndex;
-        break;
-      case ZAVConfig.CORONAL:
-        slideNum -= ViewerManager.config.coronalFirstIndex;
-        break;
-      case ZAVConfig.SAGITTAL:
-        slideNum -= ViewerManager.config.sagittalFirstIndex;
-        break;
-    }
-    return (
-      ViewerManager.config.dataRootPath +
-      '/' +
-      key +
-      (ViewerManager.config.hasMultiPlanes
-        ? `/${ZAVConfig.getPlaneName(ViewerManager.status.activePlane as Parameters<typeof ZAVConfig.getPlaneName>[0])}`
-        : '') +
-      '/' +
-      slideNum +
-      '_files/' +
-      level +
-      '/' +
-      x +
-      '_' +
-      y +
-      '.' +
-      ViewerManager.status.tileFormat
-    );
+    return buildFileTileUrl(ViewerManager.config, ViewerManager.status, slideNum, key, level, x, y);
   }
 
   static getIIIFTileSourceUrl(slideNum: number, key: string, ext: string) {
-    return `${ViewerManager.config.IIPSERVER_PATH + key}/${slideNum}${ext}${ViewerManager.config.TILE_EXTENSION}`;
+    return buildIIIFTileSourceUrl(ViewerManager.config, slideNum, key, ext);
   }
 
   /**
@@ -3356,90 +2812,33 @@ class ViewerManager {
    * @param {*} y : y index of the tile
    */
   static getIIPTileUrl(slideNum: number, key: string, ext: string, level: number, x: number, y: number) {
-    const tileInfos = ViewerManager.status.iipTileInfos;
-    if (!tileInfos) {
-      return '';
-    }
-    const xTilesNum = Math.ceil(tileInfos.xTilesNumAtMaxLevel * (tileInfos.levelScale[level] ?? 1));
-    const layerDispSettings = ViewerManager.status.layerDisplaySettings[key];
-    return (
-      ViewerManager.status.IIPSVR_PATH +
-      key +
-      '/' +
-      slideNum +
-      ext +
-      (layerDispSettings.useIIProtocol && layerDispSettings.gammaEnabled ? `&GAM=${layerDispSettings.gamma}` : '') +
-      (layerDispSettings.useIIProtocol && layerDispSettings.contrastEnabled
-        ? `&CNT=${layerDispSettings.contrast}`
-        : '') +
-      // + "&WID=" + this.status.iipTileInfos.tileWidth + "&HEI=" + this.status.iipTileInfos.tileHeight
-      '&JTL=' +
-      (level ? level : '0') +
-      ',' +
-      (y * xTilesNum + x)
-    );
+    return buildIIPTileUrl(ViewerManager.status, slideNum, key, ext, level, x, y);
   }
 
   static getTileSourceDef(key: string, ext: string) {
-    const currentPage = ViewerManager.getPageNumForCurrentSlice();
-    if (ViewerManager.config.hasBackend) {
-      const layerDispSettings = ViewerManager.status.layerDisplaySettings[key];
-      if (layerDispSettings.useIIProtocol) {
-        const tileInfos = ViewerManager.status.iipTileInfos;
-        if (!tileInfos) {
-          return undefined;
-        }
-        return {
-          width: tileInfos.imageWidth,
-          height: tileInfos.imgeHeight,
-          tileWidth: tileInfos.tileWidth,
-          tileHeight: tileInfos.tileHeight,
-
-          overlap: 1,
-
-          maxLevel: tileInfos.maxLevel,
-          minLevel: tileInfos.minLevel,
-          getTileUrl: (level: number, x: number, y: number) =>
-            ViewerManager.getIIPTileUrl(ViewerManager.getPageNumForCurrentSlice() ?? 0, key, ext, level, x, y),
-        };
-      } else {
-        return ViewerManager.getIIIFTileSourceUrl(currentPage, key, ext);
-      }
-    } else {
-      return {
-        width: ViewerManager.config.dzLayerWidth,
-        height: ViewerManager.config.dzLayerHeight,
-        tileSize: ViewerManager.status.tileSize,
-        overlap: ViewerManager.status.tileOverlap,
-        tileFormat: ViewerManager.status.tileFormat,
-
-        //minLevel: 0,
-        //maxLevel: 10, //maxLevel should correspond to the depth of the number of folders in the dzi subdirectory
-
-        getTileUrl: (level: number, x: number, y: number) =>
-          ViewerManager.getFileTileUrl(currentPage ?? 0, key, ext, level, x, y),
-      };
-    }
+    return buildTileSourceDef({
+      config: ViewerManager.config,
+      status: ViewerManager.status,
+      key,
+      ext,
+      currentPage: ViewerManager.getPageNumForCurrentSlice(),
+      getCurrentPage: () => ViewerManager.getPageNumForCurrentSlice() ?? 0,
+    });
   }
 
   /**
    * Called once 1rst layer is opened to add other layers
    */
   static addLayer(key: string, _name: string, ext: string) {
-    const tileSource = ViewerManager.getTileSourceDef(key, ext);
-    if (!tileSource) {
-      return;
-    }
-    var options = {
-      tileSource,
-      opacity: ViewerManager.getLayerOpacity(key),
-      success: (_event: ViewerEventLike) => ViewerManager.setAllFilters(),
-
-      //force labelMap layer's tiles loading even when the image is hidden by zero opacity
-      preload: ViewerManager.status.layerDisplaySettings[key].isLabelMap,
-    };
-
-    ViewerManager.viewer.addTiledImage(options);
+    addViewerLayer({
+      viewer: ViewerManager.viewer,
+      config: ViewerManager.config,
+      status: ViewerManager.status,
+      key,
+      ext,
+      getCurrentPage: () => ViewerManager.getPageNumForCurrentSlice() ?? 0,
+      onTileLoaded: () => ViewerManager.setAllFilters(),
+    });
   }
 
   static changeLayerOpacity(layerid: string, enabled: boolean, opacity: number) {
@@ -3453,107 +2852,18 @@ class ViewerManager {
 
   /** adjust filters to the new zoom factor */
   static adjustFiltersAfterZoom(zoom: number) {
-    const tracerLayer = _.findWhere(ViewerManager.status.layerDisplaySettings, { isTracer: true });
-    if (tracerLayer) {
-      const newDilationSize = zoom > 2.5 ? 0 : zoom > 1.5 ? 3 : zoom > 0.3 ? 5 : 7;
-      tracerLayer.autoDilation = newDilationSize;
-
-      //change filters only if dilation kernel size changed
-      if (newDilationSize !== tracerLayer.dilation && !tracerLayer.manualEnhancing) {
-        tracerLayer.dilation = newDilationSize;
-        if (tracerLayer.enhanceSignal) {
-          ViewerManager.setAllFilters();
-        }
-      }
+    if (adjustTracerLayerDilation(ViewerManager.status, zoom)) {
+      ViewerManager.setAllFilters();
     }
   }
 
   /** reset filters : the plugin API allows only to set all processors for all tiled images at once  */
   static setAllFilters() {
-    const filters: Array<{ items: OpenSeadragon.TiledImage; processors: unknown[] }> = [];
-    const osdFilters = (OpenSeadragon as OSDWithFilters).Filters;
-    const canUseOSDFilters =
-      typeof osdFilters?.MORPHOLOGICAL_OPERATION === 'function' &&
-      typeof osdFilters?.CONTRAST === 'function' &&
-      typeof osdFilters?.GAMMA === 'function';
-    let tracerNum = 0;
-    Object.values(ViewerManager.status.layerDisplaySettings).forEach((layer) => {
-      const processors: unknown[] = [];
-
-      if (layer.isTracer) {
-        //change filters only if dilation kernel size changed
-        if (canUseOSDFilters && layer.enhanceSignal && (layer.dilation ?? 0) > 0) {
-          processors.push(osdFilters.MORPHOLOGICAL_OPERATION(layer.dilation ?? 0, Math.max));
-        }
-        processors.push(CustomFilters.INTENSITYALPHA(tracerNum));
-        tracerNum++;
-      } else {
-        if (canUseOSDFilters && !layer.useIIProtocol) {
-          if (layer.contrastEnabled) {
-            processors.push(osdFilters.CONTRAST(layer.contrast ?? 1));
-          }
-          if (layer.gammaEnabled) {
-            processors.push(osdFilters.GAMMA(layer.gamma ?? 1));
-          }
-        }
-      }
-
-      if (processors.length) {
-        const tiledImage = ViewerManager.viewer.world.getItemAt(layer.index as number);
-        filters.push({
-          items: tiledImage,
-          processors: processors,
-        });
-      }
-    });
-
-    if (!canUseOSDFilters) {
-      const requiresOSDFilters = Object.values(ViewerManager.status.layerDisplaySettings).some((layer) =>
-        Boolean(
-          (layer.isTracer && layer.enhanceSignal && (layer.dilation ?? 0) > 0) ||
-            (!layer.useIIProtocol && (layer.contrastEnabled || layer.gammaEnabled)),
-        ),
-      );
-      if (requiresOSDFilters) {
-        console.error('OpenSeadragon.Filters is unavailable; skipping contrast, gamma, and morphology filters.');
-      }
-    }
-
-    ViewerManager.viewer.setFilterOptions({
-      filters: filters as unknown as NonNullable<Parameters<OpenSeadragon.Viewer['setFilterOptions']>[0]>['filters'],
-    });
+    applyViewerFilters(ViewerManager.viewer, ViewerManager.status, (message) => console.error(message));
   }
 
   static resetTiledImageCache(layerid: string) {
-    const layerIndex = Object.keys(ViewerManager.status.layerDisplaySettings).indexOf(layerid);
-
-    var tiledImage = ViewerManager.viewer.world.getItemAt(layerIndex);
-    var tiledImageSource = tiledImage.source;
-
-    //Force update tiles's url for those already in viewer's tile matrix
-    Object.entries(
-      (
-        tiledImage as OpenSeadragon.TiledImage & {
-          tilesMatrix: Record<string, Record<string, Record<string, { url?: string }>>>;
-        }
-      ).tilesMatrix,
-    ).forEach(([level, levelTiles]) => {
-      Object.entries(levelTiles as Record<string, Record<string, ViewerTileCacheEntry>>).forEach(([x, xTiles]) => {
-        Object.entries(xTiles).forEach(([y, tile]) => {
-          const resolvedTileUrl = tiledImageSource.getTileUrl(parseInt(level, 10), parseInt(x, 10), parseInt(y, 10));
-          const newTileUrl = typeof resolvedTileUrl === 'function' ? resolvedTileUrl() : resolvedTileUrl;
-          if (tile.url !== newTileUrl) {
-            tile.exists = true;
-            tile.loaded = false;
-            //update tile url that otherwise would still use previous image adjustement param values
-            tile.url = newTileUrl;
-          }
-        });
-      });
-    });
-
-    //clears all of the current (cached) tiles and sets it to reload.
-    tiledImage.reset();
+    resetViewerTiledImageCache(ViewerManager.viewer, ViewerManager.status, layerid);
   }
 
   static changeLayerContrast(layerid: string, enabled: boolean, contrast: number) {
@@ -3587,32 +2897,7 @@ class ViewerManager {
   static changeLayerDilation(layerid: string, enabled: boolean, manualEnhancing: boolean, dilation: number) {
     if (ViewerManager.config.layers[layerid]) {
       const layerSettings = ViewerManager.status.layerDisplaySettings[layerid];
-
-      if (layerSettings.enhanceSignal !== enabled) {
-        if (!enabled) {
-          layerSettings.dilation = layerSettings.autoDilation;
-          layerSettings.manualEnhancing = false;
-        }
-        layerSettings.enhanceSignal = enabled;
-      }
-
-      //just enabled or disabled manual setting of dilation value
-      else if (layerSettings.manualEnhancing !== manualEnhancing) {
-        //reset dilation to previous value in corresponding mode
-        if (manualEnhancing) {
-          layerSettings.dilation = layerSettings.manualDilation;
-        } else {
-          layerSettings.dilation = layerSettings.autoDilation;
-        }
-        layerSettings.manualEnhancing = manualEnhancing;
-      }
-      //just manually changed value of dilation
-      else if (manualEnhancing) {
-        //dilation kernel size must be an odd number
-        layerSettings.manualDilation = dilation === 0 ? dilation : Math.floor(dilation / 2) * 2 + 1;
-        layerSettings.dilation = layerSettings.manualDilation;
-      }
-
+      applyLayerDilationChange(layerSettings, enabled, manualEnhancing, dilation);
       ViewerManager.setAllFilters();
       ViewerManager.signalStatusChanged(ViewerManager.status);
     }
@@ -3687,10 +2972,7 @@ class ViewerManager {
 
       const orig = ViewerManager.viewer.viewport.pixelFromPoint(new OpenSeadragon.Point(0, 0), true);
       const rect = ViewerManager.viewer.canvas.getBoundingClientRect();
-      //var zoom = viewer.viewport.getZoom(true);
-      const zoom =
-        ViewerManager.viewer.viewport.getZoom(true) *
-        (ViewerManager.viewer.canvas.clientWidth / ViewerManager.config.imageSize);
+      const zoom = ViewerManager.getCurrentImageZoom();
 
       //record next point for measuring line feature
       const x = (event.clientX - orig.x - rect.left) / zoom;
@@ -3740,9 +3022,7 @@ class ViewerManager {
     const orig = ViewerManager.viewer.viewport.pixelFromPoint(new OpenSeadragon.Point(0, 0), true);
     const rect = ViewerManager.viewer.canvas.getBoundingClientRect();
 
-    const zoom =
-      ViewerManager.viewer.viewport.getZoom(true) *
-      (ViewerManager.viewer.canvas.clientWidth / ViewerManager.config.imageSize);
+    const zoom = ViewerManager.getCurrentImageZoom();
     const x = (ViewerManager.status.position[0].x - orig.x - rect.left) / zoom;
     const y = (ViewerManager.status.position[0].y - orig.y - rect.top) / zoom;
 
@@ -3868,9 +3148,7 @@ class ViewerManager {
     //clip box
     if (ViewerManager.status.position[0].c !== 0) {
       const orig = ViewerManager.viewer.viewport.pixelFromPoint(new OpenSeadragon.Point(0, 0), true);
-      const zoom =
-        ViewerManager.viewer.viewport.getZoom(true) *
-        (ViewerManager.viewer.canvas.clientWidth / ViewerManager.config.imageSize);
+      const zoom = ViewerManager.getCurrentImageZoom();
 
       const px1 = Math.round(ViewerManager.status.position[1].x * zoom + orig.x + 0.5) - 0.5;
       const py1 = Math.round(ViewerManager.status.position[1].y * zoom + orig.y + 0.5) - 0.5;
@@ -4058,181 +3336,92 @@ class ViewerManager {
   }
 
   static drawProcessingResult(clipOrigX: number, clipOrigY: number, _clipWidth: number, _clipHeight: number) {
-    //if the result of previous processing is still available, display it on top of layers
-    if (ViewerManager.status.processedImage) {
-      const ctx = ViewerManager.status.ctx;
-      if (!ctx) {
-        return false;
-      }
-      const sf = ViewerManager.getZoomFactor() / (ViewerManager.status.processedZoom ?? 1);
-      const deltaSF = 1 - sf;
-      const needScaling = Math.abs(deltaSF) > Number.EPSILON;
-      if (needScaling) {
-        //image was computed at different scale factor, so it needs to be scaled
-        ctx.translate(deltaSF * clipOrigX, deltaSF * clipOrigY);
-        ctx.scale(sf, sf);
-      }
-      //draw computed image on top of layers
-      ctx.drawImage(ViewerManager.status.processedImage, clipOrigX, clipOrigY);
-
-      if (needScaling) {
-        ctx.resetTransform();
-      }
-      return !needScaling;
-    }
-    return false;
+    return drawViewportProcessingResult({
+      ctx: ViewerManager.status.ctx,
+      processedImage: ViewerManager.status.processedImage,
+      processedZoom: ViewerManager.status.processedZoom,
+      getZoomFactor: () => ViewerManager.getZoomFactor(),
+      clipOrigX,
+      clipOrigY,
+    });
   }
 
   static setSelectClip(active: boolean) {
-    ViewerManager.claerPosition();
-    ViewerManager.status.processedImage = null;
-    if (active) {
-      //this.viewer.zoomPerScroll =1;
-      ViewerManager.hideRegions();
-      ViewerManager.status.measureModeOn = false;
-    }
-    ViewerManager.status.clippingModeOn = active;
-    const posCanvas = ViewerManager.getPositionCanvas();
-    if (!posCanvas) {
-      return;
-    }
-    if (active) {
-      posCanvas.style.display = 'block';
-    } else {
-      posCanvas.style.display = 'none';
-    }
-    ViewerManager.signalStatusChanged(ViewerManager.status);
+    setViewerSelectClip({
+      status: ViewerManager.status,
+      active,
+      posCanvas: ViewerManager.getPositionCanvas(),
+      claerPosition: () => ViewerManager.claerPosition(),
+      hideRegions: () => ViewerManager.hideRegions(),
+      signalStatusChanged: (status) => ViewerManager.signalStatusChanged(status as ViewerStatus),
+    });
   }
 
   static isSelectClipModeOn() {
-    return ViewerManager.status?.clippingModeOn;
+    return isViewerSelectClipModeOn(ViewerManager.status);
   }
 
   static isClipSelected() {
-    return ViewerManager.status?.clippingModeOn && ViewerManager.status.position[0].c === 2;
+    return isViewerClipSelected(ViewerManager.status);
   }
 
   static isZoomEnabled() {
-    const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & {
-      zoomPerClick?: number;
-      gestureSettingsMouse?: {
-        clickToZoom?: boolean;
-      };
-    };
-    return (
-      Boolean(zoomViewer) && Boolean(zoomViewer.gestureSettingsMouse?.clickToZoom) && 1.0 !== zoomViewer.zoomPerClick
-    );
+    return isViewerZoomEnabled(ViewerManager.viewer);
   }
 
   static setZoomEnabled(active: boolean) {
-    const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & {
-      zoomPerScroll?: number;
-      zoomPerClick?: number;
-      gestureSettingsMouse?: {
-        clickToZoom?: boolean;
-        scrollToZoom?: boolean;
-      };
-      zoomPerSecond?: number;
-    };
-    if (active) {
-      zoomViewer.zoomPerClick = ViewerManager.status.prevZoomPerClick ?? zoomViewer.zoomPerClick ?? 2;
-      if (zoomViewer.gestureSettingsMouse) {
-        zoomViewer.gestureSettingsMouse.clickToZoom = true;
-      }
-    } else {
-      ViewerManager.status.prevZoomPerClick = zoomViewer.zoomPerClick ?? 2;
-      zoomViewer.zoomPerClick = 1.0;
-      if (zoomViewer.gestureSettingsMouse) {
-        zoomViewer.gestureSettingsMouse.clickToZoom = false;
-        zoomViewer.gestureSettingsMouse.scrollToZoom = true;
-      }
-    }
-    ViewerManager.signalStatusChanged(ViewerManager.status);
+    setViewerZoomEnabled(ViewerManager.viewer, ViewerManager.status, active, (status) =>
+      ViewerManager.signalStatusChanged(status as ViewerStatus),
+    );
   }
 
   static getZoomFactor() {
-    return ViewerManager.viewer?.world.getItemCount()
-      ? Number(
-          (
-            100 *
-            (ViewerManager.viewer.world
-              .getItemAt(0)
-              ?.viewportToImageZoom(ViewerManager.viewer.viewport.getZoom(true)) ?? 0)
-          ).toFixed(3),
-        )
-      : 0;
+    return getViewerZoomFactor(ViewerManager.viewer);
   }
 
   static setZoomFactor(zf: number) {
     if (ViewerManager.viewer) {
-      const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & { zoomPerSecond?: number };
-      const animDuration = zoomViewer.zoomPerSecond;
-      zoomViewer.zoomPerSecond = 0.1;
-      const viewportZoom = ViewerManager.viewer.viewport.imageToViewportZoom(zf / 100);
-      ViewerManager.viewer.viewport.zoomTo(viewportZoom, undefined, true);
-      zoomViewer.zoomPerSecond = animDuration;
+      setViewerZoomFactor(ViewerManager.viewer, zf);
     }
   }
 
   static goHome() {
     if (ViewerManager.viewer) {
-      ViewerManager.viewer.viewport.goHome(false);
+      goViewerHome(ViewerManager.viewer);
     }
   }
 
   static hasProcessingsModule() {
-    return typeof globalThis.ZAVProcessings !== 'undefined';
+    return hasViewerProcessingsModule();
   }
 
   static hasProcessors() {
-    return ViewerManager.hasProcessingsModule() && (globalThis.ZAVProcessings?.nbProcessors() ?? 0);
+    return hasViewerProcessors();
   }
 
   static getProcessors() {
-    return ViewerManager.hasProcessingsModule() ? (globalThis.ZAVProcessings?.getProcessors() ?? []) : [];
+    return getViewerProcessors();
   }
 
   static getProcessor(procIndex: number) {
-    if (ViewerManager.hasProcessingsModule()) {
-      const procs = globalThis.ZAVProcessings?.getProcessors() ?? [];
-      return procIndex < procs.length ? procs[procIndex] : null;
-    } else {
-      return null;
-    }
+    return getViewerProcessor(procIndex);
   }
 
   static setSelectedProcessorIndex(procIndex: number) {
-    const nbProcessors = ViewerManager.hasProcessingsModule() ? (globalThis.ZAVProcessings?.nbProcessors() ?? 0) : 0;
-    if (procIndex < nbProcessors) {
-      if (ViewerManager.status.selectedprocIndex !== procIndex) {
-        ViewerManager.status.selectedprocIndex = procIndex;
-        //reset previous result and its associated clip box if any
-        if (ViewerManager.status.processedImage) {
-          ViewerManager.resetPositionview();
-        }
-        ViewerManager.displayClipBox();
-      }
-    }
+    setViewerSelectedProcessorIndex({
+      status: ViewerManager.status,
+      procIndex,
+      resetPositionview: () => ViewerManager.resetPositionview(),
+      displayClipBox: () => ViewerManager.displayClipBox(),
+    });
   }
 
   static getSelectedProcessorIndex() {
-    if (ViewerManager.hasProcessors() && ViewerManager.status) {
-      if (typeof ViewerManager.status.selectedprocIndex === 'undefined') {
-        ViewerManager.status.selectedprocIndex = 0;
-      }
-      return ViewerManager.status.selectedprocIndex;
-    } else {
-      return -1;
-    }
+    return ViewerManager.status ? getViewerSelectedProcessorIndex(ViewerManager.status) : -1;
   }
 
   static getSelectedProcessor() {
-    const procIndex = ViewerManager.getSelectedProcessorIndex();
-    if (procIndex >= 0) {
-      return ViewerManager.getProcessor(procIndex);
-    } else {
-      return null;
-    }
+    return getCurrentSelectedProcessor(ViewerManager.status);
   }
 
   static getProcessedImage() {
@@ -4244,281 +3433,21 @@ class ViewerManager {
   }
 
   static performProcessing(procIndex: number) {
-    if (ViewerManager.isClipSelected()) {
-      ViewerManager.getProcessors();
-      const proc = ViewerManager.getProcessor(procIndex);
-      if (proc) {
-        debugDebug(`Computing "${proc.name}"`);
-
-        //store zoom factor of the image about to be processed
-        ViewerManager.status.processedZoom = ViewerManager.getZoomFactor();
-        ViewerManager.status.processedRegion = ViewerManager.status.constrainedClippedRegion;
-        ViewerManager.status.processedImage = null;
-        ViewerManager.status.processedTopleftPx = null;
-
-        //retrieve image data for custom processing
-        const tilescanvas = ViewerManager.viewer.drawer.canvas;
-        const ctx = tilescanvas.getContext('2d');
-
-        //routine to perform processing on specified imageData
-        const startProcessor = (imageData: ImageData) => {
-          debugDebug(`start processor "${proc.name}" on ${imageData.width} x ${imageData.height} pixels`);
-
-          //perform actual computation
-          ViewerManager.status.processingActive = true;
-          ViewerManager.status.longRunningMessage = 'Performing custom processing...';
-          ViewerManager.signalStatusChanged(ViewerManager.status);
-
-          try {
-            proc
-              .processImageData(imageData)
-              .then((processedImageData: ImageData | HTMLImageElement) => {
-                //if result is already an image, no conversion necessary
-                if (processedImageData instanceof Image) {
-                  return processedImageData;
-                } else {
-                  //convert computed result as image object
-                  return ViewerManager.imageDataToImage(processedImageData);
-                }
-              })
-              .then((imageObj: HTMLImageElement) => {
-                imageObj.name =
-                  proc.name +
-                  //info to identify processed image clip (top-left pixel coords in orginal image and zoom value)
-                  `-${ViewerManager.status.processedTopleftPx?.[0] ?? 0},${ViewerManager.status.processedTopleftPx?.[1] ?? 0}@${Math.round((ViewerManager.status.processedZoom ?? 0) * 100) / 100.0}-` +
-                  new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-                ViewerManager.status.processedImage = imageObj;
-                ViewerManager.displayClipBox();
-              })
-              .catch((error: unknown) => {
-                debugError(error);
-                alert(`An error occured:\n${error}`);
-                ViewerManager.signalStatusChanged(ViewerManager.status);
-              })
-              .finally(() => {
-                ViewerManager.status.processingActive = false;
-                ViewerManager.status.longRunningMessage = null;
-                ViewerManager.signalStatusChanged(ViewerManager.status);
-              });
-          } catch (e) {
-            alert(`An error occured:\n${e}`);
-            ViewerManager.status.processingActive = false;
-            ViewerManager.status.longRunningMessage = null;
-            ViewerManager.signalStatusChanged(ViewerManager.status);
-          }
-        };
-
-        //collect info to check if part of the clipped region is outside of the screen
-        const bounds = ViewerManager.viewer.viewport.getBounds(true);
-        const vpCoord1 = ViewerManager.viewer.viewport.imageToViewportCoordinates(
-          ViewerManager.status.position[1].x,
-          ViewerManager.status.position[1].y,
-        );
-        const vpCoord2 = ViewerManager.viewer.viewport.imageToViewportCoordinates(
-          ViewerManager.status.position[2].x,
-          ViewerManager.status.position[2].y,
-        );
-        const vlx = Math.min(vpCoord1.x, vpCoord2.x);
-        const vrx = Math.max(vpCoord1.x, vpCoord2.x);
-        const vty = Math.min(vpCoord1.y, vpCoord2.y);
-        const vby = Math.max(vpCoord1.y, vpCoord2.y);
-
-        const [lx, ty, w, h] = ViewerManager.status.processedRegion ?? [0, 0, 0, 0];
-
-        ViewerManager.status.processedTopleftPx = [
-          Math.round(ViewerManager.config.imageSize * vlx),
-          Math.round(ViewerManager.config.imageSize * vty),
-        ];
-
-        if (!ctx) {
-          return;
-        }
-        if (vlx >= bounds.x && vty >= bounds.y && vrx <= bounds.x + bounds.width && vby <= bounds.y + bounds.height) {
-          //clipped regions within viewport boundaries, complete clipped region imageData is available
-          const imageData = ctx.getImageData(lx, ty, w, h);
-          startProcessor(imageData);
-        } else {
-          //part of the clip is outside of the screen, necessary to pan the viewport to retreive complete imageData
-
-          {
-            //compute the panning moves (in row-major order) necessary to cover the clipped region at the current zoom level
-            const panMoves: Array<{
-              col: number;
-              row: number;
-              lastRow: boolean;
-              lastCol: boolean;
-              point: OpenSeadragon.Point;
-            }> = [];
-            const halfWidth = bounds.width / 2;
-            const halfHeight = bounds.height / 2;
-            let row = 0;
-            for (let panY = vty; panY < vby; panY += bounds.height, row++) {
-              let col = 0;
-              for (let panX = vlx; panX < vrx; panX += bounds.width, col++) {
-                panMoves.push({
-                  col: col,
-                  row: row,
-                  lastRow: panY + bounds.height >= vby,
-                  lastCol: panX + bounds.width >= vrx,
-                  point: new OpenSeadragon.Point(panX + halfWidth, panY + halfHeight),
-                });
-              }
-            }
-            const nbParts = panMoves.length;
-
-            //dimension of imageData that can be collect at once
-            const canvasWidth = tilescanvas.clientWidth;
-            const canvasHeight = tilescanvas.clientHeight;
-
-            //return a promise which collect image data
-            const getDeferedCollectImageDataPromise = (
-              imageDataArray: Array<{ data: ImageData; col: number; row: number }>,
-              panMove: { col: number; row: number; lastRow: boolean; lastCol: boolean; point: OpenSeadragon.Point },
-            ) => {
-              const collectImageData = () => {
-                //collect only the necessary part of the canvas where the viewport is currently panned
-                const partWidth = panMove.lastCol ? w - panMove.col * canvasWidth : canvasWidth;
-                const partHeight = panMove.lastRow ? h - panMove.row * canvasHeight : canvasHeight;
-                const imageData = ctx.getImageData(0, 0, partWidth, partHeight);
-                imageDataArray.push({
-                  data: imageData,
-                  col: panMove.col,
-                  row: panMove.row,
-                });
-                return imageDataArray;
-              };
-
-              return new Promise<Array<{ data: ImageData; col: number; row: number }>>(
-                //resolution deferred to give exta time to browser to finish drawing canvas...
-                (resolve) => setTimeout(() => resolve(collectImageData()), 200),
-              );
-            };
-
-            const that = ViewerManager;
-            //return a promise chain which trigger next pan move and image data collection
-            const getNextPanPromise = (imageDataArray: Array<{ data: ImageData; col: number; row: number }>) =>
-              new Promise<Array<{ data: ImageData; col: number; row: number }>>((resolve) => {
-                //while there is panning moves left
-                if (panMoves.length) {
-                  const panMove = panMoves.shift();
-                  if (!panMove) {
-                    resolve(imageDataArray);
-                    return;
-                  }
-                  ViewerManager.status.longRunningMessage = `Collecting data... (${nbParts - panMoves.length}/${nbParts})`;
-
-                  //Since image loading and drawing is asynchrously handled by OSD,
-                  //we rely on OSD events to detect when the promise can be resolved
-
-                  //event handler to detect when panning has been performed
-                  ViewerManager.viewer.addOnceHandler('pan', () => {
-                    let resolveDeferred = false;
-
-                    //attach a single event handler on the first visible layer not fully loaded
-                    for (let i = 0; i < that.viewer.world.getItemCount() && !resolveDeferred; i++) {
-                      const tiledImage = that.viewer.world.getItemAt(i);
-                      const layer = _.findWhere(that.status.layerDisplaySettings, { index: i });
-
-                      if (layer?.enabled) {
-                        //check if image is already fully loaded
-                        if (!tiledImage.getFullyLoaded()) {
-                          //event handler to detect when all tiled images have been fully loaded (for current viewport)
-                          that.eventSource.addOnceHandler('zav-alllayers-loaded', (_event: ViewerEventLike) => {
-                            void getDeferedCollectImageDataPromise(imageDataArray, panMove).then((imgDtaArr) =>
-                              resolve(getNextPanPromise(imgDtaArr)),
-                            );
-                          });
-                          // one single event handler is enough
-                          resolveDeferred = true;
-                        }
-                      }
-                    }
-
-                    //if no handler was added, it means all tiles are fully loaded at this point
-                    if (!resolveDeferred) {
-                      void getDeferedCollectImageDataPromise(imageDataArray, panMove).then((imgDtaArr) =>
-                        resolve(getNextPanPromise(imgDtaArr)),
-                      );
-                    }
-                  });
-
-                  // trigger next Panning
-                  ViewerManager.viewer.viewport.panTo(panMove.point, true);
-                } else {
-                  resolve(imageDataArray);
-                }
-              });
-
-            //create (and execute) Panning and collection Promises chain
-            ViewerManager.status.longRunningMessage = 'Collecting data...';
-            ViewerManager.signalStatusChanged(ViewerManager.status);
-
-            getNextPanPromise([])
-              .then(
-                // create full ImageData by joining collected ImageData parts
-                (imageDataArray: Array<{ data: ImageData; col: number; row: number }>) => {
-                  ViewerManager.status.longRunningMessage = 'Aggregating data...';
-
-                  const fullImgDataSizeByte = w * h * 4;
-                  debugDebug(`allocating ${fullImgDataSizeByte} bytes`);
-                  const joinedImgDataPx = new Uint8ClampedArray(fullImgDataSizeByte);
-                  imageDataArray.forEach((imageDataInfo, _index: number) => {
-                    const partImgData = imageDataInfo.data;
-                    for (let x = 0; x < partImgData.width; x++) {
-                      for (let y = 0; y < partImgData.height; y++) {
-                        for (let c = 0; c < 4; c += 1) {
-                          //vertical pixel offset, filled by parts in above rows
-                          const vOffset = imageDataInfo.row * canvasHeight * w;
-                          //horizontal pixel offset, filled by parts in left cols
-                          const hOffset = imageDataInfo.col * canvasWidth;
-                          //current line pixel offset for full image
-                          const fullImgLineOffset = y * w;
-                          //current line pixel offset for part image
-                          const partImgLineOffset = y * partImgData.width;
-
-                          joinedImgDataPx[(vOffset + hOffset + fullImgLineOffset + x) * 4 + c] =
-                            partImgData.data[(partImgLineOffset + x) * 4 + c];
-                        }
-                      }
-                    }
-                  });
-                  //clear imageData parts
-                  imageDataArray.length = 0;
-
-                  const joinedImageData = new ImageData(joinedImgDataPx, w, h);
-                  return joinedImageData;
-                },
-              )
-              .then((joinedImageData) => {
-                //pan back to original position
-                ViewerManager.viewer.viewport.fitBounds(bounds);
-                return joinedImageData;
-              })
-              .then(
-                //launch custom processing
-                (joinedImageData: ImageData) => startProcessor(joinedImageData),
-              )
-              .catch((error: unknown) => {
-                debugError('Error while processing:', error);
-
-                ViewerManager.status.longRunningMessage = String(error);
-                ViewerManager.signalStatusChanged(ViewerManager.status);
-                setTimeout(() => {
-                  ViewerManager.status.longRunningMessage = String(error);
-                  ViewerManager.signalStatusChanged(ViewerManager.status);
-                }, 1500);
-              });
-          }
-        }
-      }
-    }
+    runViewerProcessing({
+      viewer: ViewerManager.viewer,
+      eventSource: ViewerManager.eventSource,
+      status: ViewerManager.status,
+      procIndex,
+      isClipSelected: () => Boolean(ViewerManager.isClipSelected()),
+      getZoomFactor: () => ViewerManager.getZoomFactor(),
+      getCurrentImageSize: () => ViewerManager.getCurrentImageSize(),
+      displayClipBox: () => ViewerManager.displayClipBox(),
+      signalStatusChanged: (status) => ViewerManager.signalStatusChanged(status as ViewerStatus),
+    });
   }
 
   static imageDataToImage(imageData: ImageData) {
-    if (!globalThis.ZAVProcessings) {
-      throw new Error('ZAVProcessings is unavailable');
-    }
-    return globalThis.ZAVProcessings.imageDataToImage(imageData);
+    return convertImageDataToImage(imageData);
   }
 
   //record current viewer state in browser history
@@ -4529,10 +3458,9 @@ class ViewerManager {
       stepParams = explicitParams;
     } else {
       //get live values (Beware, OSD must not be transitioning)
-      const imageZoom = ViewerManager.viewer.viewport.viewportToImageZoom(ViewerManager.viewer.viewport.getZoom());
-      const center = ViewerManager.viewer.viewport.viewportToImageCoordinates(
-        ViewerManager.viewer.viewport.getCenter(),
-      );
+      const liveViewport = ViewerManager.getLiveViewportState();
+      const imageZoom = liveViewport?.imageZoom ?? 0;
+      const center = liveViewport?.center ?? new OpenSeadragon.Point(0, 0);
       const sliceNum = ViewerManager.getCurrentPlaneChosenSlice();
       const planeImageSize =
         ViewerManager.status.activePlane === ZAVConfig.AXIAL
@@ -4542,16 +3470,14 @@ class ViewerManager {
             : ViewerManager.status.activePlane === ZAVConfig.SAGITTAL
               ? ViewerManager.config?.sagittal_size
               : ViewerManager.config?.imageSize;
-      const hasValidCenter =
-        !planeImageSize || (center.x >= 0 && center.y >= 0 && center.x <= planeImageSize && center.y <= planeImageSize);
-
-      stepParams = {
-        z: hasValidCenter ? imageZoom.toFixed(3) : undefined,
-        x: hasValidCenter ? Math.round(center.x) : undefined,
-        y: hasValidCenter ? Math.round(center.y) : undefined,
-        s: sliceNum,
-        a: ViewerManager.status.activePlane,
-      };
+      const { hasValidCenter, stepParams: builtStepParams } = buildActualHistoryStepParams({
+        activePlane: ViewerManager.status.activePlane,
+        sliceNum,
+        imageZoom,
+        center,
+        planeImageSize,
+      });
+      stepParams = builtStepParams;
 
       if (!hasValidCenter) {
         debugInfo('Omitting out-of-bounds history viewport', {
@@ -4564,26 +3490,13 @@ class ViewerManager {
     return stepParams;
   }
 
-  static hasViewerHistoryParams(params: ViewerHistoryParams) {
-    return (
-      typeof params.activePlane !== 'undefined' ||
-      typeof params.sliceNum !== 'undefined' ||
-      typeof params.imageZoom !== 'undefined' ||
-      typeof params.center !== 'undefined'
-    );
-  }
-
-  static hasCompleteHistoryStepParams(params: Record<string, unknown>) {
-    return ['z', 'x', 'y', 's', 'a'].every((key) => typeof params[key] !== 'undefined');
-  }
-
   static trySyncInitialHistoryStep() {
     if (ViewerManager.initialHistorySynced) {
       return false;
     }
 
     const currentLocationParams = ViewerManager.getParamsFromCurrLocation();
-    if (ViewerManager.hasViewerHistoryParams(currentLocationParams)) {
+    if (hasViewerHistoryParams(currentLocationParams)) {
       ViewerManager.initialHistorySynced = true;
       return false;
     }
@@ -4593,7 +3506,7 @@ class ViewerManager {
     }
 
     const stepParams = ViewerManager.getActualHistoryStepParams();
-    if (!ViewerManager.hasCompleteHistoryStepParams(stepParams)) {
+    if (!hasCompleteHistoryStepParams(stepParams)) {
       return false;
     }
 
@@ -4644,7 +3557,10 @@ class ViewerManager {
     if (typeof confFromPath.z !== 'undefined') {
       const imageZoom = Number(confFromPath.z);
       if (!Number.isNaN(imageZoom) && Number.isFinite(imageZoom)) {
-        if (imageZoom >= ViewerManager.config.minImageZoom && imageZoom <= ViewerManager.config.maxImageZoom) {
+        const zoomPlane =
+          confParams.activePlane || ViewerManager.status?.activePlane || ViewerManager.config?.firstActivePlane;
+        const { min, max } = getPlaneImageZoomBounds(ViewerManager.config, zoomPlane ?? ZAVConfig.AXIAL);
+        if (imageZoom >= min && imageZoom <= max) {
           confParams.imageZoom = imageZoom;
         }
       }
@@ -4690,26 +3606,22 @@ class ViewerManager {
     return confParams;
   }
 
-  static applyChangeFromHistory(params: ViewerHistoryParams) {
+  private static applyChangeFromHistory(params: ViewerHistoryParams) {
     const targetPlane = params.activePlane || ViewerManager.status.activePlane;
-    if (typeof params.sliceNum !== 'undefined' && params.sliceNum !== ViewerManager.getPlaneChosenSlice(targetPlane)) {
-      let targetSlice = params.sliceNum;
-      //update active slice
-      targetSlice = ViewerManager.checkNSetChosenSlice(targetPlane, targetSlice);
-    }
-    if (params.activePlane) {
-      //change active plane and page
-      ViewerManager.switchPlane(targetPlane);
-    } else if (typeof params.sliceNum !== 'undefined') {
-      ViewerManager.viewer.goToPage(ViewerManager.getPageNumForCurrentSlice());
-    }
-    if (typeof params.imageZoom !== 'undefined') {
-      const viewportZoom = ViewerManager.viewer.viewport.imageToViewportZoom(params.imageZoom);
-      ViewerManager.viewer.viewport.zoomTo(viewportZoom);
-    }
-    if (params.center) {
-      const refPoint = ViewerManager.viewer.viewport.imageToViewportCoordinates(params.center);
-      ViewerManager.viewer.viewport.panTo(refPoint);
+    const targetSlice =
+      typeof params.sliceNum !== 'undefined' ? params.sliceNum : (ViewerManager.getPlaneChosenSlice(targetPlane) ?? 0);
+
+    if (
+      typeof params.activePlane !== 'undefined' ||
+      typeof params.sliceNum !== 'undefined' ||
+      params.center ||
+      typeof params.imageZoom !== 'undefined'
+    ) {
+      ViewerManager.applyNavigationState({
+        plane: targetPlane,
+        slice: targetSlice,
+        viewport: params,
+      });
     }
 
     ViewerManager.status.editModeOn = params.editMode === true;

@@ -25,17 +25,15 @@
     "check": "biome check"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.14",
+    "@biomejs/biome": "2.4.15",
     "@types/qs": "^6.15.1",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "@types/underscore": "^1.13.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.2",
-    "@typescript-eslint/parser": "^8.59.2",
     "@vitejs/plugin-react": "^6.0.1",
     "sass": "^1.99.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.11"
+    "vite": "^8.0.12"
   },
   "dependencies": {
     "@blueprintjs/core": "^6.12.1",

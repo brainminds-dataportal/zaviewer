@@ -1,6 +1,6 @@
 import type OpenSeadragon from 'openseadragon';
-import _ from 'underscore';
 
+import { debounce } from '../common/debounce';
 import type { LayerDisplaySetting } from '../components/ViewerPanelTypes';
 
 type ViewerPoint = { x: number; y: number };
@@ -121,7 +121,7 @@ export function bindViewerRuntimeBindings(args: {
     }
   }
 
-  const changeLabelSizeDebounced = _.debounce(() => {
+  const changeLabelSizeDebounced = debounce(() => {
     if (!ruleToUpdate) {
       return;
     }
@@ -174,7 +174,9 @@ export function bindViewerRuntimeBindings(args: {
 
   eventSource.addHandler('zav-layer-loaded', (event: { layer: string }) => {
     status.layerDisplaySettings[event.layer].loading = false;
-    const isAllLoaded = !_.findKey(status.layerDisplaySettings, (val: LayerDisplaySetting) => Boolean(val.loading));
+    const isAllLoaded = !Object.values(status.layerDisplaySettings).some((val: LayerDisplaySetting) =>
+      Boolean(val.loading),
+    );
     if (isAllLoaded && !status.isAllLoaded) {
       eventSource.raiseEvent('zav-alllayers-loaded', {});
     }

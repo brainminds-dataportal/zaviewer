@@ -1,11 +1,23 @@
-import type { History, Location } from 'history';
-import { createPath } from 'history';
-import qs, { type ParsedQs } from 'qs';
-import _ from 'underscore';
+import type { BrowserHistory, Location } from './common/browserHistory';
 
 type HashLocation = Pick<Location, 'hash'>;
 type HistoryStepParams = Record<string, unknown>;
 type HistoryUpdateMode = 'push' | 'replace';
+
+function parseHashParams(hash: string) {
+  const params = new URLSearchParams(Utils.getCleanHash(hash));
+  return Object.fromEntries(params.entries());
+}
+
+function stringifyHashParams(params: Record<string, unknown>) {
+  const serializedParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (typeof value !== 'undefined') {
+      serializedParams.set(key, String(value));
+    }
+  });
+  return serializedParams.toString();
+}
 
 class Utils {
   private constructor() {}
@@ -53,21 +65,26 @@ class Utils {
     return hash.startsWith('#') ? hash.substring(1) : hash;
   }
 
-  static getConfigFromLocation(location: HashLocation): ParsedQs {
-    return qs.parse(Utils.getCleanHash(location.hash));
+  static getConfigFromLocation(location: HashLocation): Record<string, string> {
+    return parseHashParams(location.hash);
   }
 
   static pushHistoryStep(
-    history: History,
+    history: BrowserHistory,
     newParams: HistoryStepParams,
     omitedParams?: string[],
     mode: HistoryUpdateMode = 'push',
   ) {
     const currentParams = Utils.getConfigFromLocation(history.location);
-    const mergedParams = _.omit(_.extend(currentParams, newParams), ...(omitedParams ?? []));
-    const cleanedParams = _.omit(mergedParams, (_value, key) => typeof mergedParams[key] === 'undefined');
-    const updStrParams = qs.stringify(cleanedParams);
-    const updatedPath = createPath(_.extend(_.clone(history.location), { hash: updStrParams }));
+    const mergedParams = { ...currentParams, ...newParams };
+    const paramsWithoutOmissions = Object.fromEntries(
+      Object.entries(mergedParams).filter(([key]) => !(omitedParams ?? []).includes(key)),
+    );
+    const cleanedParams = Object.fromEntries(
+      Object.entries(paramsWithoutOmissions).filter(([, value]) => typeof value !== 'undefined'),
+    );
+    const updStrParams = stringifyHashParams(cleanedParams);
+    const updatedPath = `${history.location.pathname}${history.location.search}${updStrParams ? `#${updStrParams}` : ''}`;
     if (updStrParams !== Utils.getCleanHash(history.location.hash)) {
       history[mode](updatedPath);
     }

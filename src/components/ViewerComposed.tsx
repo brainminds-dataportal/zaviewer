@@ -10,9 +10,9 @@ import {
   popoverPositionToNextPlacement,
 } from '@blueprintjs/core';
 import classNames from 'classnames';
-import type { BrowserHistory } from 'history';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import type { BrowserHistory } from '../common/browserHistory';
 import RegionsManager, { type IRegionsStatus } from '../RegionsManager';
 import RoiInfo from '../RoiInfo';
 import ViewerManager from '../ViewerManager';

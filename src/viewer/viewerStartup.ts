@@ -1,5 +1,4 @@
 import type OpenSeadragon from 'openseadragon';
-import _ from 'underscore';
 
 type ViewerConfigSubset = {
   hasCOSource?: boolean;
@@ -112,7 +111,7 @@ export function bindViewerStartupEvents(args: {
         viewer.navigator.world.removeItem(viewer.navigator.world.getItemAt(viewer.navigator.world.getItemCount() - 1));
       }
 
-      if (userData.replaced === 1 && userData.removed === _.size(config.layers) - 1) {
+      if (userData.replaced === 1 && userData.removed === Object.keys(config.layers).length - 1) {
         viewer.navigator.world.removeHandler('add-item', navItemReplaceHnd);
       }
     };

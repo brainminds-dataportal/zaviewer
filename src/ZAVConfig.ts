@@ -1,5 +1,4 @@
 import axios from 'axios';
-import _ from 'underscore';
 import { debugInfo, debugLog, debugWarn } from './common/debugLog';
 import { getJson, getOptionalJson, getText, postFormJson } from './common/http';
 import type { ConfigNDatasetPayload, ImageConfig } from './common/Types';
@@ -672,7 +671,9 @@ class ZAVConfig {
           void getJson<DatasetCollectionResponse>(this.config.fmDatasetsInfoUrl)
             .then((datasetData) => {
               if (datasetData.datasets?.length) {
-                const dataset_info = _.findWhere(datasetData.datasets, { marmosetID: this.config.datasetId });
+                const dataset_info = datasetData.datasets.find(
+                  (dataset) => dataset.marmosetID === this.config.datasetId,
+                );
                 if (dataset_info) {
                   this.config.dataset_info = this.expandDatasetImagesUrl(dataset_info, datasetData.config ?? {});
                 }
@@ -786,9 +787,9 @@ class ZAVConfig {
       //FIXME display explicit message to user
     }
 
-    this.config.hasAxialPlane = _.has(response.subview, 'axial_slide');
-    this.config.hasCoronalPlane = _.has(response.subview, 'coronal_slide');
-    this.config.hasSagittalPlane = _.has(response.subview, 'sagittal_slide');
+    this.config.hasAxialPlane = 'axial_slide' in response.subview;
+    this.config.hasCoronalPlane = 'coronal_slide' in response.subview;
+    this.config.hasSagittalPlane = 'sagittal_slide' in response.subview;
     //single or multi-plane mode?
     const nbDefinedPlanes =
       (this.config.hasAxialPlane ? 1 : 0) +

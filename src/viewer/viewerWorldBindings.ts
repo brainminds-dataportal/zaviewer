@@ -1,5 +1,4 @@
 import type OpenSeadragon from 'openseadragon';
-import _ from 'underscore';
 
 import type { LayerDisplaySetting } from '../components/ViewerPanelTypes';
 
@@ -19,7 +18,7 @@ export function bindViewerWorldItemHandlers(args: {
     const tiledImage = addItemEvent.item as OpenSeadragon.TiledImage;
     for (let i = 0; i < viewer.world.getItemCount(); i++) {
       if (viewer.world.getItemAt(i) === tiledImage) {
-        const layer = _.findWhere(status.layerDisplaySettings, { index: i });
+        const layer = Object.values(status.layerDisplaySettings).find((candidate) => candidate.index === i);
         if (layer?.isTracer) {
           const handler = (fullyLoadedChangeEvent: { fullyLoaded?: boolean }) => {
             if (fullyLoadedChangeEvent.fullyLoaded) {

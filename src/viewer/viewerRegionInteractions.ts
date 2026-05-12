@@ -1,5 +1,4 @@
 import OpenSeadragon from 'openseadragon';
-import _ from 'underscore';
 
 import type { RaphaelElementLike } from './viewerTypes';
 
@@ -105,7 +104,7 @@ export function connectRegionListeners(args: {
       regionListener.mouseout(event as ViewerEventLike, this);
     });
     raphaelTarget.click(function (this: RaphaelElementLike, event: unknown) {
-      if (_.isArray(regionListener.click)) {
+      if (Array.isArray(regionListener.click)) {
         for (const clickListener of regionListener.click) {
           clickListener(event as ViewerEventLike, this);
         }
@@ -143,7 +142,7 @@ export function connectRegionListeners(args: {
     },
     clickHandler: (event) => {
       const viewerEvent = createViewerEvent(event);
-      if (_.isArray(regionListener.click)) {
+      if (Array.isArray(regionListener.click)) {
         for (const clickListener of regionListener.click) {
           clickListener(viewerEvent, pathElt);
         }

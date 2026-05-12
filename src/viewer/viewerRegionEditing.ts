@@ -1,4 +1,4 @@
-import Color from 'color';
+import { invertCssColor } from '../common/colorUtils';
 
 import type { ViewerRegionInfoLike } from './viewerTypes';
 
@@ -11,12 +11,11 @@ export function buildEditCursorSVG(args: {
 }) {
   const { brushRadius, fillColor, imageZoom, svgNs, tool } = args;
   const brushBorder = 8;
-  const color = Color(fillColor);
-  const invcolor = color.negate();
+  const invcolor = invertCssColor(fillColor);
   const scaledWidth = 2 * brushRadius * imageZoom;
   const eraserOn = tool === 'eraser';
   const strokeDash = eraserOn ? 'stroke-dasharray="1 1"' : '';
-  const circleFill = eraserOn ? invcolor : color;
+  const circleFill = eraserOn ? invcolor : fillColor;
   const strokeColor = eraserOn ? 'silver' : invcolor;
 
   return `url('data:image/svg+xml;utf8,

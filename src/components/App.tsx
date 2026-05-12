@@ -1,5 +1,4 @@
 import { PopoverInteractionKind, PopoverNext, Position, popoverPositionToNextPlacement } from '@blueprintjs/core';
-import { createBrowserHistory } from 'history';
 import * as React from 'react';
 
 import { Pane, SplitPane } from 'react-split-pane';
@@ -7,6 +6,7 @@ import { Pane, SplitPane } from 'react-split-pane';
 const RegionTreePanel = React.lazy(() => import('./RegionTreePanel'));
 
 import axios from 'axios';
+import { createBrowserHistory } from '../common/browserHistory';
 import { debugInfo } from '../common/debugLog';
 import RegionsManager, { type IRegionsPayload, type IRegionsStatus } from '../RegionsManager';
 import { RoiInfos } from '../RoiInfo';

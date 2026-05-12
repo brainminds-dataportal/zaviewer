@@ -12,7 +12,6 @@ import {
   Switch,
 } from '@blueprintjs/core';
 import React from 'react';
-import _ from 'underscore';
 
 import RegionsManager, { type IRegion, type IRegionsStatus } from '../RegionsManager';
 import ViewerManager from '../ViewerManager';
@@ -237,27 +236,37 @@ const RegionDetail = (props: RegionDetailProps) => {
   let grouping: React.ReactNode = null;
   if (region.groups) {
     const groupingInfo: React.ReactNode[] = [];
-    _.chain(region.groups)
-      .pairs()
-      .groupBy((sgPair) => sgPair[1])
-      .each((sgPairs, groupid) => {
-        const firstGrouping = sgPairs[0][0];
-        groupingInfo.push(
-          <div key={groupid} className="zav-RegionDetailGroupings">
-            <div>
-              <Icon icon="search-around" />
-              <span style={{ fontStyle: 'italic', fontSize: 12, marginLeft: 16 }}>part of </span>
-              <b>{RegionsManager.getGroupName(firstGrouping, groupid) ?? groupid}</b>
-            </div>
-            {`in grouping${sgPairs.length > 1 ? 's' : ''} :`}
-            <ul>
-              {sgPairs.map((sgPair) => (
-                <li key={`${groupid}-${sgPair[0]}`}>{RegionsManager.getGrouping(sgPair[0])?.name ?? sgPair[0]}</li>
-              ))}
-            </ul>
-          </div>,
-        );
-      });
+    const groupedPairs = Object.entries(region.groups).reduce<Record<string, Array<[string, string]>>>(
+      (groups, [groupingId, groupId]) => {
+        groups[groupId] ??= [];
+        groups[groupId].push([groupingId, groupId]);
+        return groups;
+      },
+      {},
+    );
+
+    Object.entries(groupedPairs).forEach(([groupid, sgPairs]) => {
+      const firstGrouping = sgPairs[0]?.[0];
+      if (!firstGrouping) {
+        return;
+      }
+
+      groupingInfo.push(
+        <div key={groupid} className="zav-RegionDetailGroupings">
+          <div>
+            <Icon icon="search-around" />
+            <span style={{ fontStyle: 'italic', fontSize: 12, marginLeft: 16 }}>part of </span>
+            <b>{RegionsManager.getGroupName(firstGrouping, groupid) ?? groupid}</b>
+          </div>
+          {`in grouping${sgPairs.length > 1 ? 's' : ''} :`}
+          <ul>
+            {sgPairs.map((sgPair) => (
+              <li key={`${groupid}-${sgPair[0]}`}>{RegionsManager.getGrouping(sgPair[0])?.name ?? sgPair[0]}</li>
+            ))}
+          </ul>
+        </div>,
+      );
+    });
     grouping = groupingInfo.length ? (
       <PopoverNext
         interactionKind={PopoverInteractionKind.HOVER}

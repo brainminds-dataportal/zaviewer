@@ -1,5 +1,4 @@
 import OpenSeadragon from 'openseadragon';
-import _ from 'underscore';
 
 import CustomFilters from '../CustomFilters';
 import type { LayerDisplaySetting, LayerDisplaySettings, ViewerLayerConfig } from '../components/ViewerPanelTypes';
@@ -245,7 +244,7 @@ export function addLayer(args: {
 }
 
 export function adjustTracerLayerDilation(status: ViewerLayerStatusSubset, zoom: number) {
-  const tracerLayer = _.findWhere(status.layerDisplaySettings, { isTracer: true }) as LayerDisplaySetting | undefined;
+  const tracerLayer = Object.values(status.layerDisplaySettings).find((layer) => layer.isTracer);
   if (!tracerLayer) {
     return false;
   }

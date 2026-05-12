@@ -1,9 +1,9 @@
-import Color from 'color';
-import type { BrowserHistory, Location, Update } from 'history';
 import OpenSeadragon from 'openseadragon';
 import paper from 'paper';
-import _ from 'underscore';
 
+import type { BrowserHistory, Location, Update } from './common/browserHistory';
+import { invertCssColor } from './common/colorUtils';
+import { debounce } from './common/debounce';
 import { debugError, debugInfo, debugWarn } from './common/debugLog';
 import { getJson, getOptionalJson, getXmlDocument } from './common/http';
 import type { LayerDisplaySettings, ViewerLayerConfig, ZAViewerConfig } from './components/ViewerPanelTypes';
@@ -564,7 +564,7 @@ class ViewerManager {
     ViewerManager.history = history;
     //some continuous operations must not be recorded immediately in history (e.g. zooming, paning)
     ViewerManager.initialHistorySynced = false;
-    ViewerManager.makeHistoryStep = _.debounce((explicitParams?: Record<string, unknown>) => {
+    ViewerManager.makeHistoryStep = debounce((explicitParams?: Record<string, unknown>) => {
       if (typeof explicitParams === 'undefined' && ViewerManager.trySyncInitialHistoryStep()) {
         return;
       }
@@ -1289,12 +1289,7 @@ class ViewerManager {
 
       //insert in DOM
       editGroup.appendChild(newLivPath);
-      newLivPath.setAttribute(
-        'stroke',
-        Color(ViewerManager.status.editPathFillColor ?? '#000000')
-          .negate()
-          .toString(),
-      );
+      newLivPath.setAttribute('stroke', invertCssColor(ViewerManager.status.editPathFillColor ?? '#000000'));
       newLivPath.removeAttribute('style');
       newLivPath.setAttribute('fill-opacity', '0.35');
       newLivPath.setAttribute('stroke-opacity', '0.2');
@@ -1359,7 +1354,7 @@ class ViewerManager {
     regionInfo.fill = newFill;
     ViewerManager.status.editPathFillColor = newFill;
     ViewerManager.status.editLivePath.setAttribute('fill', newFill);
-    ViewerManager.status.editLivePath.setAttribute('stroke', Color(newFill).negate().toString());
+    ViewerManager.status.editLivePath.setAttribute('stroke', invertCssColor(newFill));
 
     //stop/start edit to save change
     ViewerManager.startEditRegionPath(editPathId);
@@ -2547,7 +2542,7 @@ class ViewerManager {
     }
 
     //eventually change active plane's slice
-    if (_.has(slicesByPlane, String(activePlane))) {
+    if (String(activePlane) in slicesByPlane) {
       ViewerManager.goToPlaneSlice(activePlane, slicesByPlane[String(activePlane)] ?? 0);
     } else {
       ViewerManager.signalStatusChanged(ViewerManager.status);
@@ -2682,7 +2677,7 @@ class ViewerManager {
           plane: String(ViewerManager.status.activePlane),
         }
       : {};
-    _.extend(params, { slice: String(ViewerManager.getCurrentPlaneChosenSlice()) });
+    params.slice = String(ViewerManager.getCurrentPlaneChosenSlice());
     if (extraParams) {
       Object.entries(extraParams).forEach(([key, value]) => {
         if (typeof value !== 'undefined') {

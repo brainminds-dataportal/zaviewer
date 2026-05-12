@@ -1,3 +1,5 @@
+import { debounce } from './common/debounce';
+
 export interface IRegionsPayload {
   regions: IRegion[];
   groupings: { g116: IGroupingDef };
@@ -774,33 +776,3 @@ class Actionner {
 }
 
 export default RegionsManager;
-
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-//Taken from Underscore http://underscorejs.org/#debounce
-
-// Returns a function, that, as long as it continues to be invoked, will not
-// be triggered. The function will be called after it stops being called for
-// N milliseconds. If `immediate` is passed, trigger the function on the
-// leading edge, instead of the trailing.
-function debounce<TArgs extends unknown[], TResult>(
-  func: (...args: TArgs) => TResult,
-  wait: number,
-  immediate: boolean,
-) {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  return function (this: unknown, ...args: TArgs) {
-    const later = () => {
-      timeout = null;
-      if (!immediate) {
-        func.apply(this, args);
-      }
-    };
-    const callNow = immediate && !timeout;
-    clearTimeout(timeout ?? undefined);
-    timeout = setTimeout(later, wait);
-    if (callNow) {
-      func.apply(this, args);
-    }
-  };
-}
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

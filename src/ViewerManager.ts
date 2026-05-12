@@ -49,6 +49,12 @@ type ViewerMouseTrackerEvent = {
   originalEvent?: MouseEvent | PointerEvent | TouchEvent;
   originalTarget?: Element;
 };
+type RegionMouseTracker = OpenSeadragon.MouseTracker & {
+  __zavDestroyed?: boolean;
+};
+type RegionTrackedElement = Element & {
+  __zavRegionMouseTracker?: RegionMouseTracker;
+};
 type EditableRegionPath = {
   simplify(): boolean;
   exportSVG(): SVGElement;
@@ -138,12 +144,13 @@ type ViewerStatus = {
   sagittalChosenSlice?: number;
   currentSliceRegions: Map<string, ViewerRegionInfo>;
   regionEventListeners: Record<string, ViewerRegionListener>;
-  regionMouseTrackers: OpenSeadragon.MouseTracker[];
+  regionTrackedElements: RegionTrackedElement[];
   hasLabelMap: boolean;
   hasROIs: boolean;
   hasCurrentSVG: boolean;
   hasRegionLabels: boolean;
   currentSVGName?: string;
+  currentRegionOverlay?: HTMLElement;
   tileSources: unknown[];
   tileSize: number;
   tileOverlap: number;
@@ -342,6 +349,35 @@ class ViewerManager {
 
   static getElementById<T extends Element>(id: string) {
     return document.getElementById(id) as T | null;
+  }
+
+  static destroyRegionMouseTracker(targetElement: RegionTrackedElement | null | undefined) {
+    if (!targetElement) {
+      return;
+    }
+
+    const tracker = targetElement.__zavRegionMouseTracker;
+    if (!tracker || tracker.__zavDestroyed) {
+      targetElement.__zavRegionMouseTracker = undefined;
+      return;
+    }
+
+    tracker.__zavDestroyed = true;
+    targetElement.__zavRegionMouseTracker = undefined;
+    tracker.destroy();
+  }
+
+  static clearRegionMouseTrackers() {
+    for (const targetElement of ViewerManager.status.regionTrackedElements) {
+      ViewerManager.destroyRegionMouseTracker(targetElement);
+    }
+    ViewerManager.status.regionTrackedElements = [];
+  }
+
+  static getCurrentRegionOverlay() {
+    return (
+      ViewerManager.status.currentRegionOverlay ?? ViewerManager.getElementById<HTMLElement>('svgDelineationOverlay')
+    );
   }
 
   static getPositionCanvas() {
@@ -569,6 +605,8 @@ class ViewerManager {
 
         /** url of the last requested regions area SVG file */
         currentSVGName: undefined,
+        /** currently active region overlay element */
+        currentRegionOverlay: undefined,
         /** set to true if the above one correspond to an actual (and loaded) SVG */
         hasCurrentSVG: false,
         /** set to true if region delineation SVG includes labels */
@@ -648,7 +686,7 @@ class ViewerManager {
 
         /** (reusable) mouse event listeners for region contained in the current slice */
         regionEventListeners: {},
-        regionMouseTrackers: [],
+        regionTrackedElements: [],
 
         /** currently displayed plane */
         activePlane: overridingPlane ?? ViewerManager.config.firstActivePlane,
@@ -1113,6 +1151,7 @@ class ViewerManager {
         if (event.element.id === 'svgDelineationOverlay') {
           if (that.config.hasDelineation) {
             that.status.hasCurrentSVG = false;
+            that.status.currentRegionOverlay = event.element;
             const svgPath = that.getRegionsSVGUrl();
             that.addSVGData(svgPath, event.element);
           }
@@ -1427,7 +1466,7 @@ class ViewerManager {
   static createEditSVGElement() {
     if (ViewerManager.status.editModeOn) {
       const editOverlay = ViewerManager.getElementById<HTMLDivElement>('svgEditOverlay');
-      const regionOverlay = ViewerManager.getElementById<HTMLElement>('svgDelineationOverlay');
+      const regionOverlay = ViewerManager.getCurrentRegionOverlay();
       const regionSVG = regionOverlay?.getElementsByTagName('svg')[0];
       if (!editOverlay || !regionSVG) {
         return;
@@ -1972,8 +2011,8 @@ class ViewerManager {
       }
     } else {
       //SVG DOM element
-      const targetElement = targetElt as Element & { __zavRegionMouseTracker?: OpenSeadragon.MouseTracker };
-      targetElement.__zavRegionMouseTracker?.destroy();
+      const targetElement = targetElt as RegionTrackedElement;
+      ViewerManager.destroyRegionMouseTracker(targetElement);
 
       const createViewerEvent = (event: ViewerMouseTrackerEvent): ViewerEventLike => ({
         originalEvent: event.originalEvent,
@@ -2006,10 +2045,12 @@ class ViewerManager {
               regionListener.dblclick?.(createViewerEvent(event), pathElt);
             }
           : undefined,
-      });
+      }) as RegionMouseTracker;
       tracker.setTracking(true);
       targetElement.__zavRegionMouseTracker = tracker;
-      ViewerManager.status.regionMouseTrackers.push(tracker);
+      if (!ViewerManager.status.regionTrackedElements.includes(targetElement)) {
+        ViewerManager.status.regionTrackedElements.push(targetElement);
+      }
     }
   }
 
@@ -2057,7 +2098,11 @@ class ViewerManager {
     //load SVG
     void getXmlDocument(svgName, 'image/svg+xml').then((svgFile) => {
       // process retrieved data only if it's the last one requested to ensure current slice SVG is loaded
-      if (svgName === that.status.currentSVGName) {
+      if (
+        svgName === that.status.currentSVGName &&
+        overlayElement === that.status.currentRegionOverlay &&
+        overlayElement.isConnected
+      ) {
         const root = svgFile.getElementsByTagName('svg')[0];
         if (!root) {
           that.status.hasCurrentSVG = false;
@@ -2066,10 +2111,7 @@ class ViewerManager {
         that.status.hasCurrentSVG = typeof root !== 'undefined';
 
         that.status.currentSliceRegions.clear();
-        for (const tracker of that.status.regionMouseTrackers) {
-          tracker.destroy();
-        }
-        that.status.regionMouseTrackers = [];
+        that.clearRegionMouseTrackers();
         //new set of mouse event listeners
         that.status.regionEventListeners = {};
 

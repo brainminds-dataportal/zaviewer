@@ -1,9 +1,60 @@
 import { Menu, MenuDivider, MenuItem } from '@blueprintjs/core';
+import { type Middleware, offset } from '@floating-ui/react';
 import * as React from 'react';
-
-import { ACTIONS, EVENTS, type EventData, Joyride, STATUS, type Step } from 'react-joyride';
+import { ACTIONS, type ButtonType, EVENTS, type EventData, Joyride, STATUS, type Step } from 'react-joyride';
 
 import './GuidedTour.scss';
+
+const TOUR_OVERLAY_COLOR = 'rgba(68, 82, 155, 0.50)';
+const TOUR_VIEWPORT_PADDING = 24;
+const TOUR_BUTTONS: ButtonType[] = ['back', 'close', 'primary', 'skip'];
+const TOUR_PROGRESS_LABEL = 'Next ({current} of {total})';
+const TOUR_MAX_WIDTH = `calc(100vw - ${TOUR_VIEWPORT_PADDING * 2}px)`;
+
+const getClampedTooltipWidth = (width: number | string) =>
+  typeof width === 'number' ? `min(${width}px, ${TOUR_MAX_WIDTH})` : `min(${width}, ${TOUR_MAX_WIDTH})`;
+
+const createTooltipStyles = (width: number | string): Step['styles'] => ({
+  tooltip: {
+    width: getClampedTooltipWidth(width),
+  },
+});
+
+const GuideStepStyles = {
+  overview: createTooltipStyles('40vw'),
+  medium: createTooltipStyles(500),
+  large: createTooltipStyles(600),
+  extraLarge: createTooltipStyles(700),
+};
+
+const GuidedStepOffsetAdjustment: (factor: number) => Middleware = (factor) => {
+  return {
+    name: 'guidedStepOffsetAdjustment',
+    options: {},
+    fn: (state) => {
+      // adjust vertical offset to better position the tooltip in the center of the screen, since the target is the whole viewer and not a specific element
+      const { height } = state.elements.reference.getBoundingClientRect();
+      const ret = offset(-height / factor);
+      return ret.fn(state);
+    },
+  };
+};
+
+const SharedTourStyles: Step['styles'] = {
+  floater: {
+    maxWidth: TOUR_MAX_WIDTH,
+  },
+  tooltip: {
+    maxWidth: TOUR_MAX_WIDTH,
+  },
+  buttonPrimary: {
+    backgroundColor: '#ff0044',
+    borderRadius: 4,
+  },
+  buttonBack: {
+    color: '#ff0044',
+  },
+};
 
 const OwerviewTourSteps: ExtendedStep[] = [
   {
@@ -32,14 +83,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'center',
-    styles: {
-      overlay: {
-        backgroundColor: '#44529b',
-      },
-      tooltip: {
-        width: '40vw',
-      },
-    },
+    styles: GuideStepStyles.overview,
   },
 
   {
@@ -56,10 +100,9 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'bottom',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
+    styles: GuideStepStyles.medium,
+    floatingOptions: {
+      middleware: [GuidedStepOffsetAdjustment(3)],
     },
   },
 
@@ -77,11 +120,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left-start',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -95,11 +134,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -116,11 +151,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -134,11 +165,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'right',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -155,11 +182,7 @@ const OwerviewTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'right',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 ];
 
@@ -200,10 +223,9 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'bottom',
-    styles: {
-      tooltip: {
-        minWidth: '600px',
-      },
+    styles: GuideStepStyles.large,
+    floatingOptions: {
+      middleware: [GuidedStepOffsetAdjustment(2)],
     },
   },
 
@@ -219,11 +241,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left-start',
-    styles: {
-      tooltip: {
-        minWidth: '600px',
-      },
-    },
+    styles: GuideStepStyles.large,
   },
 
   {
@@ -255,11 +273,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -270,7 +284,7 @@ const NavigationTourSteps: ExtendedStep[] = [
     content: (
       <div className="zav_guideContent">
         <p>
-          Use this sub-panel to control Atlas regions which are represented by colored shapes overlayed on top of slice
+          Use this sub-panel to control Atlas regions which are represented by colored shapes overlaid on top of slice
           images.
         </p>
         <p>
@@ -281,11 +295,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -306,11 +316,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 
   {
@@ -353,11 +359,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '700px',
-      },
-    },
+    styles: GuideStepStyles.extraLarge,
   },
   {
     stepContext: 'expandedControlPanel',
@@ -381,11 +383,7 @@ const NavigationTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'left',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 ];
 
@@ -409,10 +407,9 @@ const RegionsTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'bottom',
-    styles: {
-      tooltip: {
-        minWidth: '700px',
-      },
+    styles: GuideStepStyles.extraLarge,
+    floatingOptions: {
+      middleware: [GuidedStepOffsetAdjustment(2)],
     },
   },
 
@@ -439,11 +436,7 @@ const RegionsTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'right',
-    styles: {
-      tooltip: {
-        minWidth: '600px',
-      },
-    },
+    styles: GuideStepStyles.large,
   },
 
   {
@@ -462,11 +455,7 @@ const RegionsTourSteps: ExtendedStep[] = [
       </div>
     ),
     placement: 'right',
-    styles: {
-      tooltip: {
-        minWidth: '500px',
-      },
-    },
+    styles: GuideStepStyles.medium,
   },
 ];
 
@@ -532,6 +521,24 @@ export const TourOperator = (props: TourOperatorProps) => {
       stepIndex={props.tourStepIndex}
       run={props.guidedTourOn}
       continuous={true}
+      options={{
+        buttons: TOUR_BUTTONS,
+        overlayColor: TOUR_OVERLAY_COLOR,
+        showProgress: true,
+      }}
+      locale={{
+        nextWithProgress: TOUR_PROGRESS_LABEL,
+      }}
+      styles={SharedTourStyles}
+      floatingOptions={{
+        strategy: 'fixed',
+        flipOptions: {
+          padding: TOUR_VIEWPORT_PADDING,
+        },
+        shiftOptions: {
+          padding: TOUR_VIEWPORT_PADDING,
+        },
+      }}
       onEvent={(data: EventData, _controls) => {
         const { action, index, status, type } = data;
 
@@ -639,7 +646,7 @@ export const GuidedTour = (props: GuidedTourProps) => {
         tourStepIndex={tourStepIndex}
         setTourStepIndex={setTourStepIndex}
         onUpdateStepContext={(followingStep) => {
-          setStepContext(Object.assign(stepContext, { currentStep: followingStep }));
+          setStepContext((current) => ({ ...current, currentStep: followingStep }));
         }}
       />
       <TourContext.Provider value={contextValue}>{props.children}</TourContext.Provider>

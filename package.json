@@ -1,9 +1,20 @@
 {
   "name": "zaviewer",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "Zooming Atlas Viewer – a web-based 2D high-resolution brain image viewer ",
   "main": "index.js",
-  "author": "cau-riken <cau-contact@ml.riken.jp> (https://cau.riken.jp)",
+  "author": {
+    "name": "Neuroinformatics Unit, RIKEN Center for Brain Science",
+    "email": "cbs-is@ml.riken.jp",
+    "url": "https://www.ni.riken.jp"
+  },
+  "contributors": [
+    {
+      "name": "Connectome Analysis Unit, RIKEN Center for Brain Science",
+      "email": "cau-contact@ml.riken.jp",
+      "url": "https://cau.riken.jp"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/brainminds-dataportal/zaviewer.git"
@@ -29,15 +40,15 @@
     "@types/raphael": "^2.3.10",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "sass": "^1.99.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.12"
+    "vite": "^8.0.13"
   },
   "dependencies": {
-    "@blueprintjs/core": "^6.12.1",
-    "@brainminds-dataportal/vol-renderer": "^0.1.0",
-    "axios": "^1.16.0",
+    "@blueprintjs/core": "^6.13.0",
+    "@brainminds-dataportal/vol-renderer": "^0.1.1",
+    "axios": "^1.16.1",
     "classnames": "^2.5.1",
     "normalize.css": "^8.0.1",
     "openseadragon": "^6.0.2",

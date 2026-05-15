@@ -32,6 +32,7 @@ import SubViewPanel from './SubViewPanel';
 import type { BrandingInfo, LayerDisplaySettings, ZAViewerConfig } from './ViewerPanelTypes';
 
 import './ViewerComposed.scss';
+import LoaderWidget from './LoaderWidget';
 
 const VolumeView = React.lazy(() => import('./VolumeView'));
 type Plane = Parameters<typeof ZAVConfig.getPlaneLabel>[0];
@@ -345,6 +346,9 @@ const ViewerComposed = (props: ViewerComposedProps) => {
 
   const ginRepoBaseUrl = props.config?.dataset_info ? props.config.dataset_info.ginRepoBaseUrl : null;
   const layerFolderMap = ginRepoBaseUrl ? (props.config?.dataset_info?.layerFolderMap ?? null) : null;
+  const isSliceLoading = Object.values(viewerState.layerDisplaySettings ?? {}).some((layerSettings) =>
+    Boolean(layerSettings?.loading),
+  );
 
   return (
     <HotkeysTarget hotkeys={hotkeys}>
@@ -375,6 +379,8 @@ const ViewerComposed = (props: ViewerComposedProps) => {
             ) : null}
           </div>
         </div>
+
+        {isSliceLoading ? <LoaderWidget /> : null}
 
         <OSDMain />
         <Overlay2 className={Classes.OVERLAY_SCROLL_CONTAINER} isOpen={Boolean(viewerState.longRunningMessage)}>

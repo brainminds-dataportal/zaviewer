@@ -117,7 +117,7 @@ $zavstatusbar-contentwidth: 680px;
 	z-index: 150;
 	bottom: 10px;
 	width: $zavstatusbar-contentwidth;
-	left: calc( ( 100vw - $zavstatusbar-contentwidth ) / 2 );	
+	left: calc( 50% - ( $zavstatusbar-contentwidth / 2 ) );	
 }
 
 .zav-StatusBarContent {

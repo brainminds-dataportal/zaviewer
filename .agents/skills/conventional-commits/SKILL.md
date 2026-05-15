@@ -1,10 +1,10 @@
 ---
-description: Draft and execute git commit commands that follow the Conventional Commits spec. Use when asked to write a commit message, prepare git commit -m arguments, keep message lines at 72 characters, or avoid Co-authored-by trailers unless explicitly requested.
+description: Draft and execute git commit commands that follow the Conventional Commits spec. Use when asked to write a commit message, prepare git commit -m arguments, keep message lines at 72 characters, avoid accidental blank paragraphs, or skip Co-authored-by trailers unless explicitly requested.
 metadata:
     github-path: skills/conventional-commits
     github-ref: refs/heads/main
     github-repo: https://github.com/orrisroot/agent-skills
-    github-tree-sha: db6200ed40cce57f94a52bc534c21aa89ffc0a52
+    github-tree-sha: de74eaf1ca5d61a1d2f00af4c130735b465267fe
 name: conventional-commits
 ---
 # Conventional Commits
@@ -28,14 +28,16 @@ Follow these rules every time:
 3. Write the message in English unless the user explicitly asks for
    another language.
 4. Use `git commit -m` to pass the message.
-5. For multiline messages, use one `-m` for the subject and additional
-   `-m` flags for body paragraphs.
-6. Rewrite long body text into shorter sentences so each message line
-   stays within 72 characters.
-7. Do not open an editor, use a here-doc, or write the message to a
+5. Use one `-m` for the subject.
+6. Use one additional `-m` for each body paragraph.
+7. Never add another `-m` just to wrap a paragraph. Keep wrapped lines
+   inside the same quoted argument so Git does not insert a blank line.
+8. Rewrite long body text so each message line stays within 72
+   characters.
+9. Do not open an editor, use a here-doc, or write the message to a
    temporary file.
-8. Do not add a `Co-authored-by` trailer unless the user explicitly
-   asks for it for that specific commit.
+10. Do not add a `Co-authored-by` trailer unless the user explicitly
+    asks for it for that specific commit.
 
 ## Workflow
 
@@ -45,8 +47,8 @@ Follow these rules every time:
 3. Write a concise subject that explains the change.
 4. If a body is needed, add clear paragraphs that explain why the
    change was made and any important impact.
-5. Check every subject and body line and revise anything over
-   72 characters.
+5. Wrap each paragraph to 72 characters without splitting it across
+   multiple `-m` flags.
 6. Return a ready-to-run `git commit` command that uses `-m` arguments.
 7. Add trailers only when the user explicitly requests them.
 
@@ -74,17 +76,17 @@ git commit -m "docs: add contributing guide"
 ```bash
 git commit \
   -m "feat(auth): add refresh token rotation" \
-  -m "Rotate refresh tokens after each successful renewal." \
-  -m "Reduce replay risk and simplify token revocation tracking."
+  -m "Rotate refresh tokens after each successful renewal to reduce
+replay risk and simplify token revocation tracking."
 ```
 
-### Fix with short body paragraphs
+### Fix with one wrapped body paragraph
 
 ```bash
 git commit \
   -m "fix(api): handle empty search query" \
-  -m "Return a validation error when the query string is empty." \
-  -m "This keeps downstream filters from running on invalid input."
+  -m "Return a validation error when the query string is empty.
+This keeps downstream filters from running on invalid input."
 ```
 
 ### Breaking change with explicit body
@@ -114,4 +116,5 @@ Before presenting the command:
 - confirm the commit type matches the change
 - confirm each message line is 72 characters or fewer
 - confirm the command uses `-m` arguments for multiline messages
+- confirm extra `-m` flags only appear for real paragraph breaks
 - confirm no `Co-authored-by` trailer appears unless requested

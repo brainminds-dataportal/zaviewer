@@ -14,8 +14,8 @@ git commit -m "test(parser): cover empty input"
 ```bash
 git commit \
   -m "feat(cli): show branch name in status output" \
-  -m "Display the current branch before the working tree summary." \
-  -m "Help users confirm context before they stage or commit changes."
+  -m "Display the current branch before the working tree summary.
+Help users confirm context before they stage or commit changes."
 ```
 
 ## Documentation change
@@ -23,8 +23,8 @@ git commit \
 ```bash
 git commit \
   -m "docs(readme): explain skill folder layout" \
-  -m "Document the skills/<skill-name>/SKILL.md convention." \
-  -m "Keep the repository ready for additional Agent Skills."
+  -m "Document the skills/<skill-name>/SKILL.md convention and keep
+the repository ready for additional Agent Skills."
 ```
 
 ## Dependency or tooling update
@@ -38,3 +38,5 @@ git commit \
 ## Trailer omitted by default
 
 Do not append `Co-authored-by` unless the user explicitly asks for it.
+Use another `-m` only when the final commit message should contain a
+blank line before the next paragraph.

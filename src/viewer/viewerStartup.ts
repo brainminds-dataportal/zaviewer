@@ -93,29 +93,7 @@ export function bindViewerStartupEvents(args: {
     applyInitialOpenState(overridingConf);
   });
 
-  viewer.addHandler('open', () => {
-    const navItemReplaceHnd = (event: OpenSeadragon.AddItemWorldEvent) => {
-      const userData = (event.userData ?? {}) as { replaced?: number; removed?: number };
-      if (viewer.navigator.world.getItemCount() === 1 && (userData.replaced ?? 0) === 0) {
-        const tiledImage = viewer.navigator.world.getItemAt(0);
-        viewer.navigator.addTiledImage({
-          tileSource: event.item.source,
-          originalTiledImage: tiledImage,
-          opacity: 1,
-          replace: true,
-          index: 0,
-        } as unknown as Parameters<OpenSeadragon.Viewer['addTiledImage']>[0]);
-        userData.replaced = 1;
-      } else if (viewer.navigator.world.getItemCount() > 1) {
-        userData.removed = (userData.removed ?? 0) + 1;
-        viewer.navigator.world.removeItem(viewer.navigator.world.getItemAt(viewer.navigator.world.getItemCount() - 1));
-      }
-
-      if (userData.replaced === 1 && userData.removed === Object.keys(config.layers).length - 1) {
-        viewer.navigator.world.removeHandler('add-item', navItemReplaceHnd);
-      }
-    };
-
-    viewer.navigator.world.addHandler('add-item', navItemReplaceHnd, { replaced: 0, removed: 0 });
-  });
+  // Keep the navigator's world in sync with the main viewer's layered world.
+  // The viewer layer logic already resets navigator opacities explicitly, so
+  // pruning navigator items here can leave it blank when layer/world timing changes.
 }

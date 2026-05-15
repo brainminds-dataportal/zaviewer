@@ -371,6 +371,7 @@ class ViewerManager {
   static atlasSlicePresenceCache = new Map<string, boolean>();
   static pendingCurrentSliceTreeRegions?: string[];
   static navigationState: ViewerNavigationState;
+  static navigatorWheelListener?: (event: WheelEvent) => void;
 
   private constructor() {}
 
@@ -460,6 +461,47 @@ class ViewerManager {
 
   private static getCurrentImageCenter() {
     return ViewerManager.viewer.viewport.viewportToImageCoordinates(ViewerManager.viewer.viewport.getCenter(true));
+  }
+
+  private static bindNavigatorWheelZoom() {
+    const navigatorElement = ViewerManager.viewer?.navigator?.element;
+    if (!navigatorElement) {
+      return;
+    }
+
+    if (ViewerManager.navigatorWheelListener) {
+      navigatorElement.removeEventListener('wheel', ViewerManager.navigatorWheelListener);
+    }
+
+    ViewerManager.navigatorWheelListener = (event: WheelEvent) => {
+      ViewerManager.handleNavigatorWheel(event);
+    };
+    navigatorElement.addEventListener('wheel', ViewerManager.navigatorWheelListener, { passive: false });
+  }
+
+  private static handleNavigatorWheel(event: WheelEvent) {
+    const navigatorViewer = ViewerManager.viewer?.navigator;
+    if (!ViewerManager.viewer?.viewport || !navigatorViewer?.viewport || event.deltaY === 0) {
+      return;
+    }
+    const zoomViewer = ViewerManager.viewer as OpenSeadragon.Viewer & { zoomPerScroll?: number };
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const navigatorRect = navigatorViewer.element.getBoundingClientRect();
+    const navigatorPixel = new OpenSeadragon.Point(
+      event.clientX - navigatorRect.left,
+      event.clientY - navigatorRect.top,
+    );
+    const navigatorViewportPoint = navigatorViewer.viewport.pointFromPixel(navigatorPixel, true);
+    const imagePoint = navigatorViewer.viewport.viewportToImageCoordinates(navigatorViewportPoint);
+    const mainViewportPoint = ViewerManager.viewer.viewport.imageToViewportCoordinates(imagePoint);
+    const zoomPerScroll = zoomViewer.zoomPerScroll ?? 1.2;
+    const nextViewportZoom =
+      ViewerManager.viewer.viewport.getZoom(true) * (event.deltaY < 0 ? zoomPerScroll : 1 / zoomPerScroll);
+
+    ViewerManager.viewer.viewport.zoomTo(nextViewportZoom, mainViewportPoint, true);
   }
 
   static refreshNavigator() {
@@ -1099,6 +1141,7 @@ class ViewerManager {
     });
 
     ViewerManager.setZoomEnabled(false);
+    ViewerManager.bindNavigatorWheelZoom();
 
     //Initialize labelMap handler
     ViewerManager.status.hasLabelMap = LabelMapper.initLabelMapper(
@@ -2833,7 +2876,10 @@ class ViewerManager {
       key,
       ext,
       getCurrentPage: () => ViewerManager.getPageNumForCurrentSlice() ?? 0,
-      onTileLoaded: () => ViewerManager.setAllFilters(),
+      onTileLoaded: () => {
+        ViewerManager.setLayerOpacity(key);
+        ViewerManager.setAllFilters();
+      },
     });
   }
 

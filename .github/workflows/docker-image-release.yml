@@ -64,8 +64,9 @@ jobs:
           context: .
           file: ./docker_scripts/Dockerfile.ui
           push: true
+          secrets: |
+            npm_token=${{ secrets.GITHUB_TOKEN }}
           build-args: |
-            PACKAGEREAD_TOKEN=${{ secrets.PACKAGEREAD_TOKEN }}
             OCI_TITLE=${{ env.IMAGE_NAME }}
             OCI_DESCRIPTION=ZAViewer User Interface
             OCI_SOURCE=${{ needs.validate-release.outputs.source_url }}

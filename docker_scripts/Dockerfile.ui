@@ -1,6 +1,7 @@
+# syntax=docker/dockerfile:1
+
 # temporary image used as build environment
 FROM node:24-trixie-slim AS build
-
 
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
@@ -8,24 +9,20 @@ ENV PATH=/app/node_modules/.bin:$PATH
 # copy required files from context
 COPY package.json ./
 COPY package-lock.json ./
-#copy npmrc template, and any existing .npmrc
-COPY .npmrc* ./
 
-# For github package registry access: if a token is supplied, use it to create (possibly overwrite) local .npmrc 
-ARG PACKAGEREAD_TOKEN
-RUN if [ ! -z "${PACKAGEREAD_TOKEN}" ]; then (cat .npmrc_template ; echo '${PACKAGEREAD_TOKEN}') > .npmrc ; fi
+# Configure the registry for @brainminds-dataportal to use GitHub Packages
+RUN npm config set @brainminds-dataportal:registry https://npm.pkg.github.com/
 
+# Install dependencies using Docker BuildKit secrets
+# This allows us to securely pass the npm token without including it in the final image layers
+RUN --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN \
+    npm config set //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN} && \
+    npm ci
 
-# download and install node modules
-RUN npm ci
-
-#
-RUN rm .npmrc
-
-#copy sources
+# copy source code to build environment
 COPY . ./
 
-#generate ZAViewer bundles
+# generate ZAViewer bundles
 RUN npm run build
 
 

@@ -1,0 +1,33 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+        "brainminds",
+        "Buildx",
+        "colortable",
+        "ctbl",
+        "dataportal",
+        "descr",
+        "fastcgi",
+        "fcgi",
+        "hostdir",
+        "IIIF",
+        "iipserver",
+        "iipsrv",
+        "mbstring",
+        "Nissl",
+        "prepimg",
+        "Processings",
+        "ptif",
+        "rois",
+        "subview",
+        "treeview",
+        "trixie",
+        "verofdata",
+        "zaviewer"
+    ],
+    "ignoreWords": [],
+    "import": []
+}

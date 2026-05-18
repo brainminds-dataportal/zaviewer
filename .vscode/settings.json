@@ -1,0 +1,7 @@
+{
+    "markdown-preview-github-styles.colorTheme": "system",
+    "markdownlint.config": {
+        "MD033": false,
+        "MD059": false
+    }
+}

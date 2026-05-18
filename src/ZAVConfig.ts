@@ -40,6 +40,7 @@ type LegacyLayerResponse = {
   extension?: string;
   protocol?: string;
   colortable?: string;
+  iiif_server?: string;
   [key: string]: ConfigDynamicValue;
 };
 type LegacySubviewConfig = {
@@ -152,6 +153,7 @@ type LegacyViewerConfig = {
   PUBLISH_PATH?: string;
   ADMIN_PATH?: string;
   IIPSERVER_PATH?: string;
+  IIIF_SERVER_PATH?: string;
   TILE_EXTENSION?: string;
   THUMB_EXTENSION?: string;
   fmDatasetsInfoUrl?: string;
@@ -242,7 +244,7 @@ export const PLANE_AXIS: PlaneValues<{ v: string; h: string }> = {
   [SAGITTAL]: { v: 'z', h: 'y' },
 };
 
-/** preferred subview plane for main image plane (signel plane mode) */
+/** preferred subview plane for main image plane (single plane mode) */
 export const PLANE_PREFSUBVIEW: PlaneValues<Plane> = { [AXIAL]: CORONAL, [CORONAL]: SAGITTAL, [SAGITTAL]: AXIAL };
 
 /** Class in charge of retrieving and holding configuration associated to a dataset */
@@ -616,8 +618,10 @@ class ZAVConfig {
       this.config.dataRootPath = this.config.resolveSimpleUrl('data');
       /** base URL for region infos, region SVGs, ... */
       this.config.PUBLISH_PATH = undefined;
-      /** base URL for SVG edit webservice ... */
+      /** base URL for SVG edit web service ... */
       this.config.ADMIN_PATH = 'admin';
+      /** base URL for IIIF image server (standalone mode) */
+      this.config.IIIF_SERVER_PATH = undefined;
 
       this.config.fallbackExtension = 'dzi';
 
@@ -796,7 +800,7 @@ class ZAVConfig {
       (this.config.hasCoronalPlane ? 1 : 0) +
       (this.config.hasSagittalPlane ? 1 : 0);
     this.config.hasMultiPlanes = nbDefinedPlanes > 1;
-    //if no plane explicitely specified
+    //if no plane explicitly specified
     if (nbDefinedPlanes === 0) {
       this.config.hasCoronalPlane = true;
     }
@@ -823,7 +827,7 @@ class ZAVConfig {
       this.config.sagittalSlideCount = this.config.hasSagittalPlane ? sliceCount : 0;
     }
 
-    //In multiplanes mode, slices of all available planes are appended to the OSD viewer page list in that order : Axial, Coronal then Sagittal.
+    //In multi-planes mode, slices of all available planes are appended to the OSD viewer page list in that order : Axial, Coronal then Sagittal.
     //Hence, each plane start at different page offset which must be taken into account to display correct slice.
 
     //index of first slice of each plane within the Page axis
@@ -988,6 +992,15 @@ class ZAVConfig {
           protocol: value.protocol,
         };
       });
+
+      if (!this.config.hasBackend && !this.config.IIIF_SERVER_PATH) {
+        const hasIIIFLayer = Object.values(response.data).some((v) => v.protocol === 'IIIF');
+        if (hasIIIFLayer) {
+          this.config.IIIF_SERVER_PATH = response.iiif_server
+            ? this.config.resolveSimpleUrl(String(response.iiif_server))
+            : undefined;
+        }
+      }
     }
 
     if (response.first_access) {

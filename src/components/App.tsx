@@ -141,7 +141,7 @@ const App = (props: AppProps) => {
         total: config?.getTotalSlidesCount?.(),
       },
       publishPath: config?.PUBLISH_PATH,
-      iipServerPath: config?.IIPSERVER_PATH,
+      iipServerPath: config?.IIIF_SERVER_PATH ?? config?.IIPSERVER_PATH,
       volumeUrl: config?.volumeUrl,
       layers: Object.keys(config?.layers || {}),
     });

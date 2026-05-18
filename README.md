@@ -39,7 +39,7 @@ It can display up to 3 sets of multi-modal, regularly inter-spaced, large image 
 
   * When used with a backend, ZAViewer can retrieve Pyramidal Images following [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) protocol or [IIProtocol](https://en.wikipedia.org/wiki/Internet_Imaging_Protocol).
 
-  * The standalone version of ZAViewer can display image in [DZI (Deep Zoom Image)](http://msdn.microsoft.com/en-us/library/cc645077(v=vs.95).aspx) format.
+  * The standalone version of ZAViewer can display images in [DZI (Deep Zoom Image)](http://msdn.microsoft.com/en-us/library/cc645077(v=vs.95).aspx) format or via [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) Image API 3.0.
 
   **Note**: these images may be retrieved from a remote domain (if properly configured to serve cross-origin content)
 
@@ -538,6 +538,7 @@ Since its contents is almost identical to `json.php` of descriptors described ab
 | --- | --- |
 | `data_root_path` | relative base URL from where all data is loaded (raster image, SVG) |
 | `dataset_id` | dataset ID (Brain/MINDS ID) used to retrieve dataset extended info |
+| **`iiif_server`** | _optional_ base URL of the IIIF Image API 3.0 server. Required when any layer uses `"protocol": "IIIF"` |
 | `subview` | |
 | `subview.foldername` | _see above_ |
 | `subview.axial_slide` | _optional_ <sup>1</sup> _see above_ |
@@ -579,6 +580,7 @@ Since its contents is almost identical to `json.php` of descriptors described ab
 | `slice_step` | _see above_ |
 | `data` | |
 | `data.` _layerId_  `.metadata` | _see above_ |
+| `data.` _layerId_  `.protocol` | _optional_ image retrieval protocol (`"IIIF"` for IIIF Image API 3.0, or omitted/default for DZI format). When `"IIIF"` is specified, `iiif_server` must also be set |
 | `data.` _layerId_  `.colortable` | Color table file (.ctbl) to be used with this layer. If defined this layer will be used as a raster label map (i.e. layer pixel color map a region, as specified in the color table) **Important: This layer's tiles must be in .PNG format** |
 
  <sup>1</sup> : at least one axis image set must be defined!  
@@ -592,6 +594,7 @@ _Example:_
 ```json
 {
     "data_root_path": "./data",
+    "iiif_server": "http://localhost:8082/iiif/3/",
     "subview": {
         "foldername": "subview",
         "axial_slide": 235,
@@ -614,10 +617,12 @@ _Example:_
     },
     "data": {
         "MRI": {
-            "metadata": "T2 MRI"
+            "metadata": "T2 MRI",
+            "protocol": "IIIF"
         },
         "Nissl": {
-            "metadata": "Nissl"
+            "metadata": "Nissl",
+            "protocol": "IIIF"
         }
     },
     "first_access": {

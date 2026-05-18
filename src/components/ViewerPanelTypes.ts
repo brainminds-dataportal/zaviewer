@@ -103,6 +103,7 @@ export type ZAViewerConfig = ViewerConfigLike & {
   customBorderWidth?: number;
   PUBLISH_PATH?: string;
   IIPSERVER_PATH?: string;
+  IIIF_SERVER_PATH?: string;
   volumeUrl?: string;
   layers: Record<string, ViewerLayerConfig>;
   viewerId?: string;

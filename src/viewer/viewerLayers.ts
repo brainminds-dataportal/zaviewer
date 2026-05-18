@@ -13,13 +13,14 @@ export type ViewerIIPTileInfos = {
   tileWidth: number;
   tileHeight: number;
   imageWidth: number;
-  imgeHeight: number;
+  imageHeight: number;
   xTilesNumAtMaxLevel: number;
 };
 
 export type ViewerLayerConfigSubset = {
   layers: ViewerLayerConfigMap;
   dataRootPath?: string;
+  IIIF_SERVER_PATH?: string;
   hasMultiPlanes?: boolean;
   IIPSERVER_PATH?: string;
   TILE_EXTENSION?: string;
@@ -142,8 +143,17 @@ export function getFileTileUrl(
   return `${config.dataRootPath ?? ''}/${key}${planePath}/${slideNum}_files/${level}/${x}_${y}.${status.tileFormat}`;
 }
 
-export function getIIIFTileSourceUrl(config: ViewerLayerConfigSubset, slideNum: number, key: string, ext: string) {
-  return `${config.IIPSERVER_PATH ?? ''}${key}/${slideNum}${ext}${config.TILE_EXTENSION ?? ''}`;
+export function getIIIFTileSourceUrl(
+  config: ViewerLayerConfigSubset,
+  slideNum: number,
+  key: string,
+  ext: string,
+  plane?: number,
+) {
+  const planePath =
+    plane != null ? `/${ZAVConfig.getPlaneName(plane as Parameters<typeof ZAVConfig.getPlaneName>[0])}` : '';
+  const imageId = `${key}${planePath}/${slideNum}${ext}`;
+  return `${config.IIIF_SERVER_PATH ?? config.IIPSERVER_PATH ?? ''}${encodeURIComponent(imageId)}${config.TILE_EXTENSION ?? ''}`;
 }
 
 export function getIIPTileUrl(
@@ -189,7 +199,7 @@ export function getTileSourceDef(args: {
       }
       return {
         width: tileInfos.imageWidth,
-        height: tileInfos.imgeHeight,
+        height: tileInfos.imageHeight,
         tileWidth: tileInfos.tileWidth,
         tileHeight: tileInfos.tileHeight,
         overlap: 1,
@@ -199,6 +209,11 @@ export function getTileSourceDef(args: {
           getIIPTileUrl(status, getCurrentPage(), key, ext, level, x, y),
       };
     }
+    return getIIIFTileSourceUrl(config, currentPage ?? 0, key, ext);
+  }
+
+  const layerDispSettings = getLayerSetting(status, key);
+  if (layerDispSettings?.useIIProtocol && config.IIIF_SERVER_PATH) {
     return getIIIFTileSourceUrl(config, currentPage ?? 0, key, ext);
   }
 

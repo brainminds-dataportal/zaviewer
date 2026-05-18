@@ -217,7 +217,6 @@ type ViewerStatus = {
   tileFormat: string;
   imageWidth?: number;
   imageHeight?: number;
-  imageHegith?: number;
   set?: RaphaelSetLike;
   paper?: RaphaelPaperLike;
   labelsg?: SVGGElement;
@@ -269,7 +268,7 @@ type ViewerStatus = {
     tileWidth: number;
     tileHeight: number;
     imageWidth: number;
-    imgeHeight: number;
+    imageHeight: number;
     xTilesNumAtMaxLevel: number;
     yTilesNumAtMaxLevel: number;
     xTilesNumAtLevel: NumericLookup;
@@ -645,7 +644,7 @@ class ViewerManager {
 
         //
         imageWidth: undefined,
-        imageHegith: undefined,
+        imageHeight: undefined,
 
         //tile sources for every slice of first layer
         tileSources: [],
@@ -929,7 +928,7 @@ class ViewerManager {
                 tileWidth: number;
                 tileHeight: number;
                 imageWidth: number;
-                imgeHeight: number;
+                imageHeight: number;
                 xTilesNumAtMaxLevel: number;
                 yTilesNumAtMaxLevel: number;
                 xTilesNumAtLevel: NumericLookup;
@@ -941,7 +940,7 @@ class ViewerManager {
                 tileHeight: tileDef.height,
 
                 imageWidth: typedPyramidalImgInfo.width,
-                imgeHeight: typedPyramidalImgInfo.height,
+                imageHeight: typedPyramidalImgInfo.height,
 
                 //number of tiles along both axis
                 xTilesNumAtMaxLevel: Math.ceil(typedPyramidalImgInfo.width / tileDef.width),
@@ -1006,104 +1005,150 @@ class ViewerManager {
     } else {
       //no backend image server
 
-      //in case of multiplanes, first layer tiles source for all defined planes are appended in tileSources array
+      const firstLayerProtocol = firstLayer.protocol;
+      const isIIIFProtocol = firstLayerProtocol === 'IIIF';
+
+      //in case of multi-planes, first layer tiles source for all defined planes are appended in tileSources array
       const tileSources: unknown[] = [];
       if (ViewerManager.config.data) {
         if (ViewerManager.config.hasAxialPlane) {
           for (let j = 0; j < ViewerManager.config.axialSlideCount; j++) {
-            tileSources.push(
-              ViewerManager.getFileTileSourceUrl(
-                j,
-                firstLayerKey,
-                firstLayerExt,
-                ViewerManager.config.hasMultiPlanes ? ZAVConfig.AXIAL : null,
-              ),
-            );
+            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+              tileSources.push(
+                ViewerManager.getIIIFTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.AXIAL : undefined,
+                ),
+              );
+            } else {
+              tileSources.push(
+                ViewerManager.getFileTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.AXIAL : null,
+                ),
+              );
+            }
           }
         }
         if (ViewerManager.config.hasCoronalPlane) {
           for (let j = 0; j < ViewerManager.config.coronalSlideCount; j++) {
-            tileSources.push(
-              ViewerManager.getFileTileSourceUrl(
-                j,
-                firstLayerKey,
-                firstLayerExt,
-                ViewerManager.config.hasMultiPlanes ? ZAVConfig.CORONAL : null,
-              ),
-            );
+            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+              tileSources.push(
+                ViewerManager.getIIIFTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.CORONAL : undefined,
+                ),
+              );
+            } else {
+              tileSources.push(
+                ViewerManager.getFileTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.CORONAL : null,
+                ),
+              );
+            }
           }
         }
         if (ViewerManager.config.hasSagittalPlane) {
           for (let j = 0; j < ViewerManager.config.sagittalSlideCount; j++) {
-            tileSources.push(
-              ViewerManager.getFileTileSourceUrl(
-                j,
-                firstLayerKey,
-                firstLayerExt,
-                ViewerManager.config.hasMultiPlanes ? ZAVConfig.SAGITTAL : null,
-              ),
-            );
+            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+              tileSources.push(
+                ViewerManager.getIIIFTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.SAGITTAL : undefined,
+                ),
+              );
+            } else {
+              tileSources.push(
+                ViewerManager.getFileTileSourceUrl(
+                  j,
+                  firstLayerKey,
+                  firstLayerExt,
+                  ViewerManager.config.hasMultiPlanes ? ZAVConfig.SAGITTAL : null,
+                ),
+              );
+            }
           }
         }
 
         ViewerManager.status.tileSources = tileSources;
 
-        debugInfo('Local DZI tileSources prepared', {
-          count: tileSources.length,
-          firstUrl: tileSources[0],
-        });
-
-        //prerequisite: all page have same image size and tile composition, so pyramidal infos for first image is reused for all
-        const that = ViewerManager;
-        const firstTileSourceUrl = typeof tileSources[0] === 'string' ? tileSources[0] : undefined;
-        if (!firstTileSourceUrl) {
-          return;
-        }
-        void getXmlDocument(firstTileSourceUrl)
-          .then((dziInfo) => {
-            const imageNodes = dziInfo.getElementsByTagNameNS('http://schemas.microsoft.com/deepzoom/2008', 'Image');
-            if (imageNodes.length) {
-              const imageNode = imageNodes.item(0);
-              const titleSizeAttr = imageNode?.getAttributeNode('TileSize');
-              if (titleSizeAttr) {
-                that.status.tileSize = parseInt(titleSizeAttr.value, 10);
-              }
-              const overlapAttr = imageNode?.getAttributeNode('Overlap');
-              if (overlapAttr) {
-                that.status.tileOverlap = parseInt(overlapAttr.value, 10);
-              }
-
-              const formatAttr = imageNode?.getAttributeNode('Format');
-              if (formatAttr) {
-                that.status.tileFormat = formatAttr.value;
-              }
-              if (imageNode?.childElementCount) {
-                const sizeNode = imageNode.childNodes.item(0) as Element | null;
-                const widthAttr = sizeNode?.getAttributeNode('Width');
-                if (widthAttr) {
-                  that.status.imageWidth = parseInt(widthAttr.value, 10);
-                }
-                const heightAttr = sizeNode?.getAttributeNode('Height');
-                if (heightAttr) {
-                  that.status.imageHeight = parseInt(heightAttr.value, 10);
-                }
-              }
-            }
-            debugInfo('DZI metadata parsed', {
-              tileSize: that.status.tileSize,
-              tileOverlap: that.status.tileOverlap,
-              tileFormat: that.status.tileFormat,
-              imageWidth: that.status.imageWidth,
-              imageHeight: that.status.imageHeight,
-            });
-            that.init2ndStage(overridingConf);
-          })
-          .catch((error) => {
-            debugError('Failed to load DZI metadata', {
-              url: tileSources[0],
-              error,
-            });
+        if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+          debugInfo('IIIF tileSources prepared (standalone)', {
+            count: tileSources.length,
+            firstUrl: tileSources[0],
+            lastUrl: tileSources[tileSources.length - 1],
           });
+
+          ViewerManager.init2ndStage(overridingConf);
+        } else {
+          debugInfo('Local DZI tileSources prepared', {
+            count: tileSources.length,
+            firstUrl: tileSources[0],
+          });
+
+          //prerequisite: all page have same image size and tile composition, so pyramidal infos for first image is reused for all
+          const that = ViewerManager;
+          const firstTileSourceUrl = typeof tileSources[0] === 'string' ? tileSources[0] : undefined;
+          if (!firstTileSourceUrl) {
+            return;
+          }
+          void getXmlDocument(firstTileSourceUrl)
+            .then((dziInfo) => {
+              const imageNodes = dziInfo.getElementsByTagNameNS('http://schemas.microsoft.com/deepzoom/2008', 'Image');
+              if (imageNodes.length) {
+                const imageNode = imageNodes.item(0);
+                const titleSizeAttr = imageNode?.getAttributeNode('TileSize');
+                if (titleSizeAttr) {
+                  that.status.tileSize = parseInt(titleSizeAttr.value, 10);
+                }
+                const overlapAttr = imageNode?.getAttributeNode('Overlap');
+                if (overlapAttr) {
+                  that.status.tileOverlap = parseInt(overlapAttr.value, 10);
+                }
+
+                const formatAttr = imageNode?.getAttributeNode('Format');
+                if (formatAttr) {
+                  that.status.tileFormat = formatAttr.value;
+                }
+                if (imageNode?.childElementCount) {
+                  const sizeNode = imageNode.childNodes.item(0) as Element | null;
+                  const widthAttr = sizeNode?.getAttributeNode('Width');
+                  if (widthAttr) {
+                    that.status.imageWidth = parseInt(widthAttr.value, 10);
+                  }
+                  const heightAttr = sizeNode?.getAttributeNode('Height');
+                  if (heightAttr) {
+                    that.status.imageHeight = parseInt(heightAttr.value, 10);
+                  }
+                }
+              }
+              debugInfo('DZI metadata parsed', {
+                tileSize: that.status.tileSize,
+                tileOverlap: that.status.tileOverlap,
+                tileFormat: that.status.tileFormat,
+                imageWidth: that.status.imageWidth,
+                imageHeight: that.status.imageHeight,
+              });
+              that.init2ndStage(overridingConf);
+            })
+            .catch((error) => {
+              debugError('Failed to load DZI metadata', {
+                url: tileSources[0],
+                error,
+              });
+            });
+        }
       }
     }
   }
@@ -2837,8 +2882,8 @@ class ViewerManager {
     return buildFileTileUrl(ViewerManager.config, ViewerManager.status, slideNum, key, level, x, y);
   }
 
-  static getIIIFTileSourceUrl(slideNum: number, key: string, ext: string) {
-    return buildIIIFTileSourceUrl(ViewerManager.config, slideNum, key, ext);
+  static getIIIFTileSourceUrl(slideNum: number, key: string, ext: string, plane?: number) {
+    return buildIIIFTileSourceUrl(ViewerManager.config, slideNum, key, ext, plane);
   }
 
   /**

@@ -1,0 +1,46 @@
+{
+  "data_root_path": "./data",
+  "iiif_server": "http://localhost:8082/iiif/3/",
+  "subview": {
+    "foldername": "subview",
+    "axial_slide": 235,
+    "coronal_slide": 200,
+    "sagittal_slide": 271,
+    "x_min": 33,
+    "x_max": 167,
+    "y_min": 1,
+    "y_max": 195,
+    "z_min": 47,
+    "z_max": 153,
+    "size": 200
+  },
+  "delineations": "SVGs",
+  "verofdata": {
+    "all": {
+      "label": "Brain/MINDS Reference Brain Atlas Ver. 1.0",
+      "uri": "https://doi.org/10.24475/bma.2799"
+    }
+  },
+  "data": {
+    "MRI": {
+      "metadata": "T2 MRI",
+      "protocol": "IIIF",
+      "extension": ".tif"
+    },
+    "Nissl": {
+      "metadata": "Nissl",
+      "protocol": "IIIF",
+      "extension": ".tif"
+    }
+  },
+  "first_access": {
+    "plane": "coronal",
+    "slide": 120,
+    "delineations": "show"
+  },
+  "matrix": "0.05,0,0,-13.54,0,0.05,0,-16.00,0,0,0.05,-3.0,0,0,0,1",
+  "axial_slice_step": 1,
+  "coronal_slice_step": 2,
+  "sagittal_slice_step": 1,
+  "image_size": 1000
+}

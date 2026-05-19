@@ -59,7 +59,7 @@ if (parentContainer && window.__ZAV_BROWSER_SUPPORTED__ !== false) {
       <HotkeysProvider>
         <GuidedTour>
           <App
-            //configID is undefined when the viewer is used without backend (i.e. shipped within its dataset)
+            //configID is undefined when the viewer is used without an editor backend (i.e. shipped within its dataset)
             {...getConfigParams()}
             dataVersionTag={dataVersionTag}
           />

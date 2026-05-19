@@ -865,7 +865,7 @@ class ViewerManager {
     const firstLayer = layerEntries.length > 0 ? layerEntries[0] : undefined;
 
     debugInfo('setupTileSources', {
-      hasBackend: ViewerManager.config?.hasBackend,
+      useEditor: ViewerManager.config?.useEditor,
       hasCOSource: ViewerManager.config?.hasCOSource,
       activePlane: ViewerManager.status?.activePlane,
       chosenSlice: ViewerManager.status?.chosenSlice,
@@ -893,7 +893,7 @@ class ViewerManager {
     const firstLayerKey = String(firstLayer.key ?? '');
     const firstLayerExt = String(firstLayer.ext ?? '');
 
-    if (ViewerManager.config.hasBackend) {
+    if (ViewerManager.config.useEditor) {
       if (ViewerManager.config.data) {
         const backendPageCount = ViewerManager.config.getTotalSlidesCount();
         if (firstLayer.protocol === 'IIP') {

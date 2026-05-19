@@ -80,7 +80,7 @@ export type ViewerLayerConfig = {
 };
 
 export type ZAViewerConfig = ViewerConfigLike & {
-  hasBackend: boolean;
+  useEditor: boolean;
   hasCOSource?: boolean;
   hasMultiPlanes: boolean;
   firstActivePlane?: number;

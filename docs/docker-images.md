@@ -23,7 +23,7 @@ Current Dockerfile bases:
 * UI image: Node 22 build stage + Nginx 1.28 runtime
 * Brain slice import utility: Python 3.12 (Bookworm)
 * Region editor image: ZAViewer UI image + Alpine PHP 8.4 packages
-* Backend image: Ubuntu 24.04 + Apache + `iipimage-server`
+* Editor backend image: Ubuntu 24.04 + Apache + `iipimage-server`
 
 Publishing note:
 
@@ -77,7 +77,7 @@ Alternatively, if you don't want to store your token in the `.npmrc`, you may pr
 
 ## Region delineation editing UI Docker image<a id="build-image-regionedit"></a>
 
-In order to save edited regions as SVG files, a minimal backend component needs to be used, thus it is necessary to create a new Docker image based on the ZAViewer Docker UI image.
+In order to save edited regions as SVG files, a minimal server component needs to be used, thus it is necessary to create a new Docker image based on the ZAViewer Docker UI image.
 
 1. Go to working directory containing ZAViewer sources :
 

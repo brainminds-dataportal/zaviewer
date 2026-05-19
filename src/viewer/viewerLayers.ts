@@ -24,7 +24,7 @@ export type ViewerLayerConfigSubset = {
   hasMultiPlanes?: boolean;
   IIPSERVER_PATH?: string;
   TILE_EXTENSION?: string;
-  hasBackend?: boolean;
+  useEditor?: boolean;
   dzLayerWidth: number;
   dzLayerHeight: number;
   axialFirstIndex: number;
@@ -190,7 +190,7 @@ export function getTileSourceDef(args: {
   getCurrentPage: () => number;
 }) {
   const { config, currentPage, ext, getCurrentPage, key, status } = args;
-  if (config.hasBackend) {
+  if (config.useEditor) {
     const layerDispSettings = getLayerSetting(status, key);
     if (layerDispSettings?.useIIProtocol) {
       const tileInfos = status.iipTileInfos;

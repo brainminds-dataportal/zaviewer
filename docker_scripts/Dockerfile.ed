@@ -4,13 +4,13 @@ FROM ${UI_IMAGE}
 WORKDIR /usr/share/nginx
 
 ARG OCI_TITLE=ghcr.io/brainminds-dataportal/zaviewer
-ARG OCI_DESCRIPTION="ZAViewer User Interface + minimal backend for region editor"
+ARG OCI_DESCRIPTION="ZAViewer User Interface + minimal server for region editor"
 ARG OCI_SOURCE=https://github.com/brainminds-dataportal/zaviewer
 ARG OCI_VERSION=dev-ed
 ARG OCI_CREATED=1970-01-01T00:00:00Z
 ARG OCI_REVISION=unknown
 
-#backend script to store edited SVG
+#server script to store edited SVG
 COPY ./admin/SVG.php /usr/share/nginx/html/admin/
 
 #nginx config files for server-side include and fastcgi

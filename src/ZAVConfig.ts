@@ -121,7 +121,7 @@ type ImageGroupListResponse = {
   [key: string]: ImageGroupListEntry | string | undefined;
 };
 type LegacyViewerConfig = {
-  hasBackend: boolean;
+  useEditor: boolean;
   hasCOSource: boolean;
   hasMultiPlanes: boolean;
   firstActivePlane?: Plane;
@@ -359,11 +359,11 @@ class ZAVConfig {
 
     //configuration default values
     this.config = {
-      /** ZAViewer can be run with or without a backend instance (i.e. web services used to request dataset config repository, and an images server)
-       * Without backend, only one dataset is available, and its data is stored as files directly served by the http server */
-      hasBackend: typeof configId !== 'undefined',
+      /** ZAViewer can be run with or without an editor backend (i.e. web services used to request dataset config repository, and an images server)
+       * Without editor backend, only one dataset is available, and its data is stored as files directly served by the http server */
+      useEditor: typeof configId !== 'undefined',
 
-      /** When running without a backend, ZAViewer can retrieve its config and data from cross-origin domain */
+      /** When running without an editor backend, ZAViewer can retrieve its config and data from cross-origin domain */
       hasCOSource: false,
 
       /** planes for which slices images can be displayed */
@@ -422,7 +422,7 @@ class ZAVConfig {
 
       getTreeDataUrl: function () {
         return this.treeUrlPath
-          ? this.hasBackend
+          ? this.useEditor
             ? Utils.makePath(
                 this.PUBLISH_PATH,
                 this.treeUrlPath,
@@ -588,7 +588,7 @@ class ZAVConfig {
       dataVersionTag: dataVersionTag,
     };
 
-    if (this.config.hasBackend) {
+    if (this.config.useEditor) {
       /** viewer id */
       this.config.viewerId = configId;
       /** dataset id */
@@ -634,7 +634,7 @@ class ZAVConfig {
     }
 
     //start retrieving configuration
-    if (this.config.hasBackend) {
+    if (this.config.useEditor) {
       this.retrieveConfigFromBackend(callbackWhenReady);
     } else {
       this.retrieveSimpleConfig(callbackWhenReady);
@@ -805,7 +805,7 @@ class ZAVConfig {
       this.config.hasCoronalPlane = true;
     }
 
-    if (!this.config.hasBackend) {
+    if (!this.config.useEditor) {
       this.config.PUBLISH_PATH = this.config.dataRootPath = this.config.resolveSimpleUrl(response.data_root_path);
     }
 
@@ -862,7 +862,7 @@ class ZAVConfig {
         PLANE_LABELS[AXIAL] = response.subview.z_label ?? PLANE_LABELS[AXIAL];
       }
     } else {
-      if (this.config.hasBackend) {
+      if (this.config.useEditor) {
         //subview.min & subview.max are expressed in percent of subview image size
         this.config.xMaxGlobal =
           this.config.yMaxGlobal =
@@ -955,8 +955,8 @@ class ZAVConfig {
       this.config.data = response.data;
 
       Object.entries(response.data).forEach(([key, value], i) => {
-        // only firstLayer when running with a backend
-        if (this.config.hasBackend && i === 0) {
+        // only firstLayer when running with an editor backend
+        if (this.config.useEditor && i === 0) {
           //showInfoText(key);
           this.config.infoTextName = value.metadata;
 
@@ -993,7 +993,7 @@ class ZAVConfig {
         };
       });
 
-      if (!this.config.hasBackend && !this.config.IIIF_SERVER_PATH) {
+      if (!this.config.useEditor && !this.config.IIIF_SERVER_PATH) {
         const hasIIIFLayer = Object.values(response.data).some((v) => v.protocol === 'IIIF');
         if (hasIIIFLayer) {
           this.config.IIIF_SERVER_PATH = response.iiif_server

@@ -50,9 +50,9 @@ const App = (props: AppProps) => {
   const [regionsStatus, setRegionsStatus] = React.useState<IRegionsStatus | undefined>(undefined);
 
   const loadAndInitRegionsTree = React.useCallback(
-    (treeDataUrl: string, hasBackend: boolean, hasMultiPlanes: boolean, preselected: string[] | undefined) => {
+    (treeDataUrl: string, useEditor: boolean, hasMultiPlanes: boolean, preselected: string[] | undefined) => {
       axios({
-        method: hasBackend ? 'POST' : 'GET',
+        method: useEditor ? 'POST' : 'GET',
         url: treeDataUrl,
       })
         .then((response) => {
@@ -109,7 +109,7 @@ const App = (props: AppProps) => {
       }
       //load regions related data
       const treeDataUrl = usedConfig.getTreeDataUrl();
-      loadAndInitRegionsTree(treeDataUrl, usedConfig.hasBackend, usedConfig.hasMultiPlanes, preselected);
+      loadAndInitRegionsTree(treeDataUrl, usedConfig.useEditor, usedConfig.hasMultiPlanes, preselected);
     },
     [config, loadAndInitRegionsTree],
   );
@@ -130,7 +130,7 @@ const App = (props: AppProps) => {
       configId: props.configId,
       dataSrc: props.dataSrc,
       dataVersionTag: props.dataVersionTag,
-      hasBackend: config?.hasBackend,
+      useEditor: config?.useEditor,
       hasCOSource: config?.hasCOSource,
       hasMultiPlanes: config?.hasMultiPlanes,
       firstActivePlane: config?.firstActivePlane,

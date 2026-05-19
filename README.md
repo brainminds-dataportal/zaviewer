@@ -35,9 +35,9 @@ It can display up to 3 sets of multi-modal, regularly inter-spaced, large image 
 
   It is usually served from a remote web server, but can be conveniently executed locally in a container thanks to the provided Docker images.
 
-* ZAViewer can run with a dedicated back-end (Image server & web services providing the configuration), or without (as a simple web app hosted with its image and configuration data stored as static files).
+* ZAViewer can run with a dedicated editor backend (Image server & web services providing the configuration), or without (as a simple web app hosted with its image and configuration data stored as static files).
 
-  * When used with a backend, ZAViewer can retrieve Pyramidal Images following [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) protocol or [IIProtocol](https://en.wikipedia.org/wiki/Internet_Imaging_Protocol).
+  * When used with an editor backend, ZAViewer can retrieve Pyramidal Images following [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) protocol or [IIProtocol](https://en.wikipedia.org/wiki/Internet_Imaging_Protocol).
 
   * The standalone version of ZAViewer can display images in [DZI (Deep Zoom Image)](http://msdn.microsoft.com/en-us/library/cc645077(v=vs.95).aspx) format or via [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) Image API 3.0.
 
@@ -183,7 +183,7 @@ An optional resource containing hierarchical organization of brain regions may b
 * dynamically show the long name of the hovered region,
 * display in a treeview widget all brain regions to allow navigation and selection.
 
-A default version of the resource (for Marmoset brain) is shipped with the script and is copied in the output folder when the script is executed. Therefore, if you wish to use your own version of the resource, just overwrite the one provided, or alternatively update the configuration file generated in the output folder (check configuration details [here](#descriptors-when-not-using-a-backend)).
+A default version of the resource (for Marmoset brain) is shipped with the script and is copied in the output folder when the script is executed. Therefore, if you wish to use your own version of the resource, just overwrite the one provided, or alternatively update the configuration file generated in the output folder (check configuration details [here](#descriptors-when-not-using-an-editor-backend)).
 
 The structure of the region information resource is detailed [there](#dev-regiondata).
 
@@ -394,11 +394,11 @@ This folder contains the built `index.html`, the standard Vite-generated `assets
 
 The viewer is flexible thanks to its detailed configuration descriptors which describe the data to display, according to which the UI adapts its behavior.
 
-Note that some limited parts of the configuration are expressed in a similar, but not strictly identical way, depending if ZAViewer runs with or without a backend.
+Note that some limited parts of the configuration are expressed in a similar, but not strictly identical way, depending if ZAViewer runs with or without an editor backend.
 
-This configuration is loaded in a single step when ZAViewer runs with or without a backend, the configuration is merged as a single simplified descriptor.
+This configuration is loaded in a single step when ZAViewer runs with or without an editor backend, the configuration is merged as a single simplified descriptor.
 
-### **Descriptors when using a backend**
+### **Descriptors when using an editor backend**
 
 In this mode, the configuration needs to be loaded in several sequential steps.
 
@@ -434,7 +434,7 @@ When ZAViewer is used with images along a single axis (aka "single-plane mode") 
 
 | entry | description |
 | --- | --- |
-| `data_root_path` | _not used_ in backend mode |
+| `data_root_path` | _not used_ in editor mode |
 | `subview` | |
 | `subview.foldername` | URL prefix of the subview images location (using `publish_path` base URL) |
 | `subview.axial_slide` <sup>multi</sup> | _optional_ <sup>1</sup> number of slides in the Axial image set |
@@ -525,7 +525,7 @@ _Example:_
 }
 ```
 
-### **Descriptors when not using a backend**
+### **Descriptors when not using an editor backend**
 
 In this simple mode, the configuration is loaded in a single step.
 

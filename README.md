@@ -37,7 +37,7 @@ It can display up to 3 sets of multi-modal, regularly inter-spaced, large image 
 
 * ZAViewer can run with a dedicated editor backend (Image server & web services providing the configuration), or without (as a simple web app hosted with its image and configuration data stored as static files).
 
-  * When used with an editor backend, ZAViewer can retrieve Pyramidal Images following [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) protocol or [IIProtocol](https://en.wikipedia.org/wiki/Internet_Imaging_Protocol).
+  * When used with an editor backend, ZAViewer retrieves images via [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) Image API 3.0 (with client-side filter support for contrast, gamma, and morphology adjustments).
 
   * The standalone version of ZAViewer can display images in [DZI (Deep Zoom Image)](http://msdn.microsoft.com/en-us/library/cc645077(v=vs.95).aspx) format or via [IIIF](https://en.wikipedia.org/wiki/International_Image_Interoperability_Framework) Image API 3.0.
 
@@ -410,7 +410,7 @@ It contains base URLs used to retrieve data, metadata and extended configuration
 | entry | description |
 | --- | --- |
 | `admin_path` | relative base URL where subsequent configuration descriptors can be retrieved from |
-| `iipserver_path` | URL prefix of the image server used to retrieved raster images |
+| `iiif_server_path` | URL prefix of the IIIF image server used to retrieve raster images |
 | `publish_path` | relative base URL where subview images, detailed region's information and SVG region delineations can be retrieved from |  
 
 <br/>
@@ -420,7 +420,7 @@ _Example:_
 ```json
 {
     "admin_path":"./admin/",
-    "iipserver_path":"/iipsrv/iipsrv.fcgi?IIIF=/data/",
+    "iiif_server_path":"/iipsrv/iipsrv.fcgi?IIIF=/data/",
     "publish_path":"../data/"
 }
 ```
@@ -472,11 +472,11 @@ When ZAViewer is used with images along a single axis (aka "single-plane mode") 
 | **[unused]** `group_id` | _not used_ |
 | `data` | |
 | `data.` _layerId_  `.metadata` | Name of the layer displayed in the UI |
-| `data.` _layerId_  `.extension` | extension of the pyramidal image |
+| `data.` _layerId_  `.extension` | file extension of the image tiles |
 | `data.` _layerId_  `.opacity` | initial opacity of the layer |
-| `data.` _layerId_  `.protocol` | image retrieval protocol (by default IIIF, or IIP) |
-| `data.` _layerId_  `.contrast` | initial contrast adjustment of the layer (IIP protocol only) |
-| `data.` _layerId_  `.gamma` | initial gamma adjustment of the layer (IIP protocol only) |
+| `data.` _layerId_  `.protocol` | image retrieval protocol (`"IIIF"` for IIIF-based tile retrieval, or omitted/default for DZI format) |
+| `data.` _layerId_  `.contrast` | initial contrast adjustment of the layer (applied via OpenSeadragon filters) |
+| `data.` _layerId_  `.gamma` | initial gamma adjustment of the layer (applied via OpenSeadragon filters) |
 
  <sup>1</sup> : value must be defined for at least 1 axis!  
  <sup>single</sup> : single-plane mode only  

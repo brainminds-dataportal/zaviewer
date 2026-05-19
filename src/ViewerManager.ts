@@ -5,7 +5,7 @@ import type { BrowserHistory, Location, Update } from './common/browserHistory';
 import { invertCssColor } from './common/colorUtils';
 import { debounce } from './common/debounce';
 import { debugError, debugInfo, debugWarn } from './common/debugLog';
-import { getJson, getOptionalJson, getXmlDocument } from './common/http';
+import { getOptionalJson, getXmlDocument } from './common/http';
 import type { LayerDisplaySettings, ViewerLayerConfig, ZAViewerConfig } from './components/ViewerPanelTypes';
 import LabelMapper from './LabelMapper';
 import RegionsManager from './RegionsManager';
@@ -27,7 +27,6 @@ import {
   getFileTileSourceUrl as buildFileTileSourceUrl,
   getFileTileUrl as buildFileTileUrl,
   getIIIFTileSourceUrl as buildIIIFTileSourceUrl,
-  getIIPTileUrl as buildIIPTileUrl,
   getTileSourceDef as buildTileSourceDef,
   getLayerOpacity as getViewerLayerOpacity,
   refreshLayersEffectiveOpacity as refreshViewerLayersEffectiveOpacity,
@@ -143,7 +142,6 @@ type ViewerTrackerEventMap = {
 type ViewerWithInnerTracker = OpenSeadragon.Viewer & {
   innerTracker: OpenSeadragon.MouseTracker;
 };
-type NumericLookup = Record<number, number>;
 type RegionMouseTracker = OpenSeadragon.MouseTracker & {
   __zavDestroyed?: boolean;
 };
@@ -155,16 +153,6 @@ type EditableRegionPath = {
   exportSVG(): SVGElement;
   subtract(item: paper.Item, options?: { insert?: boolean }): EditableRegionPath;
   unite(item: paper.Item, options?: { insert?: boolean }): EditableRegionPath;
-};
-type IIIFTileDefinition = {
-  width: number;
-  height: number;
-  scaleFactors: number[];
-};
-type IIIFPyramidalImageInfo = {
-  width: number;
-  height: number;
-  tiles: IIIFTileDefinition[];
 };
 type RaphaelElementLike = {
   id?: string;
@@ -260,19 +248,7 @@ type ViewerStatus = {
   processedRegion?: ViewerClipRegion | null;
   processedTopleftPx?: [number, number] | null;
   processingActive?: boolean;
-  IIPSVR_PATH?: string;
-  iipTileInfos?: {
-    minLevel: number;
-    maxLevel: number;
-    levelScale: NumericLookup;
-    tileWidth: number;
-    tileHeight: number;
-    imageWidth: number;
-    imageHeight: number;
-    xTilesNumAtMaxLevel: number;
-    yTilesNumAtMaxLevel: number;
-    xTilesNumAtLevel: NumericLookup;
-  };
+  IIIF_SERVER_PATH?: string;
   prevZoomPerScroll?: number;
   prevZoomPerClick?: number;
   editOrigPathId?: string | null;
@@ -639,9 +615,6 @@ class ViewerManager {
     /** dynamic state of the viewer */
     ViewerManager.status = new Proxy(
       {
-        //protocol used with image server
-        useIIProtocol: overridingConf.protocol && 'IIP' === overridingConf.protocol,
-
         //
         imageWidth: undefined,
         imageHeight: undefined,
@@ -895,125 +868,32 @@ class ViewerManager {
 
     if (ViewerManager.config.useEditor) {
       if (ViewerManager.config.data) {
+        //IIIF protocol (unified for both IIP and IIIF layers) — simple URL-based tile sources
         const backendPageCount = ViewerManager.config.getTotalSlidesCount();
-        if (firstLayer.protocol === 'IIP') {
-          //Internet Imaging Protocol (IIP)
-
-          const that = ViewerManager;
-          const iiifInfoUrl = ViewerManager.getIIIFTileSourceUrl(
-            ViewerManager.getPageNumForCurrentSlice() ?? 0,
-            firstLayerKey,
-            firstLayerExt,
-          );
-          debugInfo('Fetching IIP pyramidal info', {
-            url: iiifInfoUrl,
-          });
-
-          //Prerequisite: All pages have same image size and tile composition, so pyramidal infos for first image is reused for all
-          void getJson(iiifInfoUrl)
-            .then((pyramidalImgInfo) => {
-              const typedPyramidalImgInfo = pyramidalImgInfo as IIIFPyramidalImageInfo;
-              const tileSources: unknown[] = [];
-
-              that.status.IIPSVR_PATH = (that.config.IIPSERVER_PATH ?? '').replace('?IIIF=', '?FIF=');
-
-              const tileDef = typedPyramidalImgInfo.tiles[0];
-
-              const minLevel = 0;
-              const maxLevel = tileDef.scaleFactors.length - 1;
-              const iipTileInfos: {
-                minLevel: number;
-                maxLevel: number;
-                levelScale: NumericLookup;
-                tileWidth: number;
-                tileHeight: number;
-                imageWidth: number;
-                imageHeight: number;
-                xTilesNumAtMaxLevel: number;
-                yTilesNumAtMaxLevel: number;
-                xTilesNumAtLevel: NumericLookup;
-              } = {
-                minLevel: minLevel,
-                maxLevel: maxLevel,
-                levelScale: {},
-                tileWidth: tileDef.width,
-                tileHeight: tileDef.height,
-
-                imageWidth: typedPyramidalImgInfo.width,
-                imageHeight: typedPyramidalImgInfo.height,
-
-                //number of tiles along both axis
-                xTilesNumAtMaxLevel: Math.ceil(typedPyramidalImgInfo.width / tileDef.width),
-                yTilesNumAtMaxLevel: Math.ceil(typedPyramidalImgInfo.height / tileDef.height),
-
-                //number of tiles on X axis at each scale level
-                xTilesNumAtLevel: {} as Record<number, number>,
-              };
-
-              //at maxLevel, image is at full scale
-              tileDef.scaleFactors.forEach((scaleFact: number, level: number, factors: number[]) => {
-                iipTileInfos.levelScale[level] = scaleFact / factors[maxLevel];
-              });
-
-              for (let level = minLevel; level <= maxLevel; level++) {
-                iipTileInfos.xTilesNumAtLevel[level] = Math.ceil(
-                  iipTileInfos.xTilesNumAtMaxLevel * iipTileInfos.levelScale[level],
-                );
-              }
-
-              that.status.iipTileInfos = iipTileInfos;
-
-              //tile source for 1rst layer of each slices
-              for (let j = 0; j < backendPageCount; j++) {
-                tileSources.push(that.getTileSourceDef(firstLayerKey, firstLayerExt));
-              }
-              that.status.tileSources = tileSources;
-
-              debugInfo('IIP tileSources prepared', {
-                count: tileSources.length,
-                sample: tileSources[0],
-              });
-
-              that.init2ndStage(overridingConf);
-            })
-            .catch((error) => {
-              debugError('Failed to fetch IIP pyramidal info', {
-                url: iiifInfoUrl,
-                error,
-              });
-            });
-        } else {
-          //International Image Interoperability Framework (IIIF) protocol (default)
-
-          const tileSources: unknown[] = [];
-          if (ViewerManager.config.data) {
-            for (let j = 0; j < backendPageCount; j++) {
-              tileSources.push(ViewerManager.getIIIFTileSourceUrl(j, firstLayerKey, firstLayerExt));
-            }
-            ViewerManager.status.tileSources = tileSources;
-
-            debugInfo('IIIF tileSources prepared', {
-              count: tileSources.length,
-              firstUrl: tileSources[0],
-              lastUrl: tileSources[tileSources.length - 1],
-            });
-
-            ViewerManager.init2ndStage(overridingConf);
-          }
+        const tileSources: unknown[] = [];
+        for (let j = 0; j < backendPageCount; j++) {
+          tileSources.push(ViewerManager.getIIIFTileSourceUrl(j, firstLayerKey, firstLayerExt));
         }
+        ViewerManager.status.tileSources = tileSources;
+
+        debugInfo('IIIF tileSources prepared', {
+          count: tileSources.length,
+          firstUrl: tileSources[0],
+          lastUrl: tileSources[tileSources.length - 1],
+        });
+
+        ViewerManager.init2ndStage(overridingConf);
       }
     } else {
       //no backend image server
 
-      const firstLayerProtocol = firstLayer.protocol;
-      const isIIIFProtocol = firstLayerProtocol === 'IIIF';
-
       //in case of multi-planes, first layer tiles source for all defined planes are appended in tileSources array
       const tileSources: unknown[] = [];
+      const useIIIFServer = Boolean(ViewerManager.config.IIIF_SERVER_PATH);
       if (ViewerManager.config.data) {
         if (ViewerManager.config.hasAxialPlane) {
           for (let j = 0; j < ViewerManager.config.axialSlideCount; j++) {
-            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+            if (useIIIFServer) {
               tileSources.push(
                 ViewerManager.getIIIFTileSourceUrl(
                   j,
@@ -1036,7 +916,7 @@ class ViewerManager {
         }
         if (ViewerManager.config.hasCoronalPlane) {
           for (let j = 0; j < ViewerManager.config.coronalSlideCount; j++) {
-            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+            if (useIIIFServer) {
               tileSources.push(
                 ViewerManager.getIIIFTileSourceUrl(
                   j,
@@ -1059,7 +939,7 @@ class ViewerManager {
         }
         if (ViewerManager.config.hasSagittalPlane) {
           for (let j = 0; j < ViewerManager.config.sagittalSlideCount; j++) {
-            if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+            if (useIIIFServer) {
               tileSources.push(
                 ViewerManager.getIIIFTileSourceUrl(
                   j,
@@ -1083,7 +963,7 @@ class ViewerManager {
 
         ViewerManager.status.tileSources = tileSources;
 
-        if (isIIIFProtocol && ViewerManager.config.IIIF_SERVER_PATH) {
+        if (useIIIFServer) {
           debugInfo('IIIF tileSources prepared (standalone)', {
             count: tileSources.length,
             firstUrl: tileSources[0],
@@ -2886,19 +2766,6 @@ class ViewerManager {
     return buildIIIFTileSourceUrl(ViewerManager.config, slideNum, key, ext, plane);
   }
 
-  /**
-   * compute url to retrieve a specific tile following IIP protocol format
-   * @param {*} slideNum : slide number
-   * @param {*} key : layer id
-   * @param {*} ext : image file extension
-   * @param {*} level : scale level
-   * @param {*} x : x index of the tile
-   * @param {*} y : y index of the tile
-   */
-  static getIIPTileUrl(slideNum: number, key: string, ext: string, level: number, x: number, y: number) {
-    return buildIIPTileUrl(ViewerManager.status, slideNum, key, ext, level, x, y);
-  }
-
   static getTileSourceDef(key: string, ext: string) {
     return buildTileSourceDef({
       config: ViewerManager.config,
@@ -2958,11 +2825,7 @@ class ViewerManager {
       const layerSettings = ViewerManager.status.layerDisplaySettings[layerid];
       layerSettings.contrastEnabled = enabled;
       layerSettings.contrast = contrast;
-      if (layerSettings.useIIProtocol) {
-        ViewerManager.resetTiledImageCache(layerid);
-      } else {
-        ViewerManager.setAllFilters();
-      }
+      ViewerManager.setAllFilters();
       ViewerManager.signalStatusChanged(ViewerManager.status);
     }
   }
@@ -2972,11 +2835,7 @@ class ViewerManager {
       const layerSettings = ViewerManager.status.layerDisplaySettings[layerid];
       layerSettings.gammaEnabled = enabled;
       layerSettings.gamma = gamma;
-      if (layerSettings.useIIProtocol) {
-        ViewerManager.resetTiledImageCache(layerid);
-      } else {
-        ViewerManager.setAllFilters();
-      }
+      ViewerManager.setAllFilters();
       ViewerManager.signalStatusChanged(ViewerManager.status);
     }
   }
@@ -3679,9 +3538,6 @@ class ViewerManager {
           });
         }
       }
-    }
-    if (confFromPath.p) {
-      confParams.protocol = confFromPath.p;
     }
     if (confFromPath.mode && confFromPath.mode === 'edit') {
       confParams.editMode = true;

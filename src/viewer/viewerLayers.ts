@@ -6,23 +6,11 @@ import ZAVConfig from '../ZAVConfig';
 
 type ViewerLayerConfigMap = Record<string, ViewerLayerConfig>;
 
-export type ViewerIIPTileInfos = {
-  minLevel: number;
-  maxLevel: number;
-  levelScale: Record<number, number>;
-  tileWidth: number;
-  tileHeight: number;
-  imageWidth: number;
-  imageHeight: number;
-  xTilesNumAtMaxLevel: number;
-};
-
 export type ViewerLayerConfigSubset = {
   layers: ViewerLayerConfigMap;
   dataRootPath?: string;
   IIIF_SERVER_PATH?: string;
   hasMultiPlanes?: boolean;
-  IIPSERVER_PATH?: string;
   TILE_EXTENSION?: string;
   useEditor?: boolean;
   dzLayerWidth: number;
@@ -38,8 +26,7 @@ export type ViewerLayerStatusSubset = {
   tileSize: number;
   tileOverlap: number;
   tileFormat: string;
-  IIPSVR_PATH?: string;
-  iipTileInfos?: ViewerIIPTileInfos;
+  IIIF_SERVER_PATH?: string;
 };
 
 type OSDFilterFactory = {
@@ -153,32 +140,7 @@ export function getIIIFTileSourceUrl(
   const planePath =
     plane != null ? `/${ZAVConfig.getPlaneName(plane as Parameters<typeof ZAVConfig.getPlaneName>[0])}` : '';
   const imageId = `${key}${planePath}/${slideNum}${ext}`;
-  return `${config.IIIF_SERVER_PATH ?? config.IIPSERVER_PATH ?? ''}${encodeURIComponent(imageId)}${config.TILE_EXTENSION ?? ''}`;
-}
-
-export function getIIPTileUrl(
-  status: ViewerLayerStatusSubset,
-  slideNum: number,
-  key: string,
-  ext: string,
-  level: number,
-  x: number,
-  y: number,
-) {
-  const tileInfos = status.iipTileInfos;
-  if (!tileInfos) {
-    return '';
-  }
-  const xTilesNum = Math.ceil(tileInfos.xTilesNumAtMaxLevel * (tileInfos.levelScale[level] ?? 1));
-  const layerDispSettings = getLayerSetting(status, key);
-  return (
-    `${status.IIPSVR_PATH ?? ''}${key}/${slideNum}${ext}` +
-    (layerDispSettings?.useIIProtocol && layerDispSettings.gammaEnabled ? `&GAM=${layerDispSettings.gamma}` : '') +
-    (layerDispSettings?.useIIProtocol && layerDispSettings.contrastEnabled
-      ? `&CNT=${layerDispSettings.contrast}`
-      : '') +
-    `&JTL=${level ? level : '0'},${y * xTilesNum + x}`
-  );
+  return `${config.IIIF_SERVER_PATH ?? ''}${encodeURIComponent(imageId)}${config.TILE_EXTENSION ?? ''}`;
 }
 
 export function getTileSourceDef(args: {
@@ -189,34 +151,14 @@ export function getTileSourceDef(args: {
   currentPage: number | undefined;
   getCurrentPage: () => number;
 }) {
-  const { config, currentPage, ext, getCurrentPage, key, status } = args;
-  if (config.useEditor) {
-    const layerDispSettings = getLayerSetting(status, key);
-    if (layerDispSettings?.useIIProtocol) {
-      const tileInfos = status.iipTileInfos;
-      if (!tileInfos) {
-        return undefined;
-      }
-      return {
-        width: tileInfos.imageWidth,
-        height: tileInfos.imageHeight,
-        tileWidth: tileInfos.tileWidth,
-        tileHeight: tileInfos.tileHeight,
-        overlap: 1,
-        maxLevel: tileInfos.maxLevel,
-        minLevel: tileInfos.minLevel,
-        getTileUrl: (level: number, x: number, y: number) =>
-          getIIPTileUrl(status, getCurrentPage(), key, ext, level, x, y),
-      };
-    }
+  const { config, currentPage, ext, getCurrentPage: _getCurrentPage, key, status } = args;
+
+  if (config.useEditor || config.IIIF_SERVER_PATH) {
+    // IIIF protocol — simple URL-based tile source
     return getIIIFTileSourceUrl(config, currentPage ?? 0, key, ext);
   }
 
-  const layerDispSettings = getLayerSetting(status, key);
-  if (layerDispSettings?.useIIProtocol && config.IIIF_SERVER_PATH) {
-    return getIIIFTileSourceUrl(config, currentPage ?? 0, key, ext);
-  }
-
+  // Local DZI tile source (no backend image server)
   return {
     width: config.dzLayerWidth,
     height: config.dzLayerHeight,
@@ -295,7 +237,7 @@ export function setAllFilters(
       }
       processors.push(CustomFilters.INTENSITYALPHA(tracerNum));
       tracerNum++;
-    } else if (canUseOSDFilters && !layer.useIIProtocol) {
+    } else if (canUseOSDFilters) {
       if (layer.contrastEnabled) {
         processors.push(osdFilters.CONTRAST(layer.contrast ?? 1));
       }
@@ -316,7 +258,8 @@ export function setAllFilters(
     const requiresOSDFilters = Object.values(status.layerDisplaySettings).some((layer) =>
       Boolean(
         (layer.isTracer && layer.enhanceSignal && (layer.dilation ?? 0) > 0) ||
-          (!layer.useIIProtocol && (layer.contrastEnabled || layer.gammaEnabled)),
+          layer.contrastEnabled ||
+          layer.gammaEnabled,
       ),
     );
     if (requiresOSDFilters) {

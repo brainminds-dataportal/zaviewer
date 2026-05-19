@@ -7,7 +7,6 @@ export type ViewerHistoryParams = {
   sliceNum?: number;
   imageZoom?: number;
   center?: OpenSeadragon.Point;
-  protocol?: string;
   editMode?: boolean;
   initPanelExpanded?: boolean;
 };

@@ -21,8 +21,6 @@ export type LayerDisplaySetting = {
   autoDilation?: number;
   loading?: boolean;
   isLabelMap?: boolean;
-  defaultProtocol?: string;
-  useIIProtocol?: boolean;
   contrastEnabled?: boolean;
   initContrast?: number;
   contrast?: number;
@@ -58,7 +56,7 @@ export type DatasetVersionInfo = {
 
 export type ViewerExtraConfig = {
   termsOfUse?: string;
-  hasIIPserver?: boolean;
+  hasImageServer?: boolean;
 };
 
 export type ViewerRange = {
@@ -102,7 +100,6 @@ export type ZAViewerConfig = ViewerConfigLike & {
   customBorderColor?: string;
   customBorderWidth?: number;
   PUBLISH_PATH?: string;
-  IIPSERVER_PATH?: string;
   IIIF_SERVER_PATH?: string;
   volumeUrl?: string;
   layers: Record<string, ViewerLayerConfig>;

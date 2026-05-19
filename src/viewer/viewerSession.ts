@@ -23,7 +23,7 @@ export function createInitialLayerDisplaySettings(
     const isTracer = metadata.includes('nn_tracer');
     const isLabelMap = typeof value.colortable !== 'undefined';
     const itemKeyLayerPrefix = UserSettings.getLayerKeyPrefix(config.viewerId ?? viewerIdFallback, key);
-    const useIIProtocol = value.protocol === 'IIP';
+
     const initContrast = Number.parseFloat(String(value.contrast ?? 1.0));
     const initGamma = Number.parseFloat(String(value.gamma ?? 1.0));
     const initialOpacity = value.opacity ? Number.parseInt(String(value.opacity), 10) : 100;
@@ -43,8 +43,7 @@ export function createInitialLayerDisplaySettings(
         manualDilation: 0,
         autoDilation: 0,
         isLabelMap,
-        defaultProtocol: value.protocol || 'IIIF',
-        useIIProtocol,
+
         contrastEnabled:
           UserSettings.getBoolItem(`${itemKeyLayerPrefix}contrastEnabled`, initContrast !== 1.0) ?? false,
         initContrast,

@@ -152,7 +152,6 @@ type LegacyViewerConfig = {
   subviewFolderName?: string;
   PUBLISH_PATH?: string;
   ADMIN_PATH?: string;
-  IIPSERVER_PATH?: string;
   IIIF_SERVER_PATH?: string;
   TILE_EXTENSION?: string;
   THUMB_EXTENSION?: string;
@@ -595,7 +594,7 @@ class ZAVConfig {
       this.config.datasetId = configId;
 
       /** base URL of image server */
-      this.config.IIPSERVER_PATH = undefined;
+      this.config.IIIF_SERVER_PATH = undefined;
       /** base URL for region infos, region SVGs, ... */
       this.config.PUBLISH_PATH = undefined;
       /** base URL of admin web services */
@@ -659,7 +658,7 @@ class ZAVConfig {
         const response = await getJson<BackendPathResponse>(baseConfigUrl);
 
         this.config.ADMIN_PATH = response.admin_path;
-        this.config.IIPSERVER_PATH = response.iipserver_path;
+        this.config.IIIF_SERVER_PATH = response.iipserver_path;
         this.config.PUBLISH_PATH = response.publish_path;
 
         const configUrl = Utils.makePath(this.config.ADMIN_PATH, 'json.php');

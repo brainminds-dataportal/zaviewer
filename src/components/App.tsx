@@ -141,7 +141,7 @@ const App = (props: AppProps) => {
         total: config?.getTotalSlidesCount?.(),
       },
       publishPath: config?.PUBLISH_PATH,
-      iipServerPath: config?.IIIF_SERVER_PATH ?? config?.IIPSERVER_PATH,
+      iiifServerPath: config?.IIIF_SERVER_PATH,
       volumeUrl: config?.volumeUrl,
       layers: Object.keys(config?.layers || {}),
     });
@@ -234,7 +234,7 @@ const App = (props: AppProps) => {
                       </a>{' '}
                       v2.4.2 released under the New BSD license.
                     </p>
-                    {config?.extra?.hasIIPserver ? (
+                    {config?.extra?.hasImageServer ? (
                       <p>
                         Brain images are served by{' '}
                         <a href="https://iipimage.sourceforge.io/" target="_blank" rel="noopener">
